@@ -234,6 +234,22 @@ function App() {
     setShuttles((prev) => prev.map((item) => (item.id === id ? { ...item, status } : item)));
   };
 
+  const updateBatteryStatus = (id: string, status: Battery['status']) => {
+    setBatteries((prev) => prev.map((item) => (item.id === id ? { ...item, status } : item)));
+  };
+
+  const updateFaultStatus = (id: string, status: Fault['status']) => {
+    setFaults((prev) => prev.map((item) => {
+      if (item.id !== id) return item;
+      if (status === 'Resolved' && !item.correctiveAction?.trim()) return item;
+      return { ...item, status };
+    }));
+  };
+
+  const updateMaintenanceStatus = (id: string, status: MaintenanceJob['status']) => {
+    setMaintenanceJobs((prev) => prev.map((item) => (item.id === id ? { ...item, status } : item)));
+  };
+
   const addShuttle = (event: React.FormEvent) => {
     event.preventDefault();
     const newId = `SC-${Math.floor(600 + Math.random() * 250)}`;
@@ -693,6 +709,17 @@ function App() {
             <div className="panel-card">
               <div className="card-title">Battery engineering visualization</div>
               <BatteryVisualization battery={selectedBattery} />
+              {selectedBattery && (
+                <>
+                  <div className="filter-row battery-actions">
+                    <button type="button" className="ghost-button" onClick={() => updateBatteryStatus(selectedBattery.id, 'Charging')}>Set charging</button>
+                    <button type="button" className="ghost-button" onClick={() => updateBatteryStatus(selectedBattery.id, 'Available')}>Set available</button>
+                    <button type="button" className="ghost-button" onClick={() => updateBatteryStatus(selectedBattery.id, 'Maintenance')}>Set maintenance</button>
+                    <button type="button" className="ghost-button" onClick={() => updateBatteryStatus(selectedBattery.id, 'Fault')}>Flag fault</button>
+                  </div>
+                  <div className="small-text">Status changes are manual local records only. SOC, SOH, voltage and temperature remain illustrative until a verified battery data source is connected.</div>
+                </>
+              )}
             </div>
           </section>
         )}
@@ -714,6 +741,11 @@ function App() {
                     <div className="small-text">Diagnostic procedure: {fault.diagnosticProcedure}</div>
                     <div className="small-text">Corrective action: {fault.correctiveAction || 'No documented corrective action recorded — resolution blocked.'}</div>
                     <div className="small-text">Technician: {fault.assignedTechnician}</div>
+                    <div className="filter-row">
+                      <button type="button" className="ghost-button" disabled={fault.status === 'Investigating' || fault.status === 'Resolved'} onClick={() => updateFaultStatus(fault.id, 'Investigating')}>Start investigation</button>
+                      <button type="button" className="ghost-button" disabled={fault.status === 'Resolved' || !fault.correctiveAction?.trim()} title={!fault.correctiveAction?.trim() ? 'Record corrective action before resolving this fault' : 'Resolve fault'} onClick={() => updateFaultStatus(fault.id, 'Resolved')}>Resolve fault</button>
+                    </div>
+                    {!fault.correctiveAction?.trim() && <div className="small-text">Resolution is locked until a corrective action is documented.</div>}
                   </div>
                 ))}
               </div>
@@ -757,6 +789,10 @@ function App() {
                     <div className="small-text">Date: {job.scheduledDate}</div>
                     <div className="small-text">Technician: {job.technician}</div>
                     <div className="small-text">Notes: {job.notes}</div>
+                    <div className="filter-row">
+                      <button type="button" className="ghost-button" disabled={job.status === 'In Progress' || job.status === 'Completed'} onClick={() => updateMaintenanceStatus(job.id, 'In Progress')}>Start job</button>
+                      <button type="button" className="ghost-button" disabled={job.status === 'Completed'} onClick={() => updateMaintenanceStatus(job.id, 'Completed')}>Complete job</button>
+                    </div>
                   </div>
                 ))}
               </div>
