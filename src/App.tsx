@@ -46,7 +46,7 @@ const labels = {
     language: 'Language',
     theme: 'Theme',
     userStatus: 'Current user',
-    logout: 'Log out',
+    resetRole: 'Reset preview role',
     systemNotice: 'HYPOTHESIS — REQUIRES TECHNICAL VERIFICATION',
     noOverride: 'No live hardware command is issued from this interface.'
   },
@@ -80,7 +80,7 @@ const labels = {
     language: 'اللغة',
     theme: 'السمة',
     userStatus: 'المستخدم الحالي',
-    logout: 'تسجيل الخروج',
+    resetRole: 'إعادة دور المعاينة',
     systemNotice: 'فرضية — تتطلب التحقق الفني',
     noOverride: 'لا يتم إصدار أي أمر حقيقي للمعدات من هذه الواجهة.'
   }
@@ -103,7 +103,7 @@ const navigation = [
 
 type Tab = (typeof navigation)[number];
 
-const defaultUser: User = users[0];
+const defaultUser: User = { ...users[0], isAuthenticated: false };
 
 const STORAGE_PREFIX = 'shuttle-car-automation-v6:';
 
@@ -425,7 +425,7 @@ function App() {
 
   const handleRoleSwitch = (role: Role) => {
     const user = users.find((item) => item.role === role) ?? users[0];
-    setCurrentUser({ ...user, isAuthenticated: true });
+    setCurrentUser({ ...user, isAuthenticated: false });
   };
 
   const systemSummary = [
@@ -475,7 +475,7 @@ function App() {
             <button className="theme-toggle" onClick={() => setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'))}>
               {theme === 'dark' ? 'Light mode' : 'Dark mode'}
             </button>
-            <button className="ghost-button" onClick={() => setCurrentUser({ ...defaultUser, isAuthenticated: true })}>{t.logout}</button>
+            <button className="ghost-button" onClick={() => setCurrentUser(defaultUser)}>{t.resetRole}</button>
           </div>
         </header>
 
