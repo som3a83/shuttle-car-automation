@@ -70,4 +70,28 @@ describe('Shuttle Car Automation V6', () => {
     expect(screen.getAllByText('Resolved').length).toBeGreaterThan(0);
   });
 
+
+  it('navigates into the engineering workspace and changes drawing views', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole('button', { name: /Engineering Visualization/i }));
+    expect(screen.getByText(/ISOMETRIC ASSEMBLY/i)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /^Top$/i }));
+    expect(screen.getByText(/TOP PLAN/i)).toBeInTheDocument();
+    expect(screen.getByText(/ASSEMBLY BREAKDOWN/i)).toBeInTheDocument();
+  });
+
+  it('switches between fleet, battery, fault and maintenance workspaces', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole('button', { name: /Fleet Control Center/i }));
+    expect(screen.getByText(/Register new equipment/i)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /Battery Management/i }));
+    expect(screen.getByText(/Battery assets/i)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /Fault & Diagnostics/i }));
+    expect(screen.getByText(/Multiple operating anomalies reported/i)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /Maintenance Management/i }));
+    expect(screen.getByText(/Create work order/i)).toBeInTheDocument();
+  });
+
 });
