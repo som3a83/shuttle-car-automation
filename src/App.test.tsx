@@ -152,6 +152,42 @@ describe('Shuttle Car Automation V6', () => {
     expect(window.location.hash).toBe('#/ai');
   });
 
+  it('creates a local notification when a fault report is submitted', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getAllByRole('button', { name: /Fault & Diagnostics/i })[0]);
+    await user.type(screen.getByLabelText(/Fault title/i), 'Photoelectric sensor interruption');
+    await user.type(screen.getByLabelText(/Observed symptom/i), 'Sensor signal was interrupted during inspection.');
+    await user.click(screen.getByRole('button', { name: /Register fault/i }));
+    await user.click(screen.getAllByRole('button', { name: /Notifications/i })[0]);
+    expect(screen.getByText('New fault report recorded')).toBeInTheDocument();
+    expect(screen.getByText(/Photoelectric sensor interruption/)).toBeInTheDocument();
+  });
+
+  it('allows a local notification to be dismissed', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getAllByRole('button', { name: /Battery Management/i })[0]);
+    await user.click(screen.getByRole('button', { name: /Set available/i }));
+    await user.click(screen.getAllByRole('button', { name: /Notifications/i })[0]);
+    expect(screen.getByText('Battery status changed')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /Dismiss notification/i }));
+    expect(screen.getByText(/No new local notifications/i)).toBeInTheDocument();
+  });
+
+  it('respects the master notification preference', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getAllByRole('button', { name: /System Settings/i })[0]);
+    await user.click(screen.getByRole('checkbox', { name: /Enable local notifications/i }));
+    await user.click(screen.getAllByRole('button', { name: /Fault & Diagnostics/i })[0]);
+    await user.type(screen.getByLabelText(/Fault title/i), 'Notification preference check');
+    await user.type(screen.getByLabelText(/Observed symptom/i), 'Local notification generation is disabled.');
+    await user.click(screen.getByRole('button', { name: /Register fault/i }));
+    await user.click(screen.getAllByRole('button', { name: /Notifications/i })[0]);
+    expect(screen.getByText(/No new local notifications/i)).toBeInTheDocument();
+  });
+
   it('keeps all twelve named application destinations reachable from the main navigation', async () => {
     const user = userEvent.setup();
     render(<App />);
