@@ -22,7 +22,7 @@ const isPart = (value: unknown): value is EngineeringPart =>
   value === 'chassis' || value === 'drive' || value === 'wheels' || value === 'battery' || value === 'sensors';
 
 export default function Shuttle3DViewer({
-  manufacturer, shuttleId, status, view, exploded, animated, selectedPart, zoom, onSelectPart, fallback
+  manufacturer, shuttleId, status, view, exploded, animated, selectedPart, zoom, resetKey, onSelectPart, fallback
 }: Shuttle3DViewerProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
