@@ -143,7 +143,7 @@ function StatusPill({ status, language }: { status: ShuttleStatus | string; lang
   const map: Record<string, string> = language === 'ar'
     ? { Ready: 'جاهز', Running: 'يعمل', Idle: 'متوقف', Charging: 'يشحن', Maintenance: 'صيانة', Fault: 'عطل', Disconnected: 'غير متصل', Unknown: 'غير معروف', Open: 'مفتوح', Investigating: 'قيد الفحص', Resolved: 'تم الحل', Scheduled: 'مجدول', 'In Progress': 'قيد التنفيذ', Completed: 'مكتمل', Overdue: 'متأخر', Available: 'متاحة', Installed: 'مركبة' }
     : {};
-  return <span className={'status-pill status-' + String(status).toLowerCase().replaceAll(' ', '-')}>{map[status] || status}</span>;
+  return <span className={'status-pill status-' + String(status).toLowerCase().replace(/ /g, '-')}>{map[status] || status}</span>;
 }
 
 function ShuttleModel({ shuttle, view, exploded, animated }: { shuttle: Shuttle; view: ModelView; exploded: boolean; animated: boolean }) {
@@ -344,7 +344,7 @@ function App() {
       ...batteries.map(b => ['Battery',b.id,b.manufacturer,b.status,b.connectionMode,b.notes]),
       ...faults.map(f => ['Fault',f.id,f.shuttleId,f.status,f.severity,f.description]),
       ...jobs.map(j => ['Maintenance',j.id,j.shuttleId,j.status,j.type,j.notes])];
-    const csv = rows.map(row => row.map(value => '"' + String(value ?? '').replaceAll('"','""') + '"').join(',')).join('\r\n');
+    const csv = rows.map(row => row.map(value => '"' + String(value ?? '').replace(/"/g,'""') + '"').join(',')).join('\r\n');
     const url = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }));
     const link = document.createElement('a'); link.href = url; link.download = 'shuttle-register.csv'; link.click(); URL.revokeObjectURL(url);
   };
