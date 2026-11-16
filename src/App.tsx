@@ -417,7 +417,7 @@ function App() {
       <div className="sidebar-caption">{t.appName}</div>
       {['OPERATIONS','ENGINEERING','SYSTEM','ADMIN'].map(group => <div className="nav-group" key={group}>
         <div className="nav-group-title">{language === 'ar' ? ({OPERATIONS:'التشغيل',ENGINEERING:'الهندسة',SYSTEM:'النظام',ADMIN:'الإدارة'} as Record<string,string>)[group] : group}</div>
-        {navItems.filter(item => item.group === group).map(item => <button key={item.id} className={'nav-button ' + (activeTab === item.id ? 'active' : '')} onClick={() => go(item.id)}>
+        {navItems.filter(item => item.group === group).map(item => <button key={item.id} type="button" title={language === 'ar' ? item.ar : item.en} aria-current={activeTab === item.id ? 'page' : undefined} className={'nav-button ' + (activeTab === item.id ? 'active' : '')} onClick={() => go(item.id)}>
           <Icon name={item.icon}/><span>{language === 'ar' ? item.ar : item.en}</span>{activeTab === item.id && <i className="nav-active-mark"/>}
         </button>)}
       </div>)}
