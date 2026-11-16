@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   defaultSettings,
   initialBatteries,
@@ -23,6 +23,7 @@ import type {
 
 type Tab = 'dashboard' | 'fleet' | 'engineering' | 'batteries' | 'faults' | 'maintenance' | 'connections' | 'ai' | 'reports' | 'notifications' | 'users' | 'settings';
 type ModelView = 'iso' | 'side' | 'front' | 'top';
+type EngineeringPart = 'chassis' | 'drive' | 'wheels' | 'battery' | 'sensors';
 
 const navItems: { id: Tab; en: string; ar: string; icon: string; group: string }[] = [
   { id: 'dashboard', en: 'Dashboard', ar: 'لوحة القيادة', icon: 'grid', group: 'OPERATIONS' },
@@ -257,6 +258,10 @@ function App() {
   const [selectedId, setSelectedId] = useState('SC-01');
   const [selectedBatteryId, setSelectedBatteryId] = useState('BAT-ACME-01');
   const [modelView, setModelView] = useState<ModelView>('iso');
+  const [modelZoom, setModelZoom] = useState(1);
+  const [modelOrbit, setModelOrbit] = useState({ x: 0, y: 0 });
+  const [selectedPart, setSelectedPart] = useState<EngineeringPart>('chassis');
+  const orbitPointer = useRef<{ id: number; x: number; y: number } | null>(null);
   const [exploded, setExploded] = useState(false);
   const [animated, setAnimated] = useState(true);
   const [search, setSearch] = useState('');
@@ -304,6 +309,23 @@ function App() {
     document.title = page ? `${page.en} · ShuttleOps` : 'ShuttleOps';
     window.scrollTo({ top: 0, behavior: 'instant' });
   }, [activeTab]);
+
+  const beginModelOrbit = (event: React.PointerEvent<HTMLDivElement>) => {
+    orbitPointer.current = { id: event.pointerId, x: event.clientX, y: event.clientY };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+  const moveModelOrbit = (event: React.PointerEvent<HTMLDivElement>) => {
+    const pointer = orbitPointer.current;
+    if (!pointer || pointer.id !== event.pointerId) return;
+    const dx = event.clientX - pointer.x;
+    const dy = event.clientY - pointer.y;
+    orbitPointer.current = { ...pointer, x: event.clientX, y: event.clientY };
+    setModelOrbit((current) => ({
+      x: Math.max(-22, Math.min(22, current.x - dy * 0.28)),
+      y: Math.max(-32, Math.min(32, current.y + dx * 0.35))
+    }));
+  };
+  const endModelOrbit = () => { orbitPointer.current = null; };
 
   const go = (tab: Tab) => {
     if (tab !== activeTab) window.history.pushState({ tab }, '', `#/${tab}`);
@@ -464,14 +486,41 @@ function App() {
         <PageIntro eyebrow="MECHANICAL INTELLIGENCE / DIGITAL SCHEMATIC" title={t.engineering} subtitle={t.engineeringSub}/>
         <div className="engineering-workspace">
           <div className="surface-card model-stage">
-            <div className="model-toolbar"><div className="asset-select"><label>{t.selectAsset}</label><select value={selectedId} onChange={e=>setSelectedId(e.target.value)}>{shuttles.map(s=><option key={s.id} value={s.id}>{s.id} — {s.manufacturer}</option>)}</select></div><div className="model-tools"><button className={exploded?'tool-active':''} onClick={()=>setExploded(!exploded)}><Icon name="settings" size={15}/>{t.exploded}</button><button className={animated?'tool-active':''} onClick={()=>setAnimated(!animated)}><Icon name="grid" size={15}/>{animated?t.stop:t.animate}</button></div></div>
+            <div className="model-toolbar"><div className="asset-select"><label>{t.selectAsset}</label><select value={selectedId} onChange={e=>setSelectedId(e.target.value)}>{shuttles.map(s=><option key={s.id} value={s.id}>{s.id} — {s.manufacturer}</option>)}</select></div><div className="model-tools"><button className={exploded?'tool-active':''} onClick={()=>setExploded(!exploded)}><Icon name="settings" size={15}/>{t.exploded}</button><button className={animated?'tool-active':''} onClick={()=>setAnimated(!animated)}><Icon name="grid" size={15}/>{animated?t.stop:t.animate}</button><button onClick={()=>{setModelOrbit({x:0,y:0});setModelZoom(1);}}>{language==='ar'?'إعادة ضبط المنظور':'Reset view'}</button></div></div>
             <div className="view-tabs">{(['iso','side','front','top'] as ModelView[]).map(v=><button key={v} className={modelView===v?'active':''} onClick={()=>setModelView(v)}>{t[v]}</button>)}</div>
-            <div className="model-canvas"><div className="canvas-topline"><span>MODEL: {selected.manufacturer.toUpperCase()} / {selected.id}</span><span>REV 0.1 · CONCEPTUAL</span></div><ShuttleModel shuttle={selected} view={modelView} exploded={exploded} animated={animated}/><div className="canvas-bottomline"><span><i className="legend-dot" style={{background:selected.manufacturer==='Cassioli'?'#d28b4b':selected.manufacturer==='Craftsman'?'#45b8d2':'#a58af5'}}/>{selected.manufacturer}</span><span><i className="legend-dot" style={{background:'#75d6ff'}}/>Sensors</span><span><i className="legend-dot" style={{background:'#7bd9a9'}}/>Battery module</span></div></div>
+            <div className="model-canvas" onPointerDown={beginModelOrbit} onPointerMove={moveModelOrbit} onPointerUp={endModelOrbit} onPointerCancel={endModelOrbit} onLostPointerCapture={endModelOrbit} style={{'--orbit-x':`${modelOrbit.x}deg`,'--orbit-y':`${modelOrbit.y}deg`,'--model-zoom':modelZoom} as React.CSSProperties}>
+               <div className="canvas-topline"><span>MODEL: {selected.manufacturer.toUpperCase()} / {selected.id}</span><span>REV 0.2 · CONCEPTUAL SCHEMATIC</span></div>
+               <div className="orbit-hint">{language==='ar'?'اسحب لتدوير المنظور · استخدم شريط التكبير':'DRAG TO ORBIT · USE ZOOM CONTROL'}</div>
+               <ShuttleModel shuttle={selected} view={modelView} exploded={exploded} animated={animated}/>
+               <div className="canvas-bottomline"><span><i className="legend-dot" style={{background:selected.manufacturer==='Cassioli'?'#d28b4b':selected.manufacturer==='Craftsman'?'#45b8d2':'#a58af5'}}/>{selected.manufacturer}</span><span><i className="legend-dot" style={{background:'#75d6ff'}}/>Sensors</span><span><i className="legend-dot" style={{background:'#7bd9a9'}}/>Battery module</span></div>
+             </div>
+             <div className="model-zoom-control"><label htmlFor="model-zoom">{language==='ar'?'تكبير الرسم':'Drawing zoom'}</label><input id="model-zoom" type="range" min="0.75" max="1.25" step="0.05" value={modelZoom} onChange={event=>setModelZoom(Number(event.target.value))}/><output>{Math.round(modelZoom*100)}%</output></div>
             <p className="disclaimer">{t.modelDisclaimer}</p>
           </div>
           <div className="engineering-side">
             <div className="surface-card"><div className="card-head"><div><span className="eyebrow">ASSET IDENTITY</span><h3>{selected.id}</h3></div><StatusPill status={selected.status} language={language}/></div><div className="spec-list"><Detail label={t.manufacturer} value={selected.manufacturer}/><Detail label={t.model} value={selected.model}/><Detail label={t.serial} value={selected.serialNumber}/><Detail label="Hardware / firmware" value={selected.hardwareVersion + ' / ' + selected.firmwareVersion}/><Detail label={t.batteryPack} value={selected.installedBattery}/><Detail label={t.lastSeen} value={selected.lastCommunication}/></div></div>
-            <div className="surface-card"><div className="card-head"><div><span className="eyebrow">ASSEMBLY BREAKDOWN</span><h3>{t.componentLegend}</h3></div></div><div className="component-list"><ComponentRow n="01" title={t.chassis} desc="Structural frame / load deck"/><ComponentRow n="02" title={t.drive} desc="Drive train / motor housing"/><ComponentRow n="03" title={t.wheel} desc="Traction and guide wheel sets"/><ComponentRow n="04" title={t.batteryComp} desc="Removable energy module"/><ComponentRow n="05" title={t.sensors} desc="Detection / protection points"/></div></div>
+            <div className="surface-card"><div className="card-head"><div><span className="eyebrow">ASSEMBLY BREAKDOWN</span><h3>{t.componentLegend}</h3></div></div><div className="component-list">
+                {([
+                  {id:'chassis' as const,n:'01',title:t.chassis,desc:language==='ar'?'الهيكل الحامل وسطح تحميل الطبالي':'Structural frame and load deck'},
+                  {id:'drive' as const,n:'02',title:t.drive,desc:language==='ar'?'منظومة الدفع وبيت المحرك':'Drive train and motor housing'},
+                  {id:'wheels' as const,n:'03',title:t.wheel,desc:language==='ar'?'عجلات الجر والتوجيه':'Traction and guide wheel sets'},
+                  {id:'battery' as const,n:'04',title:t.batteryComp,desc:language==='ar'?'حاوية الطاقة القابلة للفك':'Removable energy module'},
+                  {id:'sensors' as const,n:'05',title:t.sensors,desc:language==='ar'?'نقاط الاستشعار والحماية':'Detection and protection points'}
+                ]).map(part=><button type="button" key={part.id} className={'component-select-row '+(selectedPart===part.id?'selected':'')} aria-pressed={selectedPart===part.id} onClick={()=>setSelectedPart(part.id)}><ComponentRow n={part.n} title={part.title} desc={part.desc}/></button>)}
+              </div>
+              <div className="part-inspector">
+                <span className="eyebrow">{language==='ar'?'فحص المكوّن المحدد':'SELECTED COMPONENT INSPECTOR'}</span>
+                <h4>{({chassis:t.chassis,drive:t.drive,wheels:t.wheel,battery:t.batteryComp,sensors:t.sensors})[selectedPart]}</h4>
+                <p>{({
+                  chassis:language==='ar'?'افحص الاستقامة واللحامات ونقاط تثبيت سطح التحميل. لا توجد أبعاد مصنع موثقة داخل هذا النموذج.':'Inspect frame alignment, welds and load-deck mounting points. No vendor dimensions are verified in this model.',
+                  drive:language==='ar'?'راجع تثبيت المحرك وعلبة التروس والكابلات وفق دليل الشركة المصنعة قبل أي تدخل.':'Inspect motor and gearbox mounting and cabling against the manufacturer manual before intervention.',
+                  wheels:language==='ar'?'تحقق من التآكل والمحامل والالتصاق بالأرضية وخلو مسار الحركة من الثلج أو الملوثات.':'Check tread wear, bearings, floor grip and any ice or contamination on the travel path.',
+                  battery:language==='ar'?'تحقق من آلية القفل والموصلات وبيانات البطارية الفعلية على شاشة المعدة.':'Verify the retention mechanism, connectors and actual battery readings on the equipment HMI.',
+                  sensors:language==='ar'?'افحص نظافة العدسات والمحاذاة ومجال الكشف وسجل الإنذارات دون تجاوز دوائر الأمان.':'Inspect lens cleanliness, alignment, detection field and alarm history without bypassing safety circuits.'
+                })[selectedPart]}</p>
+                <small>{language==='ar'?'معلومات فحص إرشادية فقط — يلزم الرجوع إلى دليل المعدة المعتمد.':'Guidance only — consult the approved equipment service documentation.'}</small>
+              </div>
+            </div>
           </div>
         </div>
       </section>}
