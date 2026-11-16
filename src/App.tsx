@@ -122,8 +122,36 @@ function tabFromLocation(): Tab {
 
 const PREFIX = 'shuttle-car-automation-v7:';
 function readLocal<T>(key: string, fallback: T): T {
-  try { const raw = localStorage.getItem(PREFIX + key); return raw ? JSON.parse(raw) as T : fallback; }
-  catch { return fallback; }
+  try {
+    const raw = localStorage.getItem(PREFIX + key);
+    if (!raw) return fallback;
+    const parsed: unknown = JSON.parse(raw);
+
+    // V7 stored zero-hour / zero-cycle placeholders for unverified shuttle records.
+    // Convert only those legacy placeholders; preserve zero values from a verified source.
+    if (key === 'shuttles' && Array.isArray(parsed)) {
+      return parsed.map((value) => {
+        if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
+        const shuttle = value as Partial<Shuttle>;
+        const isUnverifiedPlaceholder =
+          shuttle.model === 'Not recorded' &&
+          shuttle.serialNumber === 'Not recorded' &&
+          shuttle.connectivity === 'UNKNOWN' &&
+          shuttle.status === 'Unknown';
+
+        if (!isUnverifiedPlaceholder) return shuttle;
+        return {
+          ...shuttle,
+          operatingHours: shuttle.operatingHours === 0 ? null : shuttle.operatingHours,
+          operatingCycles: shuttle.operatingCycles === 0 ? null : shuttle.operatingCycles
+        };
+      }) as T;
+    }
+
+    return parsed as T;
+  } catch {
+    return fallback;
+  }
 }
 
 function Icon({ name, size = 18 }: { name: string; size?: number }) {
