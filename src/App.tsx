@@ -168,7 +168,7 @@ function ShuttleModel({ shuttle, view, exploded, animated }: { shuttle: Shuttle;
   </svg>;
   if (view === 'front') return <svg className="shuttle-svg" viewBox="0 0 760 390" role="img" aria-label="Front engineering illustration of shuttle car">
     <path className="floor-grid" d="M40 325H720M80 350H680M150 300l-60 50M300 300l-60 50M450 300l-60 50M600 300l-60 50"/>
-    <path d="M190 104h380v190H190z" rx="22" fill="#344353" stroke="#9aaabb" strokeWidth="4"/>
+    <rect x="190" y="104" width="380" height="190" rx="22" fill="#344353" stroke="#9aaabb" strokeWidth="4"/>
     <path d="M215 118h330v24H215z" fill={accent}/><rect x="260" y="160" width="240" height="82" rx="15" fill="#1b2733" stroke="#8293a4" strokeWidth="3"/>
     <rect x="285" y="177" width="190" height="45" rx="8" fill="#455565"/><rect x="302" y="185" width="156" height="8" rx="4" fill={accent}/>
     <rect x="235" y="246" width="80" height="34" rx="12" fill="#18222d"/><rect x="445" y="246" width="80" height="34" rx="12" fill="#18222d"/>
@@ -283,7 +283,7 @@ function App() {
     verifiedSoc: batteries.filter(b => b.soc !== null).length
   };
 
-  const go = (tab: Tab) => { setActiveTab(tab); setMobileNav(false); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+  const go = (tab: Tab) => { setActiveTab(tab); setMobileNav(false); };
   const showToast = (message: string) => { setToast(message); window.setTimeout(() => setToast(''), 2400); };
   const updateShuttle = (id: string, patch: Partial<Shuttle>) => setShuttles(prev => prev.map(s => s.id === id ? { ...s, ...patch } : s));
   const updateBattery = (id: string, patch: Partial<Battery>) => setBatteries(prev => prev.map(b => b.id === id ? { ...b, ...patch } : b));
@@ -384,10 +384,7 @@ function App() {
         </div>
       </header>
 
-      <nav className="mobile-nav" aria-label="Primary navigation">
-        {navItems.slice(0, 6).map(item => <button key={item.id} className={activeTab === item.id ? 'active' : ''} onClick={() => go(item.id)}><Icon name={item.icon} size={16}/><span>{language === 'ar' ? item.ar : item.en}</span></button>)}
-        <button onClick={() => setMobileNav(true)}><Icon name="grid" size={16}/><span>{language === 'ar' ? 'كل الأقسام' : 'All modules'}</span></button>
-      </nav>
+      <nav className="mobile-nav" aria-label="Primary navigation"><button onClick={() => setMobileNav(true)}><Icon name="grid" size={16}/><span>{language === 'ar' ? 'كل الأقسام' : 'All modules'}</span></button></nav>
 
       <div className="demo-banner" role="status"><div className="demo-icon"><Icon name="alert" size={18}/></div><div><strong>{t.demo}</strong><p>{t.demoText}</p></div><span className="demo-tag">{t.unverified}</span></div>
 
@@ -467,7 +464,7 @@ function App() {
       {activeTab === 'maintenance' && <section className="page-content">
         <PageIntro eyebrow="MAINTENANCE / WORK MANAGEMENT" title={t.maintenance} subtitle={t.maintenanceSub}/>
         <div className="two-column-page"><div className="surface-card"><div className="card-head"><div><span className="eyebrow">WORK ORDER QUEUE</span><h3>{t.backlog}</h3></div><span className="counter">{jobs.filter(j=>j.status!=='Completed').length}</span></div><div className="record-stack">{jobs.map(j=><div className="work-record" key={j.id}><div className="record-top"><div><span className="eyebrow">{j.id} · {j.shuttleId}</span><h3>{j.title}</h3></div><StatusPill status={j.status} language={language}/></div><div className="record-meta"><span>Type: {j.type}</span><span>Date: {j.scheduledDate}</span><span>Technician: {j.technician}</span></div><p>{j.notes}</p><div className="record-actions"><button className="btn-secondary" disabled={j.status!=='Scheduled'} onClick={()=>setJobs(prev=>prev.map(x=>x.id===j.id?{...x,status:'In Progress'}:x))}>{t.startWork}</button><button className="btn-primary" disabled={j.status==='Completed'} onClick={()=>setJobs(prev=>prev.map(x=>x.id===j.id?{...x,status:'Completed'}:x))}>{t.completeWork}</button></div></div>)}{jobs.length===0&&<div className="empty-state">{t.noWork}</div>}</div></div>
-          <div className="surface-card"><div className="card-head"><div><span className="eyebrow">PLANNED SERVICE</span><h3>{t.createWork}</h3></div></div><form className="stack-form" onSubmit={addJob}><label>Shuttle<select name="shuttleId">{shuttles.map(s=><option key={s.id} value={s.id}>{s.id} · {s.manufacturer}</option>)}</select></label><label>{t.workTitle}<input name="title" required/></label><label>Type<select name="type"><option>Preventive</option><option>Corrective</option></select></label><label>{t.date}<input name="date" type="date" required/></label><label>{t.technician}<input name="technician"/></label><label>{t.notes}<textarea name="notes"/></label><button className="btn-primary" type="submit">{t.createWork}</button></form></div></div>
+          <div className="surface-card"><div className="card-head"><div><span className="eyebrow">PLANNED SERVICE</span><h3>{t.createWork}</h3></div></div><form className="stack-form" onSubmit={addJob}><label>Shuttle<select name="shuttleId">{shuttles.map(s=><option key={s.id} value={s.id}>{s.id} · {s.manufacturer}</option>)}</select></label><label>{t.workTitle}<input name="title" required/></label><label>Type<select name="type"><option>Preventive</option><option>Corrective</option></select></label><label>{t.date}<input name="date" type="date" required/></label><label>{t.technician}<input name="technician"/></label><label>{t.notes}<textarea name="notes"/></label><button className="btn-primary" type="submit">{language === 'ar' ? 'حفظ أمر الصيانة' : 'Save work order'}</button></form></div></div>
       </section>}
 
       {activeTab === 'connections' && <section className="page-content"><PageIntro eyebrow="INDUSTRIAL NETWORK / INTEGRATION" title={language==='ar'?'معمارية الاتصال بالمعدات':'Device integration architecture'} subtitle={t.connectionSub}/><div className="protocol-grid">{initialConnections.map((c,i)=><div className="surface-card protocol-card" key={c.name}><div className="protocol-icon"><Icon name="network" size={23}/></div><div className="protocol-index">0{i+1}</div><h3>{c.protocol}</h3><strong>{c.name}</strong><p>{c.notes}</p><div className="protocol-footer"><StatusPill status={c.mode} language={language}/><span>{t.notConfigured}</span></div></div>)}</div><div className="notice-inline"><Icon name="alert"/>{language==='ar'?'قبل تفعيل أي اتصال: يلزم دليل المصنع، وخريطة العناوين، وبيانات الشبكة، وتصريح فني. البداية قراءة فقط.':'Before enabling a connection: obtain vendor interface manuals, register/address maps, network details and engineering authorization. Begin read-only.'}</div></section>}
