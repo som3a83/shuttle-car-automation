@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { defaultSettings, initialBatteries, initialConnections, initialFaults, initialMaintenance, initialNotifications, initialShuttles, users } from './data/mockData';
 import type {
   AppSettings,
@@ -105,6 +105,17 @@ type Tab = (typeof navigation)[number];
 
 const defaultUser: User = users[0];
 
+const STORAGE_PREFIX = 'shuttle-car-automation-v6:';
+
+function readLocalState<T>(key: string, fallback: T): T {
+  try {
+    const stored = window.localStorage.getItem(`${STORAGE_PREFIX}${key}`);
+    return stored ? (JSON.parse(stored) as T) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 const statusColors: Record<ShuttleStatus, string> = {
   Ready: '#55d6a1',
   Running: '#59d9b2',
@@ -135,16 +146,16 @@ const statCard = (title: string, value: number | string, accent: string) => (
 );
 
 function App() {
-  const [language, setLanguage] = useState<Language>('en');
-  const [theme, setTheme] = useState<Theme>('dark');
+  const [language, setLanguage] = useState<Language>(() => readLocalState('language', 'en'));
+  const [theme, setTheme] = useState<Theme>(() => readLocalState('theme', 'dark'));
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
   const [currentUser, setCurrentUser] = useState<User>(defaultUser);
-  const [shuttles, setShuttles] = useState<Shuttle[]>(initialShuttles);
-  const [batteries, setBatteries] = useState<Battery[]>(initialBatteries);
-  const [faults, setFaults] = useState<Fault[]>(initialFaults);
-  const [maintenanceJobs, setMaintenanceJobs] = useState<MaintenanceJob[]>(initialMaintenance);
-  const [notifications, setNotifications] = useState<NotificationItem[]>(initialNotifications);
-  const [settings, setSettings] = useState<AppSettings>({ ...defaultSettings });
+  const [shuttles, setShuttles] = useState<Shuttle[]>(() => readLocalState('shuttles', initialShuttles));
+  const [batteries, setBatteries] = useState<Battery[]>(() => readLocalState('batteries', initialBatteries));
+  const [faults, setFaults] = useState<Fault[]>(() => readLocalState('faults', initialFaults));
+  const [maintenanceJobs, setMaintenanceJobs] = useState<MaintenanceJob[]>(() => readLocalState('maintenanceJobs', initialMaintenance));
+  const [notifications, setNotifications] = useState<NotificationItem[]>(() => readLocalState('notifications', initialNotifications));
+  const [settings, setSettings] = useState<AppSettings>(() => readLocalState('settings', { ...defaultSettings }));
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | ShuttleStatus>('ALL');
   const [selectedShuttleId, setSelectedShuttleId] = useState(initialShuttles[0].id);
@@ -161,6 +172,19 @@ function App() {
   });
 
   const t = labels[language];
+
+  useEffect(() => {
+    const persistedState: Record<string, unknown> = {
+      language, theme, shuttles, batteries, faults, maintenanceJobs, notifications, settings
+    };
+    try {
+      Object.entries(persistedState).forEach(([key, value]) => {
+        window.localStorage.setItem(`${STORAGE_PREFIX}${key}`, JSON.stringify(value));
+      });
+    } catch {
+      // The application remains usable if browser storage is unavailable or full.
+    }
+  }, [language, theme, shuttles, batteries, faults, maintenanceJobs, notifications, settings]);
 
   const dashboardStats = useMemo(() => {
     const total = shuttles.length;
