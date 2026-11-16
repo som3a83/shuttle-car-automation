@@ -110,4 +110,14 @@ describe('Shuttle Car Automation V6', () => {
     expect(screen.getByRole('navigation', { name: /Quick navigation/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /More/i })).toBeInTheDocument();
   });
+
+  it('allows the operator to inspect individual engineering assemblies', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole('button', { name: /Engineering Visualization/i }));
+    await user.click(screen.getByRole('button', { name: /Traction wheels/i }));
+    expect(screen.getByText(/SELECTED COMPONENT INSPECTOR/i)).toBeInTheDocument();
+    expect(screen.getByText(/Inspect tread wear/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Drawing zoom/i)).toBeInTheDocument();
+  });
 });
