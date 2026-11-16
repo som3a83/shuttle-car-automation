@@ -390,7 +390,7 @@ function App() {
       id, manufacturer: newAsset.manufacturer as Shuttle['manufacturer'], model: 'Not recorded',
       serialNumber: 'Not recorded', hardwareVersion: 'Not recorded', firmwareVersion: 'Not recorded',
       warehouseZone: newAsset.zone.trim() || 'Not recorded', status: 'Unknown', connectivity: 'UNKNOWN',
-      installedBattery: 'Not recorded', operatingHours: 0, operatingCycles: 0, faultHistory: [],
+      installedBattery: 'Not recorded', operatingHours: null, operatingCycles: null, faultHistory: [],
       maintenanceHistory: [], assignedOperator: 'Not assigned', lastCommunication: 'Not connected',
       notes: newAsset.notes.trim() || 'New local asset record. Equipment identity and telemetry are not verified.'
     };
