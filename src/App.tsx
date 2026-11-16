@@ -42,8 +42,8 @@ const navItems: { id: Tab; en: string; ar: string; icon: string; group: string }
 const copy = {
   en: {
     appName: 'SHUTTLE OPERATIONS', subtitle: 'Industrial control & engineering suite',
-    demo: 'DEMO / LOCAL RECORDS', demoText: 'No shuttle is connected to live PLC or manufacturer telemetry. Values marked unverified are not machine readings.',
-    total: 'Registered shuttle cars', running: 'Running', idle: 'Idle / Ready', faulted: 'Fault records', disconnected: 'Offline / unknown', battery: 'Verified battery SOC',
+    demo: 'DEMO MODE · LOCAL RECORDS', demoText: 'No live equipment connection: no shuttle is connected to live PLC or manufacturer telemetry. Values marked unverified are not machine readings.',
+    total: 'Total shuttle cars', running: 'Running shuttles', idle: 'Idle / Ready', faulted: 'Fault records', disconnected: 'Offline / unknown', battery: 'Verified battery SOC',
     fleet: 'Fleet overview', fleetSub: 'Five registered assets · 3 Cassioli · 1 Craftsman · 1 ACME',
     engineering: 'Engineering visualization', engineeringSub: 'Interactive mechanical schematic with selectable views and component callouts.',
     selectAsset: 'Select shuttle', status: 'Operating state', manufacturer: 'Manufacturer', model: 'Model', serial: 'Serial number', zone: 'Operating zone', batteryPack: 'Installed battery', communication: 'Communication', lastSeen: 'Last communication',
@@ -56,7 +56,7 @@ const copy = {
     noBattery: 'No verified battery register is available yet.', batteryIllustration: 'Battery assembly illustration', charge: 'State of charge', health: 'State of health', temperature: 'Temperature', voltage: 'Voltage', current: 'Current', assignment: 'Assignment', batteryNote: 'Reported ACME HMI value: 0% after repair. Verify against the physical HMI before treating it as live telemetry.',
     setCharging: 'Set charging', setAvailable: 'Set available', setMaintenance: 'Set maintenance', setFault: 'Flag fault',
     faults: 'Fault register', faultSub: 'Record an observation, investigation and corrective action. Never close a fault without documenting the action.',
-    faultTitle: 'Fault title', description: 'Observed symptom', severity: 'Severity', technician: 'Assigned technician', probableCause: 'Possible cause (unverified)', procedure: 'Inspection / test procedure', corrective: 'Corrective action performed', registerFault: 'Register fault', saveAction: 'Save corrective action', investigate: 'Start investigation', resolve: 'Resolve fault',
+    faultTitle: 'Fault title', description: 'Observed symptom', severity: 'Severity', technician: 'Assigned technician', probableCause: 'Possible cause (unverified)', procedure: 'Inspection / test procedure', corrective: 'Document corrective action', registerFault: 'Register fault', saveAction: 'Save corrective action', investigate: 'Start investigation', resolve: 'Resolve fault',
     maintenance: 'Maintenance work orders', maintenanceSub: 'Plan inspections and record completed maintenance.', workTitle: 'Work order title', date: 'Scheduled date', createWork: 'Create work order', startWork: 'Start job', completeWork: 'Complete job',
     connectionSub: 'Protocol readiness is shown as architecture only. No endpoint, PLC address or vendor API has been configured.',
     aiSub: 'Engineering support checklist. AI service is not connected, so no diagnosis is generated automatically.',
@@ -68,7 +68,7 @@ const copy = {
     protocols: 'Protocol adapters', readOnly: 'Read-only integration first', noConnection: 'Not connected', notConfigured: 'Not configured',
     noFaults: 'No fault records. Add an observation when a fault is reported.', noWork: 'No work orders have been registered.',
     fleetState: 'Fleet state distribution', assetDetails: 'Asset details', selected: 'Selected asset', localId: 'Local asset ID',
-    newFaults: 'Open / investigating faults', backlog: 'Open work orders', quickActions: 'Quick actions', systemState: 'System connection state', unverified: 'UNVERIFIED',
+    newFaults: 'Open / investigating faults', backlog: 'Open work orders', quickActions: 'Quick actions', systemState: 'System communication status', unverified: 'UNVERIFIED',
     viewRegister: 'View register', addFirst: 'Add first record', empty: 'No records available', testView: 'View engineering drawing',
     roleNotice: 'Changing this role only previews the navigation. It is not a secure login.',
     dataNotice: 'Data quality: manually reported or unknown. No invented serial numbers, firmware versions or live PLC values.',
@@ -77,7 +77,7 @@ const copy = {
   ar: {
     appName: 'منظومة تشغيل الشاتل', subtitle: 'إدارة صناعية وتصميم هندسي',
     demo: 'وضع تجريبي / بيانات محلية', demoText: 'لا يوجد اتصال حي بوحدات التحكم أو بيانات الشركة المصنعة. أي قيمة غير مؤكدة ليست قراءة مباشرة من المعدة.',
-    total: 'عربات مسجلة', running: 'قيد التشغيل', idle: 'جاهز / متوقف', faulted: 'سجلات الأعطال', disconnected: 'غير متصل / غير معروف', battery: 'شحن بطارية مؤكد',
+    total: 'إجمالي عربات النقل', running: 'قيد التشغيل', idle: 'جاهز / متوقف', faulted: 'سجلات الأعطال', disconnected: 'غير متصل / غير معروف', battery: 'شحن بطارية مؤكد',
     fleet: 'ملخص الأسطول', fleetSub: '5 عربات مسجلة · 3 كاسيولي · 1 كرافتسمان · 1 إيه سي إم إي',
     engineering: 'التصور الهندسي', engineeringSub: 'رسم ميكانيكي تفاعلي مع أوضاع عرض متعددة وإظهار المكونات.',
     selectAsset: 'اختر العربة', status: 'حالة التشغيل', manufacturer: 'الشركة المصنعة', model: 'الموديل', serial: 'الرقم المسلسل', zone: 'منطقة التشغيل', batteryPack: 'البطارية المركبة', communication: 'الاتصال', lastSeen: 'آخر اتصال',
@@ -262,7 +262,7 @@ function App() {
 
   const t = copy[language];
   const selected = shuttles.find(s => s.id === selectedId) || shuttles[0];
-  const selectedBattery = batteries.find(b => b.id === selectedBatteryId) || batteries[0];
+  const selectedBattery = batteries.find(b => b.id === selectedBatteryId) || batteries[0] || initialBatteries[0];
   const filteredShuttles = useMemo(() => shuttles.filter(s => {
     const q = search.toLowerCase();
     const matchText = [s.id, s.manufacturer, s.warehouseZone].some(v => v.toLowerCase().includes(q));
@@ -379,7 +379,7 @@ function App() {
         <div className="topbar-heading"><button className="mobile-menu" onClick={() => setMobileNav(true)} aria-label="Open navigation"><Icon name="grid" size={20}/></button><div className="breadcrumb">SHUTTLE OPS <span>/</span> {language === 'ar' ? header?.ar : header?.en}</div><h1>{language === 'ar' ? header?.ar : header?.en}</h1></div>
         <div className="topbar-actions">
           <div className="system-chip"><i/> {language === 'ar' ? 'لا يوجد اتصال حي' : 'NO LIVE CONNECTION'}</div>
-          <button className="language-toggle" onClick={() => setLanguage(language === 'en' ? 'ar' : 'en')}>{language === 'en' ? 'عربي' : 'EN'}</button>
+          <button className="language-toggle" onClick={() => setLanguage(language === 'en' ? 'ar' : 'en')}>{language === 'en' ? 'Arabic' : 'English'}</button>
           <button className="theme-toggle" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}><Icon name="settings" size={16}/><span>{theme === 'dark' ? t.light : t.dark}</span></button>
         </div>
       </header>
