@@ -7,6 +7,7 @@ import '@testing-library/jest-dom/vitest';
 describe('Shuttle Car Automation V6', () => {
   beforeEach(() => {
     window.localStorage.clear();
+    window.history.replaceState({ tab: 'dashboard' }, '', '#/dashboard');
   });
 
   it('renders the industrial dashboard', () => {
@@ -43,7 +44,7 @@ describe('Shuttle Car Automation V6', () => {
   it('allows manual battery status updates in the battery workspace', async () => {
     const user = userEvent.setup();
     render(<App />);
-    await user.click(screen.getByRole('button', { name: /Battery Management/i }));
+    await user.click(screen.getAllByRole('button', { name: /Battery Management/i })[0]);
     await user.click(screen.getByRole('button', { name: /Set charging/i }));
     expect(screen.getAllByText('Charging').length).toBeGreaterThan(0);
   });
@@ -74,7 +75,7 @@ describe('Shuttle Car Automation V6', () => {
   it('navigates into the engineering workspace and changes drawing views', async () => {
     const user = userEvent.setup();
     render(<App />);
-    await user.click(screen.getByRole('button', { name: /Engineering Visualization/i }));
+    await user.click(screen.getAllByRole('button', { name: /Engineering Visualization/i })[0]);
     expect(screen.getByText(/ISOMETRIC ASSEMBLY/i)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /^Top$/i }));
     expect(screen.getByText(/TOP PLAN/i)).toBeInTheDocument();
@@ -84,9 +85,9 @@ describe('Shuttle Car Automation V6', () => {
   it('switches between fleet, battery, fault and maintenance workspaces', async () => {
     const user = userEvent.setup();
     render(<App />);
-    await user.click(screen.getByRole('button', { name: /Fleet Control Center/i }));
+    await user.click(screen.getAllByRole('button', { name: /Fleet Control Center/i })[0]);
     expect(screen.getByText(/Register new equipment/i)).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: /Battery Management/i }));
+    await user.click(screen.getAllByRole('button', { name: /Battery Management/i })[0]);
     expect(screen.getByText(/Battery assets/i)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /Fault & Diagnostics/i }));
     expect(screen.getByText(/Multiple operating anomalies reported/i)).toBeInTheDocument();
@@ -97,10 +98,10 @@ describe('Shuttle Car Automation V6', () => {
   it('uses address-based navigation so modules can be opened, refreshed and revisited', async () => {
     const user = userEvent.setup();
     render(<App />);
-    await user.click(screen.getByRole('button', { name: /Fleet Control Center/i }));
+    await user.click(screen.getAllByRole('button', { name: /Fleet Control Center/i })[0]);
     expect(window.location.hash).toBe('#/fleet');
-    expect(screen.getByRole('button', { name: /Fleet Control Center/i })).toHaveAttribute('aria-current', 'page');
-    await user.click(screen.getByRole('button', { name: /Engineering Visualization/i }));
+    expect(screen.getAllByRole('button', { name: /Fleet Control Center/i })[0]).toHaveAttribute('aria-current', 'page');
+    await user.click(screen.getAllByRole('button', { name: /Engineering Visualization/i })[0]);
     expect(window.location.hash).toBe('#/engineering');
     expect(screen.getByText(/ISOMETRIC ASSEMBLY/i)).toBeInTheDocument();
   });
@@ -114,7 +115,7 @@ describe('Shuttle Car Automation V6', () => {
   it('allows the operator to inspect individual engineering assemblies', async () => {
     const user = userEvent.setup();
     render(<App />);
-    await user.click(screen.getByRole('button', { name: /Engineering Visualization/i }));
+    await user.click(screen.getAllByRole('button', { name: /Engineering Visualization/i })[0]);
     await user.click(screen.getByRole('button', { name: /Traction wheels/i }));
     expect(screen.getByText(/SELECTED COMPONENT INSPECTOR/i)).toBeInTheDocument();
     expect(screen.getByText(/Check tread wear/i)).toBeInTheDocument();
