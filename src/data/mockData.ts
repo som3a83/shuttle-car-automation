@@ -1,3 +1,4 @@
+// Demonstration seed records only. No values below are verified plant telemetry or vendor specifications.
 import type {
   Battery,
   CommunicationEndpoint,
@@ -54,7 +55,7 @@ export const initialShuttles: Shuttle[] = [
     firmwareVersion: 'FW-4.8.2',
     warehouseZone: 'North Transfer Bay',
     status: 'Running',
-    connectivity: 'REAL',
+    connectivity: 'SIMULATION',
     installedBattery: 'BAT-101',
     operatingHours: 4210,
     operatingCycles: 5632,
@@ -145,9 +146,9 @@ export const initialShuttles: Shuttle[] = [
 export const initialBatteries: Battery[] = [
   {
     id: 'BAT-101',
-    manufacturer: 'BatteryWorks',
-    model: 'Lithium 48V Prime',
-    chemistry: 'Verified lithium-ion',
+    manufacturer: 'Representative (unverified)',
+    model: 'Illustrative 48V pack — unverified',
+    chemistry: 'Illustrative lithium-ion — unverified',
     nominalVoltage: '48V',
     capacity: '220Ah',
     soc: 81,
@@ -159,9 +160,9 @@ export const initialBatteries: Battery[] = [
     installationDate: '2025-09-12',
     lastMaintenance: '2026-11-02',
     assignment: 'SC-101',
-    notes: 'Real telemetry readings only; no inferred cell fault.',
+    notes: 'Illustrative sample values only. No live battery telemetry is connected.',
     status: 'Installed',
-    connectionMode: 'REAL'
+    connectionMode: 'SIMULATION'
   },
   {
     id: 'BAT-204',
@@ -185,8 +186,8 @@ export const initialBatteries: Battery[] = [
   },
   {
     id: 'BAT-311',
-    manufacturer: 'PowerCore',
-    model: 'Rapid Charge 48V',
+    manufacturer: 'Representative (unverified)',
+    model: 'Illustrative 48V pack — unverified',
     chemistry: 'Verified lithium-ion',
     nominalVoltage: '48V',
     capacity: '180Ah',
@@ -199,7 +200,7 @@ export const initialBatteries: Battery[] = [
     installationDate: '2025-06-14',
     lastMaintenance: '2026-11-03',
     assignment: 'SC-311',
-    notes: 'Charging cycle stable; no anomaly confirmed.',
+    notes: 'Illustrative sample values only. Charging state is not verified from hardware.',
     status: 'Charging',
     connectionMode: 'REAL'
   },
@@ -348,26 +349,26 @@ export const initialConnections: CommunicationEndpoint[] = [
   {
     name: 'Fleet PLC Network',
     protocol: 'Modbus TCP',
-    mode: 'REAL',
-    notes: 'Production PLC network monitored read-only.'
+    mode: 'UNKNOWN',
+    notes: 'Placeholder endpoint only. No verified PLC connection or live data source is configured.'
   },
   {
     name: 'Plant MQTT Bus',
     protocol: 'MQTT',
     mode: 'SIMULATION',
-    notes: 'Simulation link for test routing and alarm feed.'
+    notes: 'Simulation placeholder for interface testing; not connected to a plant broker.'
   },
   {
     name: 'Battery Gateway',
     protocol: 'REST API',
     mode: 'OFFLINE',
-    notes: 'Battery telemetry temporarily unavailable.'
+    notes: 'Placeholder only. No battery gateway endpoint is configured.'
   },
   {
     name: 'Tablet bridge',
     protocol: 'WebSocket',
     mode: 'UNKNOWN',
-    notes: 'Status pending network verification.'
+    notes: 'Placeholder only. No tablet bridge connection is configured.'
   }
 ];
 
