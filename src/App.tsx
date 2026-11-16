@@ -112,7 +112,8 @@ const copy = {
 };
 
 function tabFromLocation(): Tab {
-  const candidate = window.location.hash.replace(/^#\\/?/, '') as Tab;
+  const hash = window.location.hash;
+  const candidate = (hash.startsWith('#/') ? hash.slice(2) : hash.replace(/^#/, '')) as Tab;
   return navItems.some((item) => item.id === candidate) ? candidate : 'dashboard';
 }
 
