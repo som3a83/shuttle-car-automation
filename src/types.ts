@@ -33,6 +33,7 @@ export interface User {
 }
 
 export interface Shuttle {
+  /** Application-local identifier; not the manufacturer's serial number. */
   id: string;
   manufacturer: 'Cassioli' | 'Craftsman' | 'ACME';
   model: string;
@@ -59,12 +60,13 @@ export interface Battery {
   chemistry: string;
   nominalVoltage: string;
   capacity: string;
-  soc: number;
-  soh: number;
-  temperature: number;
-  voltage: number;
-  current: number;
-  cycles: number;
+  /** Null means not measured / not verified, not zero percent. */
+  soc: number | null;
+  soh: number | null;
+  temperature: number | null;
+  voltage: number | null;
+  current: number | null;
+  cycles: number | null;
   installationDate: string;
   lastMaintenance: string;
   assignment: string;
