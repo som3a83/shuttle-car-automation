@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from './App';
 import { beforeEach, describe, it, expect } from 'vitest';
@@ -120,5 +120,58 @@ describe('Shuttle Car Automation V6', () => {
     expect(screen.getByText(/SELECTED COMPONENT INSPECTOR/i)).toBeInTheDocument();
     expect(screen.getByText(/Check tread wear/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Drawing zoom/i)).toBeInTheDocument();
+  });
+
+  it('opens a module directly from its URL hash', () => {
+    window.history.replaceState({ tab: 'batteries' }, '', '#/batteries');
+    render(<App />);
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Battery Management');
+    expect(window.location.hash).toBe('#/batteries');
+  });
+
+  it('synchronizes the displayed module when browser history changes', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getAllByRole('button', { name: /Fleet Control Center/i })[0]);
+    await user.click(screen.getAllByRole('button', { name: /Engineering Visualization/i })[0]);
+    act(() => {
+      window.history.replaceState({ tab: 'fleet' }, '', '#/fleet');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    });
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Fleet Control Center');
+  });
+
+  it('opens remaining modules from the mobile More drawer and closes it after navigation', async () => {
+    const user = userEvent.setup();
+    const { container } = render(<App />);
+    await user.click(screen.getByRole('button', { name: /More/i }));
+    expect(container.querySelector('.sidebar')).toHaveClass('mobile-open');
+    await user.click(screen.getByRole('button', { name: /AI Technical Assistant/i }));
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('AI Technical Assistant');
+    expect(container.querySelector('.sidebar')).not.toHaveClass('mobile-open');
+    expect(window.location.hash).toBe('#/ai');
+  });
+
+  it('keeps all twelve named application destinations reachable from the main navigation', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    const destinations = [
+      ['Dashboard', 'Dashboard'],
+      ['Fleet Control Center', 'Fleet Control Center'],
+      ['Engineering Visualization', 'Engineering Visualization'],
+      ['Battery Management', 'Battery Management'],
+      ['Fault & Diagnostics', 'Fault & Diagnostics'],
+      ['Maintenance Management', 'Maintenance Management'],
+      ['Device Connections', 'Device Connections'],
+      ['AI Technical Assistant', 'AI Technical Assistant'],
+      ['Reports Center', 'Reports Center'],
+      ['Notifications', 'Notifications'],
+      ['Users & Security', 'Users & Security'],
+      ['System Settings', 'System Settings']
+    ];
+    for (const [label, heading] of destinations) {
+      await user.click(screen.getAllByRole('button', { name: new RegExp(label, 'i') })[0]);
+      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(heading);
+    }
   });
 });
