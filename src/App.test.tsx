@@ -1,6 +1,7 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from './App';
+import { initialShuttles } from './data/mockData';
 import { beforeEach, describe, it, expect } from 'vitest';
 import '@testing-library/jest-dom/vitest';
 
@@ -240,6 +241,36 @@ describe('Shuttle Car Automation V9', () => {
     expect(screen.getAllByText('SC-06').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Craftsman').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Not recorded').length).toBeGreaterThan(0);
+  });
+
+  it('migrates legacy placeholder zero counters without changing verified zero readings', () => {
+    const legacyShuttles = [
+      ...initialShuttles.map((shuttle) => ({ ...shuttle, operatingHours: 0, operatingCycles: 0 })),
+      {
+        ...initialShuttles[0],
+        id: 'SC-VERIFIED',
+        model: 'Verified model',
+        serialNumber: 'Verified serial',
+        connectivity: 'REAL' as const,
+        status: 'Ready' as const,
+        operatingHours: 0,
+        operatingCycles: 0
+      }
+    ];
+    window.localStorage.setItem(
+      'shuttle-car-automation-v7:shuttles',
+      JSON.stringify(legacyShuttles)
+    );
+
+    render(<App />);
+
+    const saved = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:shuttles') || '[]') as Array<{
+      id: string;
+      operatingHours: number | null;
+      operatingCycles: number | null;
+    }>;
+    expect(saved.slice(0, 5).every((shuttle) => shuttle.operatingHours === null && shuttle.operatingCycles === null)).toBe(true);
+    expect(saved[5]).toMatchObject({ id: 'SC-VERIFIED', operatingHours: 0, operatingCycles: 0 });
   });
 
   it('keeps all twelve named application destinations reachable from the main navigation', async () => {
