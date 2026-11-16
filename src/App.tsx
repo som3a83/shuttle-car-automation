@@ -416,7 +416,7 @@ function App() {
                       <span className="event-dot" />
                       <div>
                         <strong>{item.title || 'Event'}</strong>
-                        <div>{item.description || 'System update'}</div>
+                        <div>{'description' in item ? item.description : item.notes}</div>
                       </div>
                     </li>
                   ))}
