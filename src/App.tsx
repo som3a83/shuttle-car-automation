@@ -650,7 +650,7 @@ function App() {
         <div className="surface-card"><h3>{language==='ar'?'نسخة احتياطية محلية':'Local backup'}</h3><p className="muted-text">{t.dataNotice}</p><button className="btn-primary" onClick={exportBackup}>{t.backup}</button></div>
       </div></section>}
 
-      <footer className="app-footer"><span>SHUTTLE OPS · V7 ENGINEERING UI</span><span>{t.dataNotice}</span></footer>
+      <footer className="app-footer"><span>SHUTTLE OPS · V9 ENGINEERING PLATFORM</span><span>{t.dataNotice}</span></footer>
     </main>
     {mobileNav && <button className="nav-scrim" onClick={()=>setMobileNav(false)} aria-label="Close navigation overlay"/>}
     {toast && <div className="toast"><Icon name="check"/>{toast}</div>}
