@@ -25,4 +25,15 @@ describe('Shuttle Car Automation V6', () => {
     expect(screen.getByRole('status')).toHaveTextContent(/No live equipment connection/i);
   });
 
+  it('persists the selected appearance across a reload', async () => {
+    const user = userEvent.setup();
+    const firstRender = render(<App />);
+    await user.click(screen.getByRole('button', { name: /Light mode/i }));
+    expect(firstRender.container.querySelector('.app-shell')).toHaveClass('light');
+    firstRender.unmount();
+
+    const secondRender = render(<App />);
+    expect(secondRender.container.querySelector('.app-shell')).toHaveClass('light');
+  });
+
 });
