@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   defaultSettings,
   initialBatteries,
@@ -9,6 +9,7 @@ import {
   initialShuttles,
   users
 } from './data/mockData';
+import Shuttle3DViewer from './components/Shuttle3DViewer';
 import type {
   AppSettings,
   Battery,
@@ -260,9 +261,7 @@ function App() {
   const [selectedBatteryId, setSelectedBatteryId] = useState('BAT-ACME-01');
   const [modelView, setModelView] = useState<ModelView>('iso');
   const [modelZoom, setModelZoom] = useState(1);
-  const [modelOrbit, setModelOrbit] = useState({ x: 0, y: 0 });
   const [selectedPart, setSelectedPart] = useState<EngineeringPart>('chassis');
-  const orbitPointer = useRef<{ id: number; x: number; y: number } | null>(null);
   const [exploded, setExploded] = useState(false);
   const [animated, setAnimated] = useState(true);
   const [search, setSearch] = useState('');
@@ -311,23 +310,6 @@ function App() {
     document.documentElement.scrollTop = 0;
     document.body.scrollTop = 0;
   }, [activeTab]);
-
-  const beginModelOrbit = (event: React.PointerEvent<HTMLDivElement>) => {
-    orbitPointer.current = { id: event.pointerId, x: event.clientX, y: event.clientY };
-    event.currentTarget.setPointerCapture(event.pointerId);
-  };
-  const moveModelOrbit = (event: React.PointerEvent<HTMLDivElement>) => {
-    const pointer = orbitPointer.current;
-    if (!pointer || pointer.id !== event.pointerId) return;
-    const dx = event.clientX - pointer.x;
-    const dy = event.clientY - pointer.y;
-    orbitPointer.current = { ...pointer, x: event.clientX, y: event.clientY };
-    setModelOrbit((current) => ({
-      x: Math.max(-22, Math.min(22, current.x - dy * 0.28)),
-      y: Math.max(-32, Math.min(32, current.y + dx * 0.35))
-    }));
-  };
-  const endModelOrbit = () => { orbitPointer.current = null; };
 
   const go = (tab: Tab) => {
     if (tab !== activeTab) window.history.pushState({ tab }, '', `#/${tab}`);
@@ -490,10 +472,9 @@ function App() {
           <div className="surface-card model-stage">
             <div className="model-toolbar"><div className="asset-select"><label>{t.selectAsset}</label><select value={selectedId} onChange={e=>setSelectedId(e.target.value)}>{shuttles.map(s=><option key={s.id} value={s.id}>{s.id} — {s.manufacturer}</option>)}</select></div><div className="model-tools"><button className={exploded?'tool-active':''} onClick={()=>setExploded(!exploded)}><Icon name="settings" size={15}/>{t.exploded}</button><button className={animated?'tool-active':''} onClick={()=>setAnimated(!animated)}><Icon name="grid" size={15}/>{animated?t.stop:t.animate}</button><button onClick={()=>{setModelOrbit({x:0,y:0});setModelZoom(1);}}>{language==='ar'?'إعادة ضبط المنظور':'Reset view'}</button></div></div>
             <div className="view-tabs">{(['iso','side','front','top'] as ModelView[]).map(v=><button key={v} className={modelView===v?'active':''} onClick={()=>setModelView(v)}>{t[v]}</button>)}</div>
-            <div className="model-canvas" onPointerDown={beginModelOrbit} onPointerMove={moveModelOrbit} onPointerUp={endModelOrbit} onPointerCancel={endModelOrbit} onLostPointerCapture={endModelOrbit} style={{'--orbit-x':`${modelOrbit.x}deg`,'--orbit-y':`${modelOrbit.y}deg`,'--model-zoom':modelZoom} as React.CSSProperties}>
-               <div className="canvas-topline"><span>MODEL: {selected.manufacturer.toUpperCase()} / {selected.id}</span><span>REV 0.2 · CONCEPTUAL SCHEMATIC</span></div>
-               <div className="orbit-hint">{language==='ar'?'اسحب لتدوير المنظور · استخدم شريط التكبير':'DRAG TO ORBIT · USE ZOOM CONTROL'}</div>
-               <ShuttleModel shuttle={selected} view={modelView} exploded={exploded} animated={animated}/>
+            <div className="model-canvas three-model-canvas">
+               <div className="canvas-topline"><span>3D ENGINEERING MODEL: {selected.manufacturer.toUpperCase()} / {selected.id}</span><span>CONCEPTUAL · NOT VENDOR CAD</span></div>
+               <Shuttle3DViewer manufacturer={selected.manufacturer} shuttleId={selected.id} status={selected.status} view={modelView} exploded={exploded} animated={animated} selectedPart={selectedPart} zoom={modelZoom} onSelectPart={setSelectedPart} fallback={<ShuttleModel shuttle={selected} view={modelView} exploded={exploded} animated={animated}/>}/>
                <div className="canvas-bottomline"><span><i className="legend-dot" style={{background:selected.manufacturer==='Cassioli'?'#d28b4b':selected.manufacturer==='Craftsman'?'#45b8d2':'#a58af5'}}/>{selected.manufacturer}</span><span><i className="legend-dot" style={{background:'#75d6ff'}}/>Sensors</span><span><i className="legend-dot" style={{background:'#7bd9a9'}}/>Battery module</span></div>
              </div>
              <div className="model-zoom-control"><label htmlFor="model-zoom">{language==='ar'?'تكبير الرسم':'Drawing zoom'}</label><input id="model-zoom" type="range" min="0.75" max="1.25" step="0.05" value={modelZoom} onChange={event=>setModelZoom(Number(event.target.value))}/><output>{Math.round(modelZoom*100)}%</output></div>
