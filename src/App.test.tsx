@@ -94,4 +94,20 @@ describe('Shuttle Car Automation V6', () => {
     expect(screen.getByText(/Create work order/i)).toBeInTheDocument();
   });
 
+  it('uses address-based navigation so modules can be opened, refreshed and revisited', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole('button', { name: /Fleet Control Center/i }));
+    expect(window.location.hash).toBe('#/fleet');
+    expect(screen.getByRole('button', { name: /Fleet Control Center/i })).toHaveAttribute('aria-current', 'page');
+    await user.click(screen.getByRole('button', { name: /Engineering Visualization/i }));
+    expect(window.location.hash).toBe('#/engineering');
+    expect(screen.getByText(/ISOMETRIC ASSEMBLY/i)).toBeInTheDocument();
+  });
+
+  it('provides direct mobile destinations for the main operating workspaces', () => {
+    render(<App />);
+    expect(screen.getByRole('navigation', { name: /Quick navigation/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /More/i })).toBeInTheDocument();
+  });
 });
