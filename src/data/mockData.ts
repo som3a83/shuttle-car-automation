@@ -17,21 +17,21 @@ export const users: User[] = [
     name: 'Amina Rahman',
     role: 'Super Admin',
     email: 'admin@shuttleops.local',
-    isAuthenticated: true
+    isAuthenticated: false
   },
   {
     id: 'user-2',
     name: 'Omar Haddad',
     role: 'Maintenance Engineer',
     email: 'maintenance@shuttleops.local',
-    isAuthenticated: true
+    isAuthenticated: false
   },
   {
     id: 'user-3',
     name: 'Sara Malik',
     role: 'Technician',
     email: 'tech@shuttleops.local',
-    isAuthenticated: true
+    isAuthenticated: false
   }
 ];
 
