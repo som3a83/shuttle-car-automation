@@ -188,6 +188,59 @@ describe('Shuttle Car Automation V6', () => {
     expect(screen.getByText(/No new local notifications/i)).toBeInTheDocument();
   });
 
+  it('persists notification records across an application remount', async () => {
+    const user = userEvent.setup();
+    const first = render(<App />);
+    await user.click(screen.getAllByRole('button', { name: /Battery Management/i })[0]);
+    await user.click(screen.getByRole('button', { name: /Set available/i }));
+    first.unmount();
+
+    render(<App />);
+    await user.click(screen.getAllByRole('button', { name: /Notifications/i })[0]);
+    expect(screen.getByText('Battery status changed')).toBeInTheDocument();
+    expect(screen.getByText(/BAT-ACME-01: Fault → Available/)).toBeInTheDocument();
+  });
+
+  it('clears the complete local notification list', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getAllByRole('button', { name: /Battery Management/i })[0]);
+    await user.click(screen.getByRole('button', { name: /Set available/i }));
+    await user.click(screen.getAllByRole('button', { name: /Notifications/i })[0]);
+    await user.click(screen.getByRole('button', { name: /Clear all notifications/i }));
+    expect(screen.getByText(/No new local notifications/i)).toBeInTheDocument();
+  });
+
+  it('creates and advances a maintenance work order with matching local event records', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getAllByRole('button', { name: /Maintenance Management/i })[0]);
+    await user.type(screen.getByLabelText(/Work order title/i), 'Monthly rail inspection');
+    await user.type(screen.getByLabelText(/Scheduled date/i), '2026-11-20');
+    await user.click(screen.getByRole('button', { name: /Save work order/i }));
+    expect(screen.getByText('Monthly rail inspection')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /Start job/i }));
+    expect(screen.getByText('In Progress')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /Complete job/i }));
+    expect(screen.getByText('Completed')).toBeInTheDocument();
+
+    await user.click(screen.getAllByRole('button', { name: /Notifications/i })[0]);
+    expect(screen.getByText('Maintenance work order created')).toBeInTheDocument();
+    expect(screen.getAllByText('Maintenance work order updated')).toHaveLength(2);
+  });
+
+  it('registers a new fleet unit without fabricating manufacturer identity data', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getAllByRole('button', { name: /Fleet Control Center/i })[0]);
+    await user.selectOptions(screen.getByLabelText(/Manufacturer/i), 'Craftsman');
+    await user.type(screen.getByLabelText(/Operating zone/i), 'Cold room test zone');
+    await user.click(screen.getByRole('button', { name: /Save record/i }));
+    expect(screen.getAllByText('SC-06').length).toBeGreaterThan(0);
+    expect(screen.getByText('Craftsman')).toBeInTheDocument();
+    expect(screen.getAllByText('Not recorded').length).toBeGreaterThan(0);
+  });
+
   it('keeps all twelve named application destinations reachable from the main navigation', async () => {
     const user = userEvent.setup();
     render(<App />);
