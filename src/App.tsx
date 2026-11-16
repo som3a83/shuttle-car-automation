@@ -280,7 +280,7 @@ function App() {
     idle: shuttles.filter(s => s.status === 'Idle' || s.status === 'Ready').length,
     faulted: faults.filter(f => f.status !== 'Resolved').length,
     disconnected: shuttles.filter(s => s.connectivity !== 'REAL').length,
-    verifiedSoc: batteries.filter(b => b.soc !== null).length
+    verifiedSoc: batteries.filter(b => b.connectionMode === 'REAL' && b.soc !== null).length
   };
 
   const go = (tab: Tab) => { setActiveTab(tab); setMobileNav(false); };
