@@ -117,7 +117,7 @@ describe('Shuttle Car Automation V6', () => {
     await user.click(screen.getByRole('button', { name: /Engineering Visualization/i }));
     await user.click(screen.getByRole('button', { name: /Traction wheels/i }));
     expect(screen.getByText(/SELECTED COMPONENT INSPECTOR/i)).toBeInTheDocument();
-    expect(screen.getByText(/Inspect tread wear/i)).toBeInTheDocument();
+    expect(screen.getByText(/Check tread wear/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Drawing zoom/i)).toBeInTheDocument();
   });
 });
