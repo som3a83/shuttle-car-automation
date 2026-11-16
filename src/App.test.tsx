@@ -56,4 +56,18 @@ describe('Shuttle Car Automation V6', () => {
     expect(resolveButtons.some((button) => (button as HTMLButtonElement).disabled)).toBe(true);
   });
 
+  it('requires and records corrective action before resolving a fault', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole('button', { name: /Fault & Diagnostics/i }));
+    const actionFields = screen.getAllByPlaceholderText('Document corrective action');
+    await user.type(actionFields[0], 'Replaced damaged sensor and verified detection in a controlled test.');
+    const saveButtons = screen.getAllByRole('button', { name: /Save corrective action/i });
+    await user.click(saveButtons[0]);
+    const resolveButtons = screen.getAllByRole('button', { name: /Resolve fault/i });
+    expect((resolveButtons[0] as HTMLButtonElement).disabled).toBe(false);
+    await user.click(resolveButtons[0]);
+    expect(screen.getAllByText('Resolved').length).toBeGreaterThan(0);
+  });
+
 });
