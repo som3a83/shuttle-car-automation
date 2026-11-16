@@ -416,3 +416,76 @@ td:first-child { color:var(--text); font-weight:700; }
   .surface-card,.metric-card,.hero-panel { box-shadow:none!important; background:#fff!important; color:#111!important; break-inside:avoid; }
   .muted-text,.page-intro p,.detail-item span { color:#444!important; }
 }
+
+/* Engineering interaction layer */
+.model-canvas { cursor: grab; touch-action: none; }
+.model-canvas:active { cursor: grabbing; }
+.model-canvas .shuttle-svg {
+  transform: perspective(1200px) rotateX(var(--orbit-x, 0deg)) rotateY(var(--orbit-y, 0deg)) scale(var(--model-zoom, 1));
+  transform-origin: center;
+  transition: transform .09s ease-out;
+  will-change: transform;
+}
+.orbit-hint {
+  position: absolute;
+  z-index: 4;
+  left: 50%;
+  bottom: 35px;
+  transform: translateX(-50%);
+  color: var(--muted);
+  background: rgba(8, 13, 19, .72);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 8px;
+  letter-spacing: .08em;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.model-zoom-control {
+  display: grid;
+  grid-template-columns: auto minmax(100px, 1fr) 44px;
+  align-items: center;
+  gap: 12px;
+  margin: 10px 2px 0;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+.model-zoom-control label { color: var(--muted); font-size: 9px; }
+.model-zoom-control input { width: 100%; accent-color: var(--copper); }
+.model-zoom-control output { color: var(--copper-2); text-align: end; font-size: 9px; font-variant-numeric: tabular-nums; }
+.component-select-row {
+  display: block;
+  width: 100%;
+  padding: 0 9px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: inherit;
+  background: transparent;
+  text-align: start;
+  transition: background .18s, border-color .18s;
+}
+.component-select-row:hover { background: rgba(255,255,255,.035); }
+.component-select-row.selected {
+  border-color: rgba(213,138,74,.35);
+  background: linear-gradient(90deg,rgba(213,138,74,.12),rgba(213,138,74,.025));
+}
+.component-select-row:focus-visible { outline: 2px solid var(--copper-2); outline-offset: 2px; }
+.component-select-row .component-row { border-top: 0; }
+.part-inspector {
+  margin-top: 12px;
+  padding: 13px;
+  border: 1px solid rgba(213,138,74,.24);
+  border-radius: 9px;
+  background: linear-gradient(145deg,rgba(213,138,74,.09),rgba(255,255,255,.015));
+}
+.part-inspector h4 { margin: 8px 0 6px; color: var(--text); font-size: 12px; }
+.part-inspector p { margin: 0; color: var(--muted); font-size: 9px; line-height: 1.7; }
+.part-inspector small { display: block; margin-top: 9px; color: var(--subtle); font-size: 8px; line-height: 1.5; }
+@media (max-width: 640px) {
+  .orbit-hint { bottom: 30px; max-width: 92%; overflow: hidden; text-overflow: ellipsis; }
+  .model-zoom-control { grid-template-columns: 1fr 44px; gap: 7px 10px; }
+  .model-zoom-control label { grid-column: 1 / -1; }
+}
