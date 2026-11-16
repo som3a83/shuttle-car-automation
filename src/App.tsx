@@ -231,10 +231,10 @@ function BatteryPack({ battery }: { battery?: Battery }) {
     <div className="battery-cap"><span/><span/></div>
     <div className="battery-case">
       <div className="battery-handle"/>
-      <div className="battery-cells">{Array.from({length:12}).map((_,i)=><div key={i} className="battery-cell" style={{opacity: soc === null ? .27 : i < Math.round(soc / 100 * 12) ? 1 : .2}}/>)}</div>
+      <div className="battery-cells">{Array.from({length:12}).map((_,i)=><div key={i} className="battery-cell" style={{opacity: soc == null ? .27 : i < Math.round(soc / 100 * 12) ? 1 : .2}}/>)}</div>
       <div className="battery-leds"><i/><i/><i/></div>
     </div>
-    <div className="battery-render-label">{battery?.model || 'BATTERY MODULE'} · {soc === null ? 'SOC NOT VERIFIED' : soc + '% REPORTED'}</div>
+    <div className="battery-render-label">{battery?.model || 'BATTERY MODULE'} · {soc == null ? 'SOC NOT VERIFIED' : soc + '% REPORTED'}</div>
   </div>;
 }
 
@@ -335,7 +335,7 @@ function App() {
 
   const statusText = (status: ShuttleStatus) => {
     const key: Record<ShuttleStatus, string> = { Ready: 'statusReady', Running: 'statusRunning', Idle: 'statusIdle', Charging: 'statusCharging', Maintenance: 'statusMaintenance', Fault: 'statusFault', Disconnected: 'statusDisconnected', Unknown: 'statusUnknown' };
-    return t[key[status]];
+    return t[key[status] as keyof typeof copy.en];
   };
 
   const exportCsv = () => {
