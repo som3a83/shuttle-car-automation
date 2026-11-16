@@ -787,7 +787,8 @@ function App() {
                   {faults.map((fault) => <option key={fault.id} value={fault.id}>{fault.title}</option>)}
                 </select>
                 <textarea value="System review: battery behavior, communication anomalies, and maintenance history require field confirmation before final diagnosis." readOnly />
-                <button type="button" className="primary-button">Generate advisory</button>
+                <button type="button" className="primary-button" disabled title="AI provider is not configured">AI advisory unavailable</button>
+                <div className="small-text">No AI service is connected. The diagnostic content above is a static illustrative checklist, not a generated diagnosis.</div>
               </form>
             </div>
           </section>
@@ -881,11 +882,10 @@ function App() {
             </div>
             <div className="panel-card">
               <div className="card-title">Authentication</div>
-              <form className="stack-form">
-                <input type="text" placeholder="Username" defaultValue="admin@shuttleops.local" />
-                <input type="password" placeholder="Password" defaultValue="••••••••" />
-                <button type="button" className="primary-button" onClick={() => setCurrentUser({ ...defaultUser, isAuthenticated: true })}>Sign in</button>
-              </form>
+              <div className="stack-form">
+                <div className="notice-box warning">Authentication service is not configured. This screen does not accept credentials or create a secure session.</div>
+                <div className="small-text">Use the role list only to preview client-side navigation. It is not an access-control test.</div>
+              </div>
             </div>
           </section>
         )}
@@ -914,7 +914,8 @@ function App() {
                   <option value="dark">Dark</option>
                   <option value="light">Light</option>
                 </select>
-                <button className="primary-button" type="button">Back up configuration</button>
+                <button className="primary-button" type="button" disabled title="No backup service is configured">Backup unavailable</button>
+                <div className="small-text">No export or backup destination is configured yet.</div>
               </div>
             </div>
           </section>
