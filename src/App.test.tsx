@@ -36,4 +36,20 @@ describe('Shuttle Car Automation V6', () => {
     expect(secondRender.container.querySelector('.app-shell')).toHaveClass('light');
   });
 
+  it('allows manual battery status updates in the battery workspace', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole('button', { name: /Battery Management/i }));
+    await user.click(screen.getByRole('button', { name: /Set charging/i }));
+    expect(screen.getAllByText('Charging').length).toBeGreaterThan(0);
+  });
+
+  it('does not allow a fault to be resolved without a corrective action', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole('button', { name: /Fault & Diagnostics/i }));
+    const resolveButtons = screen.getAllByRole('button', { name: /Resolve fault/i });
+    expect(resolveButtons.some((button) => (button as HTMLButtonElement).disabled)).toBe(true);
+  });
+
 });
