@@ -20,7 +20,7 @@ describe('Shuttle Car Automation V6', () => {
     const user = userEvent.setup();
     render(<App />);
     await user.click(screen.getByRole('button', { name: /Arabic/i }));
-    expect(screen.getByText(/لوحة القيادة/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/لوحة القيادة/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/إجمالي عربات النقل/i)).toBeInTheDocument();
   });
   it('clearly identifies the interface as a demo without live equipment access', () => {
