@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { defaultSettings, initialBatteries, initialConnections, initialFaults, initialMaintenance, initialNotifications, initialReports, initialShuttles, users } from './data/mockData';
+import { defaultSettings, initialBatteries, initialConnections, initialFaults, initialMaintenance, initialNotifications, initialShuttles, users } from './data/mockData';
 import type {
   AppSettings,
   Battery,
@@ -299,15 +299,39 @@ function App() {
     form.reset();
   };
 
+  const liveReports = [
+    {
+      title: 'Fleet status',
+      value: `${shuttles.length ? Math.round((shuttles.filter((item) => ['Ready', 'Running', 'Idle', 'Charging'].includes(item.status)).length / shuttles.length) * 100) : 0}%`,
+      detail: 'Share of fleet not currently faulted, disconnected, or under maintenance.'
+    },
+    {
+      title: 'Battery health',
+      value: `${batteries.length ? Math.round(batteries.reduce((sum, item) => sum + item.soh, 0) / batteries.length) : 0}%`,
+      detail: 'Average illustrative SOH across current records; not live telemetry.'
+    },
+    {
+      title: 'Active faults',
+      value: String(faults.filter((item) => item.status !== 'Resolved').length),
+      detail: 'Fault records still open or under investigation.'
+    },
+    {
+      title: 'Maintenance backlog',
+      value: String(maintenanceJobs.filter((item) => item.status !== 'Completed').length),
+      detail: 'Work orders not yet marked completed.'
+    }
+  ];
+
   const handleDownloadCsv = () => {
     const header = ['Title', 'Value', 'Detail'];
-    const rows = initialReports.map((item) => [item.title, item.value, item.detail]);
-    const csv = [header, ...rows].map((row) => row.join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const rows = liveReports.map((item) => [item.title, item.value, item.detail]);
+    const escapeCsv = (value: string) => `"${value.replace(/"/g, '""')}"`;
+    const csv = [header, ...rows].map((row) => row.map(escapeCsv).join(',')).join('\n');
+    const blob = new Blob(['\uFEFF', csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'fleet-report.csv';
+    link.download = 'shuttle-fleet-report.csv';
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -766,7 +790,7 @@ function App() {
                 <button className="primary-button" onClick={handleDownloadCsv}>Export CSV</button>
               </div>
               <div className="report-grid">
-                {initialReports.map((report) => (
+                {liveReports.map((report) => (
                   <div key={report.title} className="report-card">
                     <div className="small-text">{report.title}</div>
                     <div className="report-value">{report.value}</div>
