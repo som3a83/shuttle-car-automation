@@ -13,6 +13,7 @@ interface Shuttle3DViewerProps {
   animated: boolean;
   selectedPart: EngineeringPart;
   zoom: number;
+  resetKey: number;
   onSelectPart: (part: EngineeringPart) => void;
   fallback: React.ReactNode;
 }
@@ -279,6 +280,22 @@ export default function Shuttle3DViewer({
     camera.position.copy(positions[view]);
     camera.lookAt(0, 0, 0);
   }, [view, zoom]);
+
+  useEffect(() => {
+    rootRef.current?.rotation.set(0.12, -0.48, 0);
+    const camera = cameraRef.current;
+    if (camera) {
+      const distance = 13 / zoom;
+      const positions: Record<ModelView, THREE.Vector3> = {
+        iso: new THREE.Vector3(distance * 0.78, distance * 0.62, distance * 0.78),
+        side: new THREE.Vector3(0, distance * 0.25, distance),
+        front: new THREE.Vector3(distance, distance * 0.25, 0),
+        top: new THREE.Vector3(0, distance, 0.001)
+      };
+      camera.position.copy(positions[view]);
+      camera.lookAt(0, 0, 0);
+    }
+  }, [resetKey]);
 
   useEffect(() => {
     const groups = partGroupsRef.current;
