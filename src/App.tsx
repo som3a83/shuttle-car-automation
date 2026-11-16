@@ -261,25 +261,26 @@ function App() {
 
   const addShuttle = (event: React.FormEvent) => {
     event.preventDefault();
-    const newId = `SC-${Math.floor(600 + Math.random() * 250)}`;
+    const usedNumbers = shuttles.map((item) => Number(item.id.replace(/^SC-/, ''))).filter((value) => Number.isFinite(value));
+    const newId = `SC-${Math.max(599, ...usedNumbers) + 1}`;
     const record: Shuttle = {
       id: newId,
       manufacturer: formState.manufacturer as Shuttle['manufacturer'],
       model: formState.model,
-      serialNumber: formState.serialNumber || `${newId}-SER`,
-      hardwareVersion: 'HV1.0',
-      firmwareVersion: 'FW-Next',
+      serialNumber: formState.serialNumber.trim() || 'Not provided',
+      hardwareVersion: 'Not recorded',
+      firmwareVersion: 'Not recorded',
       warehouseZone: formState.warehouseZone || 'New zone',
       status: formState.status,
       connectivity: formState.connectivity as Shuttle['connectivity'],
-      installedBattery: `BAT-${newId.slice(-3)}`,
+      installedBattery: 'Unassigned',
       operatingHours: 0,
       operatingCycles: 0,
       faultHistory: [],
       maintenanceHistory: [],
       assignedOperator: formState.assignedOperator || 'Unassigned',
-      lastCommunication: new Date().toISOString(),
-      notes: formState.notes || 'New shuttle added to fleet.'
+      lastCommunication: 'Not connected',
+      notes: formState.notes || 'Manually added record. Equipment identity, telemetry and connection have not been verified.'
     };
     setShuttles((prev) => [record, ...prev]);
     setSelectedShuttleId(newId);
@@ -624,7 +625,11 @@ function App() {
               <div className="card-title">Add shuttle</div>
               <form className="stack-form" onSubmit={addShuttle}>
                 <div className="form-two-col">
-                  <input placeholder="Manufacturer" value={formState.manufacturer} onChange={(e) => setFormState({ ...formState, manufacturer: e.target.value })} />
+                  <select aria-label="Manufacturer" value={formState.manufacturer} onChange={(e) => setFormState({ ...formState, manufacturer: e.target.value })}>
+                    <option value="Cassioli">Cassioli</option>
+                    <option value="Craftsman">Craftsman</option>
+                    <option value="ACME">ACME</option>
+                  </select>
                   <input placeholder="Model" value={formState.model} onChange={(e) => setFormState({ ...formState, model: e.target.value })} />
                   <input placeholder="Serial number" value={formState.serialNumber} onChange={(e) => setFormState({ ...formState, serialNumber: e.target.value })} />
                   <input placeholder="Warehouse / zone" value={formState.warehouseZone} onChange={(e) => setFormState({ ...formState, warehouseZone: e.target.value })} />
