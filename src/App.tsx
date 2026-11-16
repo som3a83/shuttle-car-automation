@@ -323,16 +323,54 @@ function App() {
   ];
 
   const handleDownloadCsv = () => {
-    const header = ['Title', 'Value', 'Detail'];
-    const rows = liveReports.map((item) => [item.title, item.value, item.detail]);
-    const escapeCsv = (value: string) => `"${value.replace(/"/g, '""')}"`;
-    const csv = [header, ...rows].map((row) => row.map(escapeCsv).join(',')).join('\n');
+    // Export current in-memory records. Seed values remain explicitly demonstrational,
+    // and this file is a local snapshot rather than a live plant data extract.
+    const header = [
+      'Record Type', 'Record ID', 'Asset / Shuttle ID', 'Manufacturer / Type',
+      'Model / Title', 'Status', 'Connectivity / Severity', 'Zone / Assignment',
+      'Battery / Technician', 'SOC %', 'SOH %', 'Temperature C',
+      'Operating Hours', 'Operating Cycles', 'Scheduled / Event Date',
+      'Last Communication', 'Description / Notes', 'Data Provenance'
+    ];
+
+    const rows: string[][] = [
+      ...shuttles.map((item) => [
+        'Shuttle', item.id, item.id, item.manufacturer, item.model, item.status,
+        item.connectivity, item.warehouseZone, item.installedBattery, '', '', '',
+        String(item.operatingHours), String(item.operatingCycles), '',
+        item.lastCommunication, item.notes, 'DEMO / MANUAL APP STATE — NOT LIVE TELEMETRY'
+      ]),
+      ...batteries.map((item) => [
+        'Battery', item.id, item.assignment, item.manufacturer, item.model, item.status,
+        item.connectionMode, item.assignment, '', String(item.soc), String(item.soh),
+        String(item.temperature), '', '', item.lastMaintenance, '',
+        item.notes, 'ILLUSTRATIVE / UNVERIFIED — NOT LIVE BATTERY TELEMETRY'
+      ]),
+      ...faults.map((item) => [
+        'Fault', item.id, item.shuttleId, '', item.title, item.status, item.severity,
+        '', item.assignedTechnician, '', '', '', '', '', item.timestamp, '',
+        [item.description, `Probable causes: ${item.probableCauses.join('; ')}`,
+          `Diagnostic procedure: ${item.diagnosticProcedure}`,
+          `Corrective action: ${item.correctiveAction || 'Not recorded'}`].join(' | '),
+        'DEMO / MANUAL APP STATE — VERIFY IN FIELD'
+      ]),
+      ...maintenanceJobs.map((item) => [
+        'Maintenance', item.id, item.shuttleId, item.type, item.title, item.status, '',
+        '', item.technician, '', '', '', '', '', item.scheduledDate, '',
+        item.notes, 'DEMO / MANUAL APP STATE — VERIFY IN FIELD'
+      ])
+    ];
+
+    const escapeCsv = (value: string) => `"${String(value).replace(/"/g, '""')}"`;
+    const csv = [header, ...rows].map((row) => row.map(escapeCsv).join(',')).join('\r\n');
     const blob = new Blob(['\uFEFF', csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'shuttle-fleet-report.csv';
+    link.download = `shuttle-operations-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
     link.click();
+    link.remove();
     URL.revokeObjectURL(url);
   };
 
