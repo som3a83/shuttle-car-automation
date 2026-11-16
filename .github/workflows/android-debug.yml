@@ -1,6 +1,9 @@
 name: Build Android Debug APK
 
 on:
+  push:
+    branches:
+      - 'copilot/complete-shuttle-automation-v6'
   workflow_dispatch:
 
 permissions:
