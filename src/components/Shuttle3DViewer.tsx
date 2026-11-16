@@ -30,9 +30,11 @@ export default function Shuttle3DViewer({
   const partGroupsRef = useRef<Partial<Record<EngineeringPart, THREE.Group>>>({});
   const wheelMeshesRef = useRef<THREE.Mesh[]>([]);
   const callbackRef = useRef(onSelectPart);
+  const animatedRef = useRef(animated);
   const [webglAvailable, setWebglAvailable] = useState<boolean | null>(null);
 
   useEffect(() => { callbackRef.current = onSelectPart; }, [onSelectPart]);
+  useEffect(() => { animatedRef.current = animated; }, [animated]);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -234,7 +236,7 @@ export default function Shuttle3DViewer({
     let frame = 0;
     const renderFrame = () => {
       frame = window.requestAnimationFrame(renderFrame);
-      if (animated) wheelMeshesRef.current.forEach((wheel) => { wheel.rotation.x += 0.018; });
+      if (animatedRef.current) wheelMeshesRef.current.forEach((wheel) => { wheel.rotation.x += 0.018; });
       renderer.render(scene, camera);
     };
     renderFrame();
