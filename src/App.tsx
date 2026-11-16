@@ -307,7 +307,8 @@ function App() {
   useEffect(() => {
     const page = navItems.find((item) => item.id === activeTab);
     document.title = page ? `${page.en} · ShuttleOps` : 'ShuttleOps';
-    window.scrollTo({ top: 0, behavior: 'instant' });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
   }, [activeTab]);
 
   const beginModelOrbit = (event: React.PointerEvent<HTMLDivElement>) => {
