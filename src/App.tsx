@@ -170,7 +170,7 @@ function App() {
     const maintenance = shuttles.filter((s) => s.status === 'Maintenance').length;
     const faulted = shuttles.filter((s) => s.status === 'Fault').length;
     const disconnected = shuttles.filter((s) => s.status === 'Disconnected').length;
-    const avgSoc = Math.round(batteries.reduce((sum, item) => sum + item.soc, 0) / batteries.length);
+    const avgSoc = batteries.length ? Math.round(batteries.reduce((sum, item) => sum + item.soc, 0) / batteries.length) : 0;
     const activeFaultsCount = faults.filter((fault) => fault.status !== 'Resolved').length;
     const maintenanceAlerts = maintenanceJobs.filter((job) => job.status === 'Overdue').length;
     const recentEvents = [...faults, ...maintenanceJobs].slice(0, 4);
