@@ -3,6 +3,7 @@ import { defaultSettings, initialBatteries, initialConnections, initialFaults, i
 import type {
   AppSettings,
   Battery,
+  ConnectivityStatus,
   Fault,
   Language,
   MaintenanceJob,
@@ -154,7 +155,7 @@ function App() {
     serialNumber: '',
     warehouseZone: '',
     status: 'Ready' as ShuttleStatus,
-    connectivity: 'REAL' as AppSettings['theme'],
+    connectivity: 'UNKNOWN' as ConnectivityStatus,
     assignedOperator: '',
     notes: ''
   });
@@ -239,7 +240,7 @@ function App() {
       serialNumber: '',
       warehouseZone: '',
       status: 'Ready',
-      connectivity: 'REAL',
+      connectivity: 'UNKNOWN',
       assignedOperator: '',
       notes: ''
     });
