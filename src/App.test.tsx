@@ -19,4 +19,10 @@ describe('Shuttle Car Automation V6', () => {
     expect(screen.getByText(/لوحة القيادة/i)).toBeInTheDocument();
     expect(screen.getByText(/إجمالي عربات النقل/i)).toBeInTheDocument();
   });
+  it('clearly identifies the interface as a demo without live equipment access', () => {
+    render(<App />);
+    expect(screen.getByRole('status')).toHaveTextContent(/DEMO MODE/i);
+    expect(screen.getByRole('status')).toHaveTextContent(/No live equipment connection/i);
+  });
+
 });
