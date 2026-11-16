@@ -743,6 +743,7 @@ function App() {
                     <div className="fault-head">
                       <strong>{fault.title}</strong>
                       <span className="badge warn">{fault.severity}</span>
+                      <span className="badge neutral">{fault.status}</span>
                     </div>
                     <div className="meta-line">{fault.shuttleId} · {fault.timestamp}</div>
                     <p>{fault.description}</p>
