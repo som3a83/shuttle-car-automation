@@ -225,7 +225,7 @@ function ShuttleModel({ shuttle, view, exploded, animated }: { shuttle: Shuttle;
   </svg>;
 }
 
-function BatteryPack({ battery }: { battery: Battery }) {
+function BatteryPack({ battery }: { battery?: Battery }) {
   const soc = battery?.soc;
   return <div className="battery-render">
     <div className="battery-cap"><span/><span/></div>
