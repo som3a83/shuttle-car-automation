@@ -15,10 +15,9 @@ concurrency:
 
 jobs:
   build-android:
-    name: Build and package Android debug APK
-    # Pin the runner to the image already used by this successful build.
+    name: Build, install, and smoke-test Android APK
     runs-on: ubuntu-26.04
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
@@ -58,6 +57,62 @@ jobs:
       - name: Build debug APK
         working-directory: android
         run: ./gradlew --no-daemon assembleDebug
+
+      - name: Install and launch APK in Android phone emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          target: google_apis
+          profile: pixel_2
+          disable-animations: true
+          script: |
+            set -euo pipefail
+            APK="android/app/build/outputs/apk/debug/app-debug.apk"
+            test -s "$APK"
+            mkdir -p artifacts/android-smoke
+            adb shell wm size | tee artifacts/android-smoke/display-size.txt
+            adb shell wm density | tee artifacts/android-smoke/display-density.txt
+            adb install -r "$APK"
+            adb logcat -c
+            adb shell am force-stop com.shuttlecar.automation
+            adb shell am start -n com.shuttlecar.automation/.MainActivity
+
+            APP_PID=""
+            for attempt in $(seq 1 30); do
+              APP_PID="$(adb shell pidof com.shuttlecar.automation | tr -d '\r' || true)"
+              if [ -n "$APP_PID" ]; then
+                break
+              fi
+              sleep 1
+            done
+            test -n "$APP_PID"
+            sleep 10
+
+            adb shell dumpsys activity activities > artifacts/android-smoke/activities.txt
+            grep -F "com.shuttlecar.automation/.MainActivity" artifacts/android-smoke/activities.txt
+
+            adb exec-out screencap -p > artifacts/android-smoke/android-app-screen.png
+            test -s artifacts/android-smoke/android-app-screen.png
+
+            adb shell uiautomator dump /sdcard/window.xml
+            adb pull /sdcard/window.xml artifacts/android-smoke/window.xml
+            grep -F 'package="com.shuttlecar.automation"' artifacts/android-smoke/window.xml
+
+            adb logcat -d --pid="$APP_PID" > artifacts/android-smoke/app-logcat.txt
+            if grep -F "FATAL EXCEPTION" artifacts/android-smoke/app-logcat.txt; then
+              echo "Android app process reported a fatal exception."
+              exit 1
+            fi
+
+      - name: Upload Android emulator evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: shuttle-android-emulator-evidence
+          path: artifacts/android-smoke/
+          if-no-files-found: ignore
+          retention-days: 14
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v6
