@@ -372,6 +372,10 @@ function App() {
     }
   ];
 
+  const handlePrintReports = () => {
+    window.print();
+  };
+
   const handleDownloadCsv = () => {
     // Export current in-memory records. Seed values remain explicitly demonstrational,
     // and this file is a local snapshot rather than a live plant data extract.
@@ -933,7 +937,10 @@ function App() {
             <div className="panel-card">
               <div className="section-header">
                 <h3>Operational reports</h3>
-                <button className="primary-button" onClick={handleDownloadCsv}>Export CSV</button>
+                <div className="filter-row">
+                  <button className="ghost-button" onClick={handlePrintReports}>Print / Save PDF</button>
+                  <button className="primary-button" onClick={handleDownloadCsv}>Export CSV</button>
+                </div>
               </div>
               <div className="report-grid">
                 {liveReports.map((report) => (
