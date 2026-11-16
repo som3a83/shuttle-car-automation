@@ -44,8 +44,8 @@ export interface Shuttle {
   status: ShuttleStatus;
   connectivity: ConnectivityStatus;
   installedBattery: string;
-  operatingHours: number;
-  operatingCycles: number;
+  operatingHours: number | null;
+  operatingCycles: number | null;
   faultHistory: string[];
   maintenanceHistory: string[];
   assignedOperator: string;
