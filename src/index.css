@@ -489,3 +489,31 @@ td:first-child { color:var(--text); font-weight:700; }
   .model-zoom-control { grid-template-columns: 1fr 44px; gap: 7px 10px; }
   .model-zoom-control label { grid-column: 1 / -1; }
 }
+
+
+/* WebGL engineering viewer */
+.three-model-canvas { isolation: isolate; }
+.three-viewer-shell { position: absolute; inset: 34px 0 35px; overflow: hidden; }
+.three-canvas-host { width: 100%; height: 100%; min-height: 220px; }
+.shuttle-webgl-canvas { display: block; width: 100%; height: 100%; outline: none; touch-action: none; }
+.three-viewer-badge,.three-viewer-id,.three-viewer-unknown {
+  position: absolute;
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: 5px;
+  background: rgba(8,13,19,.76);
+  color: #d4e0e8;
+  font-size: 7px;
+  letter-spacing: .1em;
+  pointer-events: none;
+}
+.three-viewer-badge { top: 9px; right: 12px; color: #f0bd82; }
+.three-viewer-id { bottom: 8px; right: 12px; }
+.three-viewer-unknown { bottom: 8px; left: 12px; color: #e7b66a; }
+.three-live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--copper-2); box-shadow: 0 0 8px var(--copper); }
+.three-fallback { width: 100%; height: 100%; display: grid; place-items: center; }
+.three-fallback .shuttle-svg { max-height: 270px; }
