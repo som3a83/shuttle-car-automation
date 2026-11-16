@@ -430,6 +430,12 @@ function App() {
           </div>
         </header>
 
+        <div className="notice-box warning" role="status" aria-live="polite">
+          {language === 'ar'
+            ? 'وضع تجريبي: البيانات المعروضة توضيحية أو مُدخلة يدويًا، والتغييرات محلية داخل الواجهة فقط. لا يوجد اتصال حي بالمعدات، وتبديل الأدوار ليس نظام صلاحيات أو تسجيل دخول حقيقي.'
+            : 'DEMO MODE: records are illustrative or manually entered; changes exist only in this UI session. No live equipment connection is active, and role switching is not real authentication or server-enforced authorization.'}
+        </div>
+
         {activeTab === 'dashboard' && (
           <section className="panel-grid">
             <div className="stats-grid">
