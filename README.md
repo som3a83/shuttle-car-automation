@@ -1,45 +1,56 @@
-# Shuttle Car Automation V6
+# Shuttle Car Automation V9
 
-Shuttle Car Automation is a React + Vite + TypeScript application for monitoring and documenting shuttle-car fleets. The current release is a **local demo / engineering prototype**: records are illustrative or manually entered, and browser changes are stored locally on the current device.
+Shuttle Car Automation is a React, Vite, TypeScript and Capacitor application for documenting and inspecting a shuttle-car fleet. It is currently an **offline-first local engineering prototype**. Local records and simulation controls do not communicate with, or control, physical shuttle cars.
 
-## Quick start
+## Start and validate
 
-1. Install dependencies: `npm install`
-2. Start the web app: `npm run dev`
-3. Run checks: `npm test` and `npm run build`
+```bash
+npm install
+npm run dev
+npm test
+npm run build
+```
 
-## Included workspaces
+## Application workspaces
 
-- Fleet dashboard and searchable shuttle register
-- Shuttle engineering views (conceptual SVG illustrations, not vendor CAD)
-- Battery register with manual state updates
-- Fault register with investigation workflow and corrective-action gate before resolution
-- Maintenance work orders with status transitions
-- Device connectivity architecture placeholders
-- CSV operational export, browser print / Save as PDF, and local JSON backup
-- English / Arabic direction switching, dark / light theme, and responsive layouts
-- Client-side role preview only
+- **Dashboard:** fleet overview and local record indicators.
+- **Fleet:** searchable shuttle register for the reported 3 Cassioli, 1 Craftsman and 1 ACME units.
+- **Engineering:** interactive Three.js conceptual shuttle assembly, camera presets, pointer rotation, zoom, exploded view and selectable component inspection; a 2D schematic fallback is provided when WebGL is unavailable.
+- **Batteries:** Three.js conceptual lithium battery assembly and local battery register.
+- **Faults:** manually reported observations, investigation status and corrective-action requirement before closure.
+- **Maintenance:** work-order creation and local status transitions.
+- **Connections:** protocol architecture reference for Modbus TCP, OPC UA, MQTT, REST API, WebSocket and BLE; no endpoint is configured.
+- **Technical assistant:** static field-inspection guidance, not an AI-generated diagnosis.
+- **Reports:** CSV export, local JSON backup and print / Save as PDF.
+- **Notifications:** local events from fault, battery and maintenance record changes, with dismiss / clear actions and configurable alert preferences.
+- **Users and settings:** role preview, language, theme and local alert preferences.
 
-## Android build
+## Navigation and interface
 
-The app is configured with Capacitor 8 (`com.shuttlecar.automation`).
+Application workspaces use URL hash routes, for example `#/fleet`, `#/engineering` and `#/notifications`. Browser back / forward navigation is supported. The interface supports Arabic RTL, English LTR, dark and light themes, desktop navigation, and a mobile quick-navigation bar with an all-modules drawer.
 
-A GitHub Actions workflow named **Build Android Debug APK** runs on updates to the development branch and can also be run manually. It builds the web app, generates the Android wrapper, builds a debug APK, and uploads the APK as a workflow artifact named `shuttle-car-automation-debug-apk`.
+## Automated validation
 
-The debug APK is for installation and evaluation only. It is not a signed release bundle and is not ready for Google Play publication.
+The latest verified CI run on the development feature branch passed:
+- TypeScript project check.
+- **25 automated tests across 3 test files** (navigation, local workflows, WebGL fallback behavior and persistence).
+- Production Vite build.
 
-## Data, connectivity, and security limitations
+The Android debug workflow builds the Capacitor wrapper and publishes a debug APK artifact. A debug APK is for evaluation and is **not** a signed Play Store release.
 
-- Seed records and battery values are demonstrative; they are not verified equipment telemetry, manufacturer specifications, or confirmed serial / firmware data.
-- Connectivity states must not be interpreted as a live PLC, MQTT, Modbus, OPC UA, REST, or BLE connection. No verified vendor endpoint, address map, credentials, or protocol integration is configured.
-- Battery SOC, SOH, voltage, current, and temperature are illustrative until a verified data source is connected.
-- Local persistence uses browser storage on the current device. It is not a central database, cloud backup, multi-user synchronization, or disaster-recovery service.
-- Role selection is a navigation preview, not authentication or server-enforced authorization. No real login, identity provider, or backend authorization service is configured.
-- The AI workspace is an illustrative checklist. No AI provider is connected and it does not generate equipment diagnoses.
-- No live movement, charging, PLC write, or other machine-control command is issued by this application.
+## Data, connectivity and safety limits
 
-## Engineering integration requirements
+- Fleet composition is based on the operator-reported count. Manufacturer model numbers, serial numbers, firmware, hardware revisions and unverified operating telemetry remain unknown.
+- The Three.js shuttle and battery models are conceptual geometry, **not manufacturer CAD, approved service drawings, or dimensionally verified models**.
+- No live PLC, manufacturer API, MQTT, Modbus, OPC UA, REST, WebSocket or BLE connection is configured.
+- Battery SOC, SOH, voltage, current and temperature are treated as unknown or manually reported unless a verified source is provided. A reported HMI value is not automatically a live telemetry reading.
+- Local state changes, work orders, faults and notifications are persisted in browser storage on the current device. They are not a central database, cloud synchronization, multi-user service or disaster-recovery system.
+- Role selection is a user-interface preview only. There is no real authentication or server-enforced RBAC.
+- The technical assistant is a static checklist. No AI provider is connected, and diagnostic possibilities must be verified by a qualified technician.
+- The application does not issue shuttle movement, charging, PLC-write or other machine-control commands.
 
-Before enabling real telemetry or control, obtain the manufacturer's approved interface documentation, supported protocol and register map, network topology, authentication method, safety constraints, and written authorization. Start with read-only telemetry and validate every field against the equipment HMI and vendor documentation.
+## Before real equipment integration
 
-Never commit device credentials, API keys, private certificates, or production secrets to this repository.
+Obtain written authorization, manufacturer-approved interface documentation, the supported protocol and register map, network topology, authentication requirements and machine safety constraints. Begin with read-only telemetry. Validate every field against the physical HMI and vendor documentation before using it operationally.
+
+Never commit device credentials, API keys, private certificates or production secrets to this repository.
