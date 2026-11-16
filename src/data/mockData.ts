@@ -37,8 +37,8 @@ const unknownAssetFields = {
   status: 'Unknown' as const,
   connectivity: 'UNKNOWN' as const,
   installedBattery: 'Not recorded',
-  operatingHours: 0,
-  operatingCycles: 0,
+  operatingHours: null,
+  operatingCycles: null,
   assignedOperator: 'Not assigned',
   lastCommunication: 'Not connected'
 };
