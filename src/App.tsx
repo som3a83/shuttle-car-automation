@@ -246,6 +246,15 @@ function App() {
     }));
   };
 
+  const recordCorrectiveAction = (event: React.FormEvent<HTMLFormElement>, id: string) => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const correctiveAction = String(formData.get('correctiveAction') || '').trim();
+    if (!correctiveAction) return;
+    setFaults((prev) => prev.map((item) => item.id === id ? { ...item, correctiveAction } : item));
+    event.currentTarget.reset();
+  };
+
   const updateMaintenanceStatus = (id: string, status: MaintenanceJob['status']) => {
     setMaintenanceJobs((prev) => prev.map((item) => (item.id === id ? { ...item, status } : item)));
   };
@@ -304,7 +313,7 @@ function App() {
       shuttleId,
       title,
       severity: severity as Fault['severity'],
-      status: correctiveAction ? 'Resolved' : 'Open',
+      status: 'Open',
       timestamp: new Date().toISOString(),
       description,
       probableCauses,
@@ -741,6 +750,13 @@ function App() {
                     <div className="small-text">Diagnostic procedure: {fault.diagnosticProcedure}</div>
                     <div className="small-text">Corrective action: {fault.correctiveAction || 'No documented corrective action recorded — resolution blocked.'}</div>
                     <div className="small-text">Technician: {fault.assignedTechnician}</div>
+                    {!fault.correctiveAction?.trim() && (
+                      <form className="stack-form" onSubmit={(event) => recordCorrectiveAction(event, fault.id)}>
+                        <textarea name="correctiveAction" placeholder="Document corrective action" required />
+                        <button type="submit" className="ghost-button">Save corrective action</button>
+                      </form>
+                    )}
+                    {fault.correctiveAction?.trim() && <div className="small-text">Recorded corrective action: {fault.correctiveAction}</div>}
                     <div className="filter-row">
                       <button type="button" className="ghost-button" disabled={fault.status === 'Investigating' || fault.status === 'Resolved'} onClick={() => updateFaultStatus(fault.id, 'Investigating')}>Start investigation</button>
                       <button type="button" className="ghost-button" disabled={fault.status === 'Resolved' || !fault.correctiveAction?.trim()} title={!fault.correctiveAction?.trim() ? 'Record corrective action before resolving this fault' : 'Resolve fault'} onClick={() => updateFaultStatus(fault.id, 'Resolved')}>Resolve fault</button>
