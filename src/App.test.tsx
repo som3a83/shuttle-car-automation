@@ -4,17 +4,18 @@ import App from './App';
 import { beforeEach, describe, it, expect } from 'vitest';
 import '@testing-library/jest-dom/vitest';
 
-describe('Shuttle Car Automation V6', () => {
+describe('Shuttle Car Automation V9', () => {
   beforeEach(() => {
     window.localStorage.clear();
     window.history.replaceState({ tab: 'dashboard' }, '', '#/dashboard');
   });
 
-  it('renders the industrial dashboard', () => {
+  it('renders the industrial dashboard and current application release label', () => {
     render(<App />);
     expect(screen.getByText(/Total shuttle cars/i)).toBeInTheDocument();
     expect(screen.getByText(/Running shuttles/i)).toBeInTheDocument();
     expect(screen.getByText(/System communication status/i)).toBeInTheDocument();
+    expect(screen.getByText('SHUTTLE OPS · V9 ENGINEERING PLATFORM')).toBeInTheDocument();
   });
 
   it('switches to Arabic and updates interface direction', async () => {
