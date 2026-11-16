@@ -424,6 +424,25 @@ function App() {
     URL.revokeObjectURL(url);
   };
 
+  const handleDownloadBackup = () => {
+    const backup = {
+      schemaVersion: 1,
+      exportedAt: new Date().toISOString(),
+      storage: 'browser-local-state',
+      warning: 'This is a local application backup. It is not a server backup and contains demo or manually entered records, not verified live equipment telemetry.',
+      data: { shuttles, batteries, faults, maintenanceJobs, notifications, settings, language, theme }
+    };
+    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `shuttle-local-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
+
   const handleRoleSwitch = (role: Role) => {
     const user = users.find((item) => item.role === role) ?? users[0];
     setCurrentUser({ ...user, isAuthenticated: false });
@@ -996,8 +1015,8 @@ function App() {
                   <option value="dark">Dark</option>
                   <option value="light">Light</option>
                 </select>
-                <button className="primary-button" type="button" disabled title="No backup service is configured">Backup unavailable</button>
-                <div className="small-text">No export or backup destination is configured yet.</div>
+                <button className="primary-button" type="button" onClick={handleDownloadBackup}>Export local backup (JSON)</button>
+                <div className="small-text">Downloads the current browser records and settings as a JSON file. This is a local file export, not a cloud or server backup.</div>
               </div>
             </div>
           </section>
