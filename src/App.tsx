@@ -110,6 +110,11 @@ const copy = {
   }
 };
 
+function tabFromLocation(): Tab {
+  const candidate = window.location.hash.replace(/^#\\/?/, '') as Tab;
+  return navItems.some((item) => item.id === candidate) ? candidate : 'dashboard';
+}
+
 const PREFIX = 'shuttle-car-automation-v7:';
 function readLocal<T>(key: string, fallback: T): T {
   try { const raw = localStorage.getItem(PREFIX + key); return raw ? JSON.parse(raw) as T : fallback; }
@@ -241,7 +246,7 @@ function BatteryPack({ battery }: { battery?: Battery }) {
 function App() {
   const [language, setLanguage] = useState<Language>(() => readLocal('language', 'en'));
   const [theme, setTheme] = useState<Theme>(() => readLocal('theme', 'dark'));
-  const [activeTab, setActiveTab] = useState<Tab>('dashboard');
+  const [activeTab, setActiveTab] = useState<Tab>(() => tabFromLocation());
   const [currentUser, setCurrentUser] = useState(users[0]);
   const [shuttles, setShuttles] = useState<Shuttle[]>(() => readLocal('shuttles', initialShuttles));
   const [batteries, setBatteries] = useState<Battery[]>(() => readLocal('batteries', initialBatteries));
@@ -283,7 +288,28 @@ function App() {
     verifiedSoc: batteries.filter(b => b.connectionMode === 'REAL' && b.soc !== null).length
   };
 
-  const go = (tab: Tab) => { setActiveTab(tab); setMobileNav(false); };
+  useEffect(() => {
+    const syncFromAddress = () => setActiveTab(tabFromLocation());
+    if (!window.location.hash) window.history.replaceState({ tab: 'dashboard' }, '', '#/dashboard');
+    window.addEventListener('popstate', syncFromAddress);
+    window.addEventListener('hashchange', syncFromAddress);
+    return () => {
+      window.removeEventListener('popstate', syncFromAddress);
+      window.removeEventListener('hashchange', syncFromAddress);
+    };
+  }, []);
+
+  useEffect(() => {
+    const page = navItems.find((item) => item.id === activeTab);
+    document.title = page ? `${page.en} · ShuttleOps` : 'ShuttleOps';
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }, [activeTab]);
+
+  const go = (tab: Tab) => {
+    if (tab !== activeTab) window.history.pushState({ tab }, '', `#/${tab}`);
+    setActiveTab(tab);
+    setMobileNav(false);
+  };
   const showToast = (message: string) => { setToast(message); window.setTimeout(() => setToast(''), 2400); };
   const updateShuttle = (id: string, patch: Partial<Shuttle>) => setShuttles(prev => prev.map(s => s.id === id ? { ...s, ...patch } : s));
   const updateBattery = (id: string, patch: Partial<Battery>) => setBatteries(prev => prev.map(b => b.id === id ? { ...b, ...patch } : b));
@@ -384,7 +410,10 @@ function App() {
         </div>
       </header>
 
-      <nav className="mobile-nav" aria-label="Primary navigation"><button onClick={() => setMobileNav(true)}><Icon name="grid" size={16}/><span>{language === 'ar' ? 'كل الأقسام' : 'All modules'}</span></button></nav>
+      <nav className="mobile-nav" aria-label={language === 'ar' ? 'التنقل السريع' : 'Quick navigation'}>
+        {navItems.slice(0, 4).map((item) => <button key={item.id} type="button" className={activeTab === item.id ? 'active' : ''} aria-current={activeTab === item.id ? 'page' : undefined} onClick={() => go(item.id)}><Icon name={item.icon} size={16}/><span>{language === 'ar' ? item.ar : item.en}</span></button>)}
+        <button type="button" onClick={() => setMobileNav(true)} aria-expanded={mobileNav}><Icon name="grid" size={16}/><span>{language === 'ar' ? 'المزيد' : 'More'}</span></button>
+      </nav>
 
       <div className="demo-banner" role="status"><div className="demo-icon"><Icon name="alert" size={18}/></div><div><strong>{t.demo}</strong><p>{t.demoText}</p></div><span className="demo-tag">{t.unverified}</span></div>
 
