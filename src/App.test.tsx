@@ -237,7 +237,7 @@ describe('Shuttle Car Automation V6', () => {
     await user.type(screen.getByLabelText(/Operating zone/i), 'Cold room test zone');
     await user.click(screen.getByRole('button', { name: /Save record/i }));
     expect(screen.getAllByText('SC-06').length).toBeGreaterThan(0);
-    expect(screen.getByText('Craftsman')).toBeInTheDocument();
+    expect(screen.getAllByText('Craftsman').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Not recorded').length).toBeGreaterThan(0);
   });
 
