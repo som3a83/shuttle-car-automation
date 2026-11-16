@@ -178,3 +178,16 @@ textarea { min-height:80px; resize:vertical; }
   .fault-head { align-items: flex-start; flex-wrap: wrap; }
   .user-row { align-items: flex-start; flex-direction: column; }
 }
+
+
+@media print {
+  @page { size: auto; margin: 14mm; }
+  html, body, #root { height: auto; background: #fff !important; color: #111 !important; }
+  .app-shell { display: block; min-height: 0; padding: 0; background: #fff !important; color: #111 !important; }
+  .sidebar, .topbar, .notice-box, .header-actions, .nav-links, .section-header .filter-row,
+  .primary-button, .ghost-button { display: none !important; }
+  .main-panel, .panel-card, .report-card { background: #fff !important; color: #111 !important; border: 0 !important; box-shadow: none !important; }
+  .main-panel { padding: 0 !important; }
+  .report-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .report-value, .small-text, .card-title { color: #111 !important; }
+}
