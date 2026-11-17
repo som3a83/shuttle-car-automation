@@ -39,7 +39,7 @@ On the audited main commit:
 | Main post-merge secret scan (run 44074458837) | Passed |
 | Fresh Android run on merged main (run 44074458921) | In progress at the time of this audit refresh |
 
-The Android workflow had completed SDK setup, dependency installation, web validation, Capacitor generation/sync and APK assembly. Its emulator install/launch step had not yet completed. A debug build is not a signed Google Play release.
+The PR #24 Android run completed the emulator smoke test successfully: the accelerated emulator booted, installed the APK, launched the main activity, verified the app process, captured a screenshot and uploaded emulator logs. The post-merge main Android run is still being checked independently. A debug build is not a signed Google Play release.
 
 ## 4. Application capabilities present in source
 
