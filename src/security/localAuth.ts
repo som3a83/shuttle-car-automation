@@ -134,7 +134,8 @@ export async function createLocalAccount(
   input: LocalAccountInput,
   storage: AuthStorage = localStorage,
   cryptoApi: Crypto = globalThis.crypto,
-  now = new Date()
+  now = new Date(),
+  actor?: LocalAccountActor
 ): Promise<LocalAccountSummary> {
   const name = input.name.trim();
   const email = input.email.trim().toLowerCase();
@@ -144,8 +145,19 @@ export async function createLocalAccount(
   }
   if (!ALLOWED_ROLES.includes(input.role)) throw new Error('The selected role is not supported.');
   if (input.password.length < 12 || input.password.length > 128) throw new Error('Password must contain 12–128 characters.');
-  if (readAccounts(storage).some((account) => account.username === username || account.email === email)) {
+  const existingAccounts = readAccounts(storage);
+  if (existingAccounts.some((account) => account.username === username || account.email === email)) {
     throw new Error('A local account with this username or email already exists.');
+  }
+  if (existingAccounts.length === 0 && input.role !== 'Super Admin') {
+    throw new Error('The first local account must be the initial Super Admin.');
+  }
+  if (existingAccounts.length > 0) {
+    const actorAccount = actor ? existingAccounts.find(account => account.id === actor.id) : undefined;
+    if (!actor || !actorAccount || actorAccount.disabledAt || actorAccount.role !== 'Super Admin' || actor.role !== actorAccount.role) {
+      throw new Error('An active Super Admin session is required to create additional local accounts.');
+    }
+    if (input.role === 'Super Admin') throw new Error('Create the account with a lower role, then have an existing Super Admin review and promote another account.');
   }
   if (!cryptoApi?.subtle) throw new Error('Secure Web Crypto is unavailable. Use HTTPS or a secure local context.');
   const salt = cryptoApi.getRandomValues(new Uint8Array(16));
@@ -231,11 +243,13 @@ export function updateLocalAccount(
   accountId: string,
   patch: LocalAccountPatch,
   actor: LocalAccountActor,
-  storage: AuthStorage = localStorage,
-  now = new Date()
+  storage: AuthStorage = localStorage
 ): LocalAccountSummary {
-  if (actor.role !== 'Super Admin') throw new Error('Only the Super Admin can edit local accounts.');
   const accounts = readAccounts(storage);
+  const actorAccount = accounts.find(account => account.id === actor.id);
+  if (!actorAccount || actorAccount.disabledAt || actorAccount.role !== 'Super Admin' || actor.role !== actorAccount.role) {
+    throw new Error('An active Super Admin session is required to edit local accounts.');
+  }
   const index = accounts.findIndex(account => account.id === accountId);
   if (index < 0) throw new Error('Local account was not found.');
   const current = accounts[index];
@@ -271,9 +285,12 @@ export function setLocalAccountDisabled(
   storage: AuthStorage = localStorage,
   now = new Date()
 ): LocalAccountSummary {
-  if (actor.role !== 'Super Admin') throw new Error('Only the Super Admin can disable or reactivate accounts.');
-  if (actor.id === accountId) throw new Error('You cannot disable your own active session.');
   const accounts = readAccounts(storage);
+  const actorAccount = accounts.find(account => account.id === actor.id);
+  if (!actorAccount || actorAccount.disabledAt || actorAccount.role !== 'Super Admin' || actor.role !== actorAccount.role) {
+    throw new Error('An active Super Admin session is required to disable or reactivate accounts.');
+  }
+  if (actor.id === accountId) throw new Error('You cannot disable or reactivate your own active session.');
   const index = accounts.findIndex(account => account.id === accountId);
   if (index < 0) throw new Error('Local account was not found.');
   const current = accounts[index];
@@ -314,7 +331,11 @@ export async function changeLocalAccountPassword(
   if (index < 0) throw new Error('Local account was not found.');
   const current = accounts[index];
   const selfChange = actor.id === accountId;
-  if (!selfChange && actor.role !== 'Super Admin') throw new Error('Only the Super Admin can reset another local account password.');
+  const actorAccount = accounts.find(account => account.id === actor.id);
+  if (!actorAccount || actorAccount.disabledAt || actorAccount.role !== actor.role ||
+      (!selfChange && actorAccount.role !== 'Super Admin')) {
+    throw new Error('An active matching local identity is required to change or reset this password.');
+  }
   if (selfChange && !await verifyPassword(current, currentPassword, cryptoApi)) {
     throw new Error('The current password is incorrect.');
   }
