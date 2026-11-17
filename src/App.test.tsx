@@ -174,14 +174,18 @@ describe('Shuttle Car Automation V10', () => {
     await user.type(screen.getByLabelText(/Shift supervisor/i), 'Operations Supervisor');
     await user.type(screen.getByLabelText(/Operators \/ technicians/i), 'Operator One, Technician Two');
     await user.click(screen.getByRole('button', { name: /Start shift now/i }));
+    await waitFor(() => {
+      expect(JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:shifts') || '[]')).toHaveLength(1);
+    });
     const openRecords = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:shifts') || '[]');
-    expect(openRecords).toHaveLength(1);
     expect(openRecords[0]).toMatchObject({ supervisor: 'Operations Supervisor', endedAt: null, openingFleet: expect.arrayContaining([expect.objectContaining({ id: 'SC-01' })]) });
     await user.type(screen.getByLabelText(/Handover notes for the next shift/i), 'Check SC-04 wheel grip and inspect battery status.');
     await user.click(screen.getByRole('button', { name: /Close shift & save handover/i }));
-    const closedRecords = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:shifts') || '[]');
-    expect(closedRecords[0].endedAt).toBeTruthy();
-    expect(closedRecords[0].handoverNotes).toContain('SC-04 wheel grip');
+    await waitFor(() => {
+      const closedRecords = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:shifts') || '[]');
+      expect(closedRecords[0]?.endedAt).toBeTruthy();
+      expect(closedRecords[0]?.handoverNotes).toContain('SC-04 wheel grip');
+    });
   });
 
   it('opens a module directly from its URL hash', () => {
