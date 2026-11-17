@@ -52,8 +52,8 @@ export function buildRegisterSheets(data: {
       item.diagnosticProcedure,item.correctiveAction || '',item.assignedTechnician,item.archivedAt || ''])
   ];
   const maintenance: ExcelCell[][] = [
-    ['ID',h('Shuttle','الشاتل'),h('Work order','أمر العمل'),h('Type','النوع'),h('Status','الحالة'),h('Scheduled date','التاريخ المجدول'),h('Technician','الفني'),h('Notes','ملاحظات'),h('Archived at','تاريخ الأرشفة')],
-    ...data.jobs.map(item => [item.id,item.shuttleId,item.title,item.type,item.status,item.scheduledDate,item.technician,item.notes,item.archivedAt || ''])
+    ['ID',h('Shuttle','الشاتل'),h('Work order','أمر العمل'),h('Type','النوع'),h('Status','الحالة'),h('Scheduled date','التاريخ المجدول'),h('Technician','الفني'),h('Notes','ملاحظات'),h('Completion result','نتيجة التنفيذ'),h('Archived at','تاريخ الأرشفة')],
+    ...data.jobs.map(item => [item.id,item.shuttleId,item.title,item.type,item.status,item.scheduledDate,item.technician,item.notes,item.completionNotes || '',item.archivedAt || ''])
   ];
   const shifts: ExcelCell[][] = [
     ['ID',h('Shift','الوردية'),h('Started at','وقت البداية'),h('Ended at','وقت النهاية'),h('Supervisor','المشرف'),h('Operators','المشغلون'),
@@ -82,7 +82,7 @@ export function buildRegisterSheets(data: {
     { name: 'Batteries', rows: batteries, widths: [16,18,18,16,16,14,12,12,16,14,14,12,16,18,18,22] },
     { name: 'Battery movements', rows: movements, widths: [18,24,16,18,18,52,14] },
     { name: 'Faults', rows: faults, widths: [18,16,28,14,16,24,48,42,42,42,22] },
-    { name: 'Maintenance', rows: maintenance, widths: [18,16,28,16,16,18,22,42,22] },
+    { name: 'Maintenance', rows: maintenance, widths: [18,16,28,16,16,18,22,42,48,22] },
     { name: 'Connections', rows: connections, widths: [32,20,18,60,22] },
     { name: 'Shift handovers', rows: shifts, widths: [24,14,24,24,24,32,18,18,20,20,42,52] },
     { name: 'Daily report history', rows: reportHistory, widths: [20,16,24,12,12,12,24,16,18,14,20,20,24] },
