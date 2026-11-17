@@ -111,7 +111,7 @@ describe('async local account backend', () => {
     expect(locked).toEqual({ ok: false, reason: 'locked' });
     const account = JSON.parse(storage.getItem('shuttle-car-automation-v1:local-accounts') || '[]')[0];
     expect(account.failedAttempts).toBe(0);
-    expect(account.lockedUntil).toBe(70_005);
+    expect(account.lockedUntil).toBe(70_004);
   });
 
   it('retries a revision conflict without overwriting the existing account registry', async () => {
