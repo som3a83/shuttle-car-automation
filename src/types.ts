@@ -179,6 +179,8 @@ export interface DailyReportSnapshot {
   batteryCount: number;
   faultedBatteryCount: number;
   verifiedTelemetryCount: number;
+  /** Optional for backwards compatibility with snapshots created before shift tracking. */
+  activeShift?: { id: string; shiftType: 'Day' | 'Night'; supervisor: string; startedAt: string } | null;
   shuttles: Array<{
     id: string;
     manufacturer: string;
@@ -193,5 +195,6 @@ export interface DailyReportSnapshot {
     assignment: string;
     soc: number | null;
     connectionMode: ConnectivityStatus;
+    movementHistory?: BatteryMovement[];
   }>;
 }
