@@ -37,7 +37,13 @@ fi
 adb exec-out screencap -p > "$EVIDENCE/android-app-screen.png"
 test -s "$EVIDENCE/android-app-screen.png"
 
+# Dismiss the emulator's optional system "Pixel Launcher isn't responding" prompt if one
+# appeared during cold start. On a healthy emulator this tap only lands on the dashboard body.
+adb shell input tap 320 1360 || true
+sleep 2
+
 # Exercise the Engineering Visualization destination from the visible mobile navigation.
+# The workflow uses a 1080x2400 portrait emulator; this targets the third quick-navigation tile.
 adb shell input tap 545 445
 sleep 8
 adb exec-out screencap -p > "$EVIDENCE/engineering-app-screen.png"
