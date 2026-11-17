@@ -90,7 +90,7 @@ const STORE_METADATA = 'metadata';
 const STORE_SNAPSHOTS = 'snapshots';
 const STORE_QUARANTINE = 'quarantine';
 const ACTIVE_GENERATION_KEY = 'activeGeneration';
-const LEGACY_PREFIX = 'shuttle.storage.';
+const LEGACY_PREFIX = '';
 const LEGACY_REVISION_PREFIX = 'shuttle.storage.revision.';
 
 function fail(code: StorageErrorCode, message: string, extra: Partial<ConstructorParameters<typeof StorageError>[0]> = {}): never {
@@ -107,6 +107,18 @@ function checksumOf(value: string): string {
 }
 function stableJson(value: unknown): string {
   try { return JSON.stringify(value); } catch { fail('STORAGE_CORRUPT', 'Stored data could not be serialized.'); }
+}
+function validateStoredShape(key: StorageKey, value: unknown): boolean {
+  const arrayKeys: StorageKey[] = [
+    'operational.shuttles', 'operational.batteries', 'operational.faults',
+    'operational.maintenance', 'operational.connections', 'operational.notifications',
+    'operational.dailyReports', 'operational.shifts', 'auth.accounts',
+    'audit.active', 'audit.archives', 'customization.audit',
+  ];
+  if (arrayKeys.includes(key)) return Array.isArray(value);
+  if (key === 'operational.language' || key === 'operational.theme') return typeof value === 'string';
+  if (key === 'operational.sidebarCollapsed') return typeof value === 'boolean';
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 function validateBackup(input: unknown): asserts input is BackupEnvelope {
   if (!input || typeof input !== 'object') fail('BACKUP_INVALID', 'Backup structure is invalid.');
