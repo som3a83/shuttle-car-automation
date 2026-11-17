@@ -52,6 +52,7 @@ export default function SecurityCenter({
   const [busy, setBusy] = useState(false);
   const isAuthenticated = currentUser.isAuthenticated;
   const isAdministrator = isAuthenticated && (currentUser.role === 'Super Admin' || currentUser.role === 'Admin');
+  const isSuperAdmin = isAuthenticated && currentUser.role === 'Super Admin';
   const canBootstrap = accounts.length === 0 && !registryError;
   const canManageAccounts = canBootstrap || (!registryError && isAuthenticated && currentUser.role === 'Super Admin');
 
@@ -398,10 +399,30 @@ export default function SecurityCenter({
       </span>
     </div>
 
-    {isAuthenticated ? <div className="surface-card security-session-card">
-      <div><span className="eyebrow">SIGNED-IN IDENTITY</span><h3>{currentUser.name}</h3><p>{currentUser.email} · {currentUser.role}</p></div>
-      <button className="btn-danger" type="button" onClick={() => void signOut()}>{ar ? 'تسجيل الخروج' : 'Sign out'}</button>
-    </div> : <div className="security-forms-grid">
+    {isAuthenticated ? <>
+      <div className="surface-card security-session-card">
+        <div><span className="eyebrow">SIGNED-IN IDENTITY</span><h3>{currentUser.name}</h3><p>{currentUser.email} · {currentUser.role}</p></div>
+        <button className="btn-danger" type="button" onClick={() => void signOut()}>{ar ? 'تسجيل الخروج' : 'Sign out'}</button>
+      </div>
+      <form className="surface-card stack-form security-form" onSubmit={submitPasswordChange}>
+        <div className="card-head"><div><span className="eyebrow">ACCOUNT CREDENTIALS</span><h3>{currentUser.mustChangePassword ? (ar ? 'يجب تغيير كلمة المرور المؤقتة' : 'Temporary password change required') : (ar ? 'تغيير كلمة المرور' : 'Change password')}</h3></div></div>
+        {currentUser.mustChangePassword && <p className="security-error" role="status">{ar ? 'لا يمكنك استخدام بقية التطبيق حتى تستبدل كلمة المرور المؤقتة.' : 'The rest of the app remains locked until you replace this temporary password.'}</p>}
+        <label>{ar ? 'كلمة المرور الحالية' : 'Current password'}<input type="password" value={passwordForm.current} onChange={event => setPasswordForm({ ...passwordForm, current: event.target.value })} autoComplete="current-password" minLength={12} maxLength={128} required/></label>
+        <label>{ar ? 'كلمة المرور الجديدة' : 'New password'}<input type="password" value={passwordForm.next} onChange={event => setPasswordForm({ ...passwordForm, next: event.target.value })} autoComplete="new-password" minLength={12} maxLength={128} required/></label>
+        <label>{ar ? 'تأكيد كلمة المرور الجديدة' : 'Confirm new password'}<input type="password" value={passwordForm.confirm} onChange={event => setPasswordForm({ ...passwordForm, confirm: event.target.value })} autoComplete="new-password" minLength={12} maxLength={128} required/></label>
+        <button className="btn-primary" type="submit" disabled={busy}>{ar ? 'حفظ كلمة المرور الجديدة' : 'Update password'}</button>
+      </form>
+      {isSuperAdmin && <form className="surface-card stack-form security-form" onSubmit={submitCreate}>
+        <div className="card-head"><div><span className="eyebrow">LOCAL ACCOUNT PROVISIONING</span><h3>{ar ? 'إنشاء حساب مستخدم' : 'Create a local user account'}</h3></div></div>
+        <label>{ar ? 'الاسم الكامل' : 'Full name'}<input value={newAccount.name} onChange={event => setNewAccount({ ...newAccount, name: event.target.value })} autoComplete="name" required/></label>
+        <label>{ar ? 'البريد الإلكتروني' : 'Email'}<input type="email" value={newAccount.email} onChange={event => setNewAccount({ ...newAccount, email: event.target.value })} autoComplete="email" required/></label>
+        <label>{ar ? 'اسم المستخدم' : 'Username'}<input value={newAccount.username} onChange={event => setNewAccount({ ...newAccount, username: event.target.value })} autoComplete="username" minLength={3} maxLength={32} pattern="[A-Za-z0-9._-]+" required/></label>
+        <label>{ar ? 'الدور' : 'Role'}<select value={newAccount.role} onChange={event => setNewAccount({ ...newAccount, role: event.target.value as Role })}>{roles.map(role => <option key={role} value={role}>{role}</option>)}</select></label>
+        <label>{ar ? 'كلمة مرور أولية' : 'Initial password'}<input type="password" value={newAccount.password} onChange={event => setNewAccount({ ...newAccount, password: event.target.value })} autoComplete="new-password" minLength={12} maxLength={128} required/></label>
+        <label>{ar ? 'تأكيد كلمة المرور' : 'Confirm password'}<input type="password" value={newAccount.confirm} onChange={event => setNewAccount({ ...newAccount, confirm: event.target.value })} autoComplete="new-password" minLength={12} maxLength={128} required/></label>
+        <button className="btn-primary" type="submit" disabled={busy || !canManageAccounts}>{ar ? 'إنشاء الحساب' : 'Create account'}</button>
+      </form>}
+    </> : <div className="security-forms-grid">
       <form className="surface-card stack-form security-form" onSubmit={submitLogin}>
         <div className="card-head"><div><span className="eyebrow">EXISTING LOCAL IDENTITY</span><h3>{ar ? 'تسجيل الدخول' : 'Sign in'}</h3></div></div>
         <label>{ar ? 'اسم المستخدم أو البريد الإلكتروني' : 'Username or email'}<input value={login.identity} onChange={event => setLogin({ ...login, identity: event.target.value })} autoComplete="username" required/></label>
@@ -439,11 +460,38 @@ export default function SecurityCenter({
       {isAdministrator && <section className="surface-card security-integrity-card">
         <span className="eyebrow">LOCAL ACCOUNTS / DEVICE ONLY</span>
         <div className="integrity-heading"><h3>{ar ? 'الحسابات المسجلة' : 'Registered accounts'}</h3><strong>{accounts.length}</strong></div>
-        {accounts.length === 0 ? <p>{ar ? 'لم يتم إنشاء حسابات بعد.' : 'No local accounts have been created yet.'}</p> : accounts.map(account => <div className="local-account-row" key={account.id}><strong>{account.name}</strong><span>{account.username} · {account.role}</span></div>)}
+        {accounts.length === 0 ? <p>{ar ? 'لم يتم إنشاء حسابات بعد.' : 'No local accounts have been created yet.'}</p> : accounts.map(account => <div className="local-account-row local-account-managed-row" key={account.id}>
+          <div><strong>{account.name}</strong><span>{account.username} · {account.role} · {account.disabledAt ? (ar ? 'معطل' : 'Disabled') : (ar ? 'نشط' : 'Active')}</span></div>
+          {isSuperAdmin && <div className="local-account-actions">
+            <button type="button" className="btn-secondary" disabled={busy} onClick={() => beginAccountEdit(account)}>{ar ? 'تعديل' : 'Edit'}</button>
+            {account.id !== currentUser.id && <>
+              <button type="button" className="btn-secondary" disabled={busy} onClick={() => void toggleAccountStatus(account)}>{account.disabledAt ? (ar ? 'إعادة تفعيل' : 'Reactivate') : (ar ? 'تعطيل' : 'Disable')}</button>
+              <button type="button" className="btn-secondary" disabled={busy} onClick={() => void resetAccountPassword(account)}>{ar ? 'إعادة تعيين كلمة المرور' : 'Reset password'}</button>
+            </>}
+          </div>}
+        </div>)}
       </section>}
       {!isAdministrator && isAuthenticated && <section className="surface-card security-integrity-card"><span className="eyebrow">LOCAL IDENTITY</span><h3>{ar ? 'الحساب الحالي' : 'Current account'}</h3><p>{currentUser.name} · {currentUser.role}</p></section>}
     </div>
 
+    {isSuperAdmin && editingAccountId && <form className="surface-card stack-form security-account-editor" onSubmit={saveAccountEdit}>
+      <div className="card-head"><div><span className="eyebrow">ACCOUNT ADMINISTRATION</span><h3>{ar ? 'تعديل بيانات الحساب' : 'Edit local account'}</h3></div></div>
+      <label>{ar ? 'الاسم' : 'Name'}<input value={accountDraft.name} onChange={event => setAccountDraft({ ...accountDraft, name: event.target.value })} required/></label>
+      <label>{ar ? 'البريد الإلكتروني' : 'Email'}<input type="email" value={accountDraft.email} onChange={event => setAccountDraft({ ...accountDraft, email: event.target.value })} required/></label>
+      <label>{ar ? 'اسم المستخدم' : 'Username'}<input value={accountDraft.username} onChange={event => setAccountDraft({ ...accountDraft, username: event.target.value })} minLength={3} maxLength={32} pattern="[A-Za-z0-9._-]+" required/></label>
+      <label>{ar ? 'الدور' : 'Role'}<select value={accountDraft.role} onChange={event => setAccountDraft({ ...accountDraft, role: event.target.value as Role })}>{(['Super Admin', ...roles] as Role[]).map(role => <option key={role} value={role}>{role}</option>)}</select></label>
+      <div className="audit-toolbar-actions">
+        <button className="btn-primary" type="submit" disabled={busy}>{ar ? 'حفظ' : 'Save changes'}</button>
+        <button className="btn-secondary" type="button" disabled={busy} onClick={() => setEditingAccountId(null)}>{ar ? 'إلغاء' : 'Cancel'}</button>
+      </div>
+    </form>}
+    {isSuperAdmin && temporaryPasswordNotice && <section className="surface-card security-account-editor">
+      <div className="card-head"><div><span className="eyebrow">ONE-TIME TEMPORARY CREDENTIAL</span><h3>{ar ? 'كلمة المرور المؤقتة' : 'Temporary password'}</h3></div></div>
+      <p>{ar ? 'أرسل كلمة المرور للمستخدم عبر وسيلة آمنة. سيُطلب منه تغييرها عند تسجيل الدخول التالي. لن تظهر مرة أخرى بعد إخفائها.' : 'Deliver this password through an approved secure channel. The user must change it at next sign-in. It will not be shown again after dismissal.'}</p>
+      <p><strong>{temporaryPasswordNotice.username}</strong></p>
+      <code className="temporary-password-value">{temporaryPasswordNotice.password}</code>
+      <button className="btn-secondary" type="button" onClick={() => setTemporaryPasswordNotice(null)}>{ar ? 'إخفاء كلمة المرور' : 'Dismiss temporary password'}</button>
+    </section>}
     {isAdministrator && <section className="surface-card security-audit-list">
       <div className="card-head"><div><span className="eyebrow">AUDIT LEDGER / ARCHIVES / EXPORT</span><h3>{ar ? 'سجل التدقيق والأرشيف' : 'Audit ledger & archives'}</h3></div><span className="counter">{recentAudit.length} / {auditRecords.length}</span></div>
       <div className="audit-toolbar">
