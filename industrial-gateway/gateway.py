@@ -318,8 +318,8 @@ class GatewayHandler(BaseHTTPRequestHandler):
             "commissioned": commissioned(asset),
             "missing": [name for name, value in (
                 ("exact model", asset["model"]), ("firmware", asset["firmware"]),
-                ("adapter id", asset["adapter_id"]), ("approved tag map", asset["allowed_tags"])
-            ) if not value or (name == "approved tag map" and not value)]
+                ("adapter id", asset["adapter_id"]), ("approved tag map", asset["allowed_tags"]), ("enabled flag", asset["enabled"])
+            ) if not value]
         }
 
     def _status(self) -> dict[str, Any]:
