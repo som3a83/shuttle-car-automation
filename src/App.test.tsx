@@ -559,7 +559,7 @@ describe('Shuttle Car Automation V10', () => {
     await user.click(screen.getAllByRole('button', { name: /Device Connections/i })[0]);
     await user.type(screen.getByLabelText(/Connection name/i), 'Test vendor gateway');
     await user.selectOptions(screen.getByLabelText(/^Protocol$/i), 'OPC UA');
-    await user.type(screen.getByLabelText(/Exact model, approved interface/i), 'Vendor approved read-only interface reference pending');
+    await user.type(screen.getByLabelText(/^Notes$/i), 'Vendor approved read-only interface reference pending');
     await user.click(screen.getByRole('button', { name: /Save connection record/i }));
 
     expect(screen.getByText('Test vendor gateway')).toBeInTheDocument();
