@@ -16,7 +16,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: shuttle-ci-\${{ github.ref }}
+  group: shuttle-ci-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
