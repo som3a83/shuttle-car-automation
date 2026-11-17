@@ -1,0 +1,7 @@
+# Repository owner reviews sensitive changes. Branch rules must be enabled in GitHub Settings
+# before these review requests become an enforced merge requirement.
+* @som3a83
+/.github/ @som3a83
+/scripts/ @som3a83
+/PRIVACY_POLICY.md @som3a83
+/SECURITY.md @som3a83
