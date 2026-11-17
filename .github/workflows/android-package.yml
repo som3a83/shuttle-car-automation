@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   package-apk:
-    name: Validate and publish installable Android debug APK
+    name: Android Debug APK Packaging
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     steps:
