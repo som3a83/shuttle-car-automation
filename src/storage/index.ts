@@ -337,20 +337,29 @@ export class LegacyFallbackEngine implements StorageEngine {
     if (!resolution) return null;
 
     const storage = this.storage();
-    const raw = storage.getItem(resolution.legacyKey);
+    const compatibilityKey = LEGACY_PREFIX + key;
+    const mappedRaw = storage.getItem(resolution.legacyKey);
+    // Preserve records written by the pre-adapter 2B-1 fallback engine.
+    // The mapped application key is authoritative whenever it exists.
+    const rawKey = mappedRaw !== null || compatibilityKey === resolution.legacyKey
+      ? resolution.legacyKey
+      : compatibilityKey;
+    const raw = mappedRaw !== null
+      ? mappedRaw
+      : rawKey === resolution.legacyKey ? null : storage.getItem(rawKey);
     if (raw === null) return null;
     try {
       const parsed: unknown = JSON.parse(raw);
       if (!validateStoredShape(key, parsed)) {
         const moved = await quarantineWithoutMasking(key, raw, 'Legacy fallback record failed stored-shape validation.');
-        if (moved) { storage.removeItem(resolution.legacyKey); storage.removeItem(LEGACY_REVISION_PREFIX + key); }
+        if (moved) { storage.removeItem(rawKey); storage.removeItem(LEGACY_REVISION_PREFIX + key); }
         fail('STORAGE_CORRUPT', 'Stored data failed shape validation.', { key });
       }
       const revisionRaw = storage.getItem(LEGACY_REVISION_PREFIX + key);
       const revision = revisionRaw === null ? 0 : Number(revisionRaw);
       if (!Number.isSafeInteger(revision) || revision < 0) {
         const moved = await quarantineWithoutMasking(key, raw, 'Legacy fallback revision metadata is invalid.');
-        if (moved) { storage.removeItem(resolution.legacyKey); storage.removeItem(LEGACY_REVISION_PREFIX + key); }
+        if (moved) { storage.removeItem(rawKey); storage.removeItem(LEGACY_REVISION_PREFIX + key); }
         fail('STORAGE_CORRUPT', 'Stored revision metadata is invalid.', { key });
       }
       const value = resolution.transform ? resolution.transform(parsed) : parsed;
@@ -358,7 +367,7 @@ export class LegacyFallbackEngine implements StorageEngine {
     } catch (error) {
       if (error instanceof StorageError) throw error;
       const moved = await quarantineWithoutMasking(key, raw, 'Legacy fallback record could not be decoded.');
-      if (moved) { storage.removeItem(resolution.legacyKey); storage.removeItem(LEGACY_REVISION_PREFIX + key); }
+      if (moved) { storage.removeItem(rawKey); storage.removeItem(LEGACY_REVISION_PREFIX + key); }
       fail('STORAGE_CORRUPT', 'Stored data could not be decoded.', { key });
     }
   }
@@ -367,7 +376,17 @@ export class LegacyFallbackEngine implements StorageEngine {
     if (!resolution) fail('STORAGE_SCHEMA_UNSUPPORTED', 'No approved legacy key mapping exists for this storage key.', { key });
 
     const storage = this.storage();
-    const raw = storage.getItem(resolution.legacyKey);
+    const compatibilityKey = LEGACY_PREFIX + key;
+    const mappedRaw = storage.getItem(resolution.legacyKey);
+    const compatibilityRaw = mappedRaw === null && compatibilityKey !== resolution.legacyKey
+      ? storage.getItem(compatibilityKey)
+      : null;
+    // Continue updating a pre-existing 2B-1 fallback record in place. New keys
+    // and records already on the mapped path use the LEGACY_KEY_MAP destination.
+    const targetKey = mappedRaw === null && compatibilityRaw !== null
+      ? compatibilityKey
+      : resolution.legacyKey;
+    const raw = mappedRaw ?? compatibilityRaw;
     const revisionRaw = storage.getItem(LEGACY_REVISION_PREFIX + key);
     // Legacy records without a revision sidecar are revision 0: expectedRevision 0 creates the sidecar.
     // The sidecar remains keyed by the unified StorageKey, exactly as in 2B-1.
@@ -383,7 +402,7 @@ export class LegacyFallbackEngine implements StorageEngine {
     const revision = actual + 1;
     try {
       // Read transforms are intentionally not applied to writes: persist the exact caller value.
-      storage.setItem(resolution.legacyKey, stableJson(value));
+      storage.setItem(targetKey, stableJson(value));
       storage.setItem(LEGACY_REVISION_PREFIX + key, String(revision));
       return revision;
     } catch (error) {
@@ -396,6 +415,8 @@ export class LegacyFallbackEngine implements StorageEngine {
     if (!resolution) fail('STORAGE_SCHEMA_UNSUPPORTED', 'No approved legacy key mapping exists for this storage key.', { key });
     const storage = this.storage();
     storage.removeItem(resolution.legacyKey);
+    const compatibilityKey = LEGACY_PREFIX + key;
+    if (compatibilityKey !== resolution.legacyKey) storage.removeItem(compatibilityKey);
     storage.removeItem(LEGACY_REVISION_PREFIX + key);
   }
   async backup(): Promise<BackupEnvelope> { fail('STORAGE_ATOMICITY_UNAVAILABLE', 'Backup requires transaction guarantees unavailable in fallback mode.'); }
