@@ -3,40 +3,41 @@ name: Shuttle Car Automation CI
 on:
   push:
     branches:
+      - main
       - "development/**"
       - "copilot/**"
   pull_request:
     branches:
-      - "development/shuttle-car-automation-v6"
+      - main
+      - "development/**"
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: shuttle-ci-${{ github.ref }}
+  group: shuttle-ci-\${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
   validate:
     name: TypeScript, tests, and production build
-    runs-on: ubuntu-26.04
-    timeout-minutes: 15
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
     steps:
       - name: Check out repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@v4
 
       - name: Set up Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@v4
         with:
           node-version: 22
-          package-manager-cache: false
 
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
       - name: TypeScript project check
-        run: npx tsc -b
+        run: npm run check
 
       - name: Run automated tests
         run: npm test
