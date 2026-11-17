@@ -1,0 +1,76 @@
+name: Package Android Debug APK
+
+on:
+  push:
+    branches:
+      - 'copilot/complete-shuttle-automation-v6'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: shuttle-android-package-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  package-apk:
+    name: Validate and publish installable Android debug APK
+    runs-on: ubuntu-26.04
+    timeout-minutes: 35
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          package-manager-cache: false
+
+      - name: Set up Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: platform-tools
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Validate web application
+        run: |
+          npx tsc -b
+          npm test
+          npm run build
+
+      - name: Generate Android project
+        run: npx cap add android
+
+      - name: Sync web assets to Android
+        run: npx cap sync android
+
+      - name: Build debug APK
+        working-directory: android
+        run: ./gradlew --no-daemon assembleDebug
+
+      - name: Verify APK and generate checksum
+        run: |
+          APK="android/app/build/outputs/apk/debug/app-debug.apk"
+          test -s "$APK"
+          mkdir -p artifacts/android-package
+          cp "$APK" artifacts/android-package/shuttle-car-automation-v10-debug.apk
+          sha256sum artifacts/android-package/shuttle-car-automation-v10-debug.apk > artifacts/android-package/SHA256SUMS.txt
+          ls -lh artifacts/android-package/
+
+      - name: Publish installable Android APK
+        uses: actions/upload-artifact@v6
+        with:
+          name: shuttle-car-automation-v10-debug-apk
+          path: artifacts/android-package/
+          if-no-files-found: error
+          retention-days: 14
