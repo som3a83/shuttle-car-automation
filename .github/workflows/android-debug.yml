@@ -16,7 +16,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: shuttle-android-smoke-\${{ github.ref }}
+  group: shuttle-android-smoke-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
