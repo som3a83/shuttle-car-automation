@@ -1,0 +1,21 @@
+{
+  "name": "Shuttle Car Automation",
+  "short_name": "Shuttle Ops",
+  "description": "Offline shuttle fleet, battery, fault and maintenance tracking.",
+  "lang": "en",
+  "dir": "ltr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#111820",
+  "theme_color": "#111820",
+  "icons": [
+    {
+      "src": "/shuttle-mark.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
