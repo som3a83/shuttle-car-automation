@@ -426,7 +426,7 @@ describe('Shuttle Car Automation V10', () => {
     expect(screen.getByText(/Privacy & data handling/i)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Read the full privacy policy/i })).toHaveAttribute(
       'href',
-      'https://github.com/som3a83/shuttle-car-automation/blob/main/PRIVACY_POLICY.md'
+      'https://github.com/som3a83/shuttle-car-automation/blob/copilot/complete-shuttle-automation-v6/PRIVACY_POLICY.md'
     );
   });
 
