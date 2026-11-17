@@ -7,7 +7,7 @@ import {
   remove,
   set,
   type StorageKey
-} from '../index';
+} from '../../index';
 import {
   AUDIT_ARCHIVE_PENDING_LEGACY_KEY,
   EXCLUDED_SESSION_STORAGE_KEY,
