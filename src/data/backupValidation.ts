@@ -191,6 +191,39 @@ export function validateOperationalBackup(input: unknown): BackupValidationResul
     return { ok: false, error: 'Duplicate or empty record IDs were found in the backup.' };
   }
 
+  const shuttleById = new Map((shuttles as Shuttle[]).map((item) => [item.id, item]));
+  const assignedTo = new Set<string>();
+  for (const battery of batteries as Battery[]) {
+    const target = battery.assignment.trim();
+    if (!target || ['Unassigned', 'Not assigned', 'Not recorded'].includes(target)) continue;
+    const shuttle = shuttleById.get(target);
+    if (!shuttle || shuttle.archivedAt) {
+      return { ok: false, error: `Battery ${battery.id} refers to a missing or archived shuttle.` };
+    }
+    if (assignedTo.has(target)) {
+      return { ok: false, error: `More than one battery is assigned to shuttle ${target}.` };
+    }
+    assignedTo.add(target);
+  }
+  for (const shuttle of shuttles as Shuttle[]) {
+    const installed = shuttle.installedBattery.trim();
+    if (!installed || installed === 'Not recorded') continue;
+    const battery = (batteries as Battery[]).find((item) => item.id === installed && !item.archivedAt);
+    if (!battery || battery.assignment !== shuttle.id || shuttle.archivedAt) {
+      return { ok: false, error: `Shuttle ${shuttle.id} has an inconsistent installed-battery reference.` };
+    }
+  }
+  for (const fault of faults as Fault[]) {
+    if (!shuttleById.has(fault.shuttleId)) {
+      return { ok: false, error: `Fault ${fault.id} refers to an unknown shuttle.` };
+    }
+  }
+  for (const job of jobs as MaintenanceJob[]) {
+    if (!shuttleById.has(job.shuttleId)) {
+      return { ok: false, error: `Work order ${job.id} refers to an unknown shuttle.` };
+    }
+  }
+
   const optionalArrays: Array<[string, (item: unknown) => boolean]> = [
     ['notifications', isNotification],
     ['dailyReports', isDailyReport],
