@@ -148,7 +148,7 @@ describe('Shuttle Car Automation V10', () => {
     await user.click(screen.getByRole('button', { name: /Traction wheels/i }));
     expect(screen.getByText(/SELECTED COMPONENT INSPECTOR/i)).toBeInTheDocument();
     expect(screen.getByText(/Check tread wear/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Drawing zoom/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Orthographic zoom/i)).toBeInTheDocument();
   });
 
   it('shows a traceable manufacturer reference and does not invent the installed cold-room rating', async () => {

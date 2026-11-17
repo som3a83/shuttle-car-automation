@@ -26,7 +26,7 @@ export default function Shuttle3DViewer({
 }: Shuttle3DViewerProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
-  const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
+  const cameraRef = useRef<THREE.OrthographicCamera | null>(null);
   const rootRef = useRef<THREE.Group | null>(null);
   const partGroupsRef = useRef<Partial<Record<EngineeringPart, THREE.Group>>>({});
   const wheelMeshesRef = useRef<THREE.Mesh[]>([]);
@@ -65,7 +65,8 @@ export default function Shuttle3DViewer({
 
     const scene = new THREE.Scene();
     sceneRef.current = scene;
-    const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 100);
+    const camera = new THREE.OrthographicCamera(-8, 8, 5, -5, 0.1, 100);
+    camera.zoom = zoom;
     cameraRef.current = camera;
     const root = new THREE.Group();
     root.rotation.set(0.12, -0.48, 0);
@@ -296,10 +297,8 @@ export default function Shuttle3DViewer({
     };
     const onWheel = (event: WheelEvent) => {
       event.preventDefault();
-      camera.position.multiplyScalar(event.deltaY > 0 ? 1.08 : 0.92);
-      const distance = camera.position.length();
-      if (distance < 7) camera.position.setLength(7);
-      if (distance > 24) camera.position.setLength(24);
+      camera.zoom = THREE.MathUtils.clamp(camera.zoom * (event.deltaY > 0 ? 0.92 : 1.08), 0.65, 1.8);
+      camera.updateProjectionMatrix();
       camera.lookAt(0, 0, 0);
     };
     renderer.domElement.addEventListener('pointerdown', onPointerDown);
@@ -312,7 +311,12 @@ export default function Shuttle3DViewer({
       const width = Math.max(1, host.clientWidth);
       const height = Math.max(1, host.clientHeight);
       renderer.setSize(width, height, false);
-      camera.aspect = width / height;
+      const frustumHeight = 5.4;
+      const aspect = width / height;
+      camera.left = -frustumHeight * aspect;
+      camera.right = frustumHeight * aspect;
+      camera.top = frustumHeight;
+      camera.bottom = -frustumHeight;
       camera.updateProjectionMatrix();
     };
     const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(resize) : null;
@@ -355,7 +359,8 @@ export default function Shuttle3DViewer({
   useEffect(() => {
     const camera = cameraRef.current;
     if (!camera) return;
-    const distance = 13 / zoom;
+    const distance = 13;
+    camera.zoom = zoom;
     const positions: Record<ModelView, THREE.Vector3> = {
       iso: new THREE.Vector3(distance * 0.78, distance * 0.62, distance * 0.78),
       side: new THREE.Vector3(0, distance * 0.25, distance),
@@ -364,13 +369,15 @@ export default function Shuttle3DViewer({
     };
     camera.position.copy(positions[view]);
     camera.lookAt(0, 0, 0);
+    camera.updateProjectionMatrix();
   }, [view, zoom]);
 
   useEffect(() => {
     rootRef.current?.rotation.set(0.12, -0.48, 0);
     const camera = cameraRef.current;
     if (camera) {
-      const distance = 13 / zoom;
+      const distance = 13;
+      camera.zoom = zoom;
       const positions: Record<ModelView, THREE.Vector3> = {
         iso: new THREE.Vector3(distance * 0.78, distance * 0.62, distance * 0.78),
         side: new THREE.Vector3(0, distance * 0.25, distance),
@@ -379,6 +386,7 @@ export default function Shuttle3DViewer({
       };
       camera.position.copy(positions[view]);
       camera.lookAt(0, 0, 0);
+      camera.updateProjectionMatrix();
     }
   }, [resetKey]);
 
@@ -423,6 +431,16 @@ export default function Shuttle3DViewer({
         <span><i/>LOAD DECK / FRAME</span><span><i/>DRIVE TRAIN</span><span><i/>TRACTION SET</span><span><i/>ENERGY TRAY</span><span><i/>SAFETY SENSORS</span>
       </div>
       <div className="shuttle-cad-crosshair" aria-hidden="true">+</div>
+      <svg className="shuttle-dimension-overlay" viewBox="0 0 1000 600" preserveAspectRatio="none" aria-hidden="true">
+        <defs><marker id="shuttle-dim-arrow" markerWidth="7" markerHeight="7" refX="3.5" refY="3.5" orient="auto-start-reverse"><path d="M0,0 L7,3.5 L0,7" fill="none" stroke="#83aabd" strokeWidth="1"/></marker></defs>
+        <g fill="none" stroke="#83aabd" strokeWidth="1.2" opacity=".82">
+          <path d="M170 500 V535 M830 500 V535 M170 526 H830" markerStart="url(#shuttle-dim-arrow)" markerEnd="url(#shuttle-dim-arrow)"/>
+          <path d="M860 190 H890 M860 420 H890 M880 190 V420" markerStart="url(#shuttle-dim-arrow)" markerEnd="url(#shuttle-dim-arrow)"/>
+        </g>
+      </svg>
+      <div className="shuttle-dimension-label shuttle-dimension-length">6.60 MU · FRAME LENGTH</div>
+      <div className="shuttle-dimension-label shuttle-dimension-width">3.10 MU · DECK WIDTH</div>
+      <div className="shuttle-cad-stamp">ORTHOGRAPHIC / {view.toUpperCase()} / REF GEOMETRY</div>
       {status === 'Unknown' && <div className="three-viewer-unknown">EQUIPMENT STATE · UNKNOWN</div>}
     </div>
   );

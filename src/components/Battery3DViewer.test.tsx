@@ -17,5 +17,8 @@ describe('Battery3DViewer WebGL fallback', () => {
     expect(await screen.findByTestId('battery-schematic-fallback')).toBeInTheDocument();
     expect(screen.getByText('LITHIUM PACK · CONCEPTUAL INTERNAL ASSEMBLY')).toBeInTheDocument();
     expect(screen.getByText(battery.id)).toBeInTheDocument();
+    expect(screen.getByText('ORTHOGRAPHIC / INTERNAL REFERENCE GEOMETRY')).toBeInTheDocument();
+    expect(screen.getByText('6.80 MU · PACK LENGTH')).toBeInTheDocument();
+    expect(screen.getByText('3.70 MU · PACK WIDTH')).toBeInTheDocument();
   });
 });
