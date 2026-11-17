@@ -25,7 +25,6 @@ describe('Shuttle3DViewer WebGL fallback', () => {
     expect(screen.getByText('STATIC ENGINEERING VIEW')).toBeInTheDocument();
     expect(screen.getByText('EQUIPMENT STATE · UNKNOWN')).toBeInTheDocument();
     expect(screen.getByText('ORTHOGRAPHIC / ISO / REF GEOMETRY')).toBeInTheDocument();
-    expect(screen.getByText('6.60 MU · FRAME LENGTH')).toBeInTheDocument();
-    expect(screen.getByText('3.10 MU · DECK WIDTH')).toBeInTheDocument();
+    expect(screen.getByText('REF 660 × 310 mm · L × W')).toBeInTheDocument();
   });
 });
