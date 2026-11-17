@@ -460,6 +460,11 @@ function App() {
   };
   const changeFaultStatus = (id: string, status: Fault['status']) => {
     const current = faults.find(item => item.id === id);
+    if (!current) return;
+    if (status === 'Resolved' && !current.correctiveAction?.trim()) {
+      showToast(language === 'ar' ? 'لا يمكن حل العطل دون توثيق الإجراء التصحيحي' : 'A corrective action must be documented before this fault can be resolved.');
+      return;
+    }
     setFaults(prev => prev.map(item => item.id === id ? { ...item, status } : item));
     if (current && current.status !== status) {
       pushNotification(
@@ -483,6 +488,13 @@ function App() {
 
   const addShuttle = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const requestedSerial = newAsset.serialNumber.trim().toLocaleLowerCase();
+    const duplicateSerial = requestedSerial && requestedSerial !== 'not recorded' &&
+      shuttles.some((item) => !item.archivedAt && item.serialNumber.trim().toLocaleLowerCase() === requestedSerial);
+    if (duplicateSerial) {
+      showToast(language === 'ar' ? 'الرقم المسلسل مسجل بالفعل لجهاز نشط' : 'This manufacturer serial number is already registered to an active shuttle.');
+      return;
+    }
     const id = 'SC-' + String(Math.max(0, ...shuttles.map(s => Number(s.id.replace('SC-', '')) || 0)) + 1).padStart(2, '0');
     const record: Shuttle = {
       id, manufacturer: newAsset.manufacturer.trim() || 'Other', model: newAsset.model.trim() || 'Not recorded',
@@ -517,10 +529,17 @@ function App() {
   const saveShuttleEdit = (event: React.FormEvent<HTMLFormElement>, id: string) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
+    const nextSerial = String(form.get('serialNumber') || 'Not recorded').trim() || 'Not recorded';
+    const duplicateSerial = nextSerial.toLocaleLowerCase() !== 'not recorded' &&
+      shuttles.some((item) => item.id !== id && !item.archivedAt && item.serialNumber.trim().toLocaleLowerCase() === nextSerial.toLocaleLowerCase());
+    if (duplicateSerial) {
+      showToast(language === 'ar' ? 'الرقم المسلسل مستخدم بالفعل لجهاز آخر' : 'This manufacturer serial number is already assigned to another active shuttle.');
+      return;
+    }
     const patch: Partial<Shuttle> = {
       manufacturer: String(form.get('manufacturer') || 'Other').trim(),
       model: String(form.get('model') || 'Not recorded').trim() || 'Not recorded',
-      serialNumber: String(form.get('serialNumber') || 'Not recorded').trim() || 'Not recorded',
+      serialNumber: nextSerial,
       hardwareVersion: String(form.get('hardwareVersion') || 'Not recorded').trim() || 'Not recorded',
       firmwareVersion: String(form.get('firmwareVersion') || 'Not recorded').trim() || 'Not recorded',
       warehouseZone: String(form.get('zone') || 'Not recorded').trim() || 'Not recorded',
