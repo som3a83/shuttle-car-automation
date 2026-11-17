@@ -52,6 +52,8 @@ jobs:
           npm install --no-audit --no-fund
           npx tsc -b
           npm test
+          npm run check:release
+          npm run check:release
           npm run assets:render
           npm run build
 
