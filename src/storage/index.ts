@@ -32,6 +32,39 @@ export interface StorageSchema {
 }
 export type StorageKey = keyof StorageSchema;
 export type StorageMode = 'indexeddb' | 'legacy-fallback' | 'readonly-recovery';
+export type StorageModePreference = 'legacy' | 'indexeddb' | 'auto';
+export const STORAGE_MODE_KEY = 'shuttle-car-automation:storage-mode-preference';
+
+let cachedStorageModePreference: StorageModePreference | null = null;
+
+/** Read the requested backend once per application session. Invalid or unavailable preferences default safely to legacy. */
+export function getStorageModePreference(): StorageModePreference {
+  if (cachedStorageModePreference !== null) return cachedStorageModePreference;
+  try {
+    const raw = localStorage.getItem(STORAGE_MODE_KEY);
+    cachedStorageModePreference = raw === 'legacy' || raw === 'indexeddb' || raw === 'auto' ? raw : 'legacy';
+  } catch {
+    cachedStorageModePreference = 'legacy';
+  }
+  return cachedStorageModePreference;
+}
+
+/** Persist a preference for the next startup; the active engine never changes mid-session. */
+export function setStorageModePreference(mode: StorageModePreference): void {
+  if (mode !== 'legacy' && mode !== 'indexeddb' && mode !== 'auto') {
+    throw new TypeError('Unsupported storage mode preference.');
+  }
+  try {
+    if (typeof localStorage === 'undefined') throw new Error('Local storage is unavailable.');
+    localStorage.setItem(STORAGE_MODE_KEY, mode);
+    if (cachedStorageModePreference === null) cachedStorageModePreference = mode;
+  } catch (reason) {
+    throw new StorageError({
+      code: 'STORAGE_UNAVAILABLE',
+      message: reason instanceof Error ? reason.message : 'The storage mode preference could not be saved.'
+    });
+  }
+}
 export type StorageErrorCode =
   | 'STORAGE_UNAVAILABLE' | 'STORAGE_QUOTA_EXCEEDED' | 'STORAGE_CORRUPT'
   | 'STORAGE_SCHEMA_UNSUPPORTED' | 'STORAGE_CONFLICT'
@@ -439,13 +472,41 @@ async function engine(): Promise<StorageEngine> {
   if (injectedEngine) return injectedEngine;
   if (!productionEnginePromise) {
     productionEnginePromise = (async () => {
-      try { const db = new IndexedDbEngine(); await db.getMode(); return db; }
-      catch { try { if (typeof localStorage !== 'undefined') { void localStorage.length; return new LegacyFallbackEngine(); } } catch { /* unavailable */ } return new ReadonlyRecoveryEngine(); }
+      const preference = getStorageModePreference();
+      if (preference === 'legacy') return new LegacyFallbackEngine();
+      if (preference === 'indexeddb') {
+        try {
+          const db = new IndexedDbEngine();
+          await db.getMode();
+          return db;
+        } catch (reason) {
+          throw new StorageError({
+            code: 'STORAGE_UNAVAILABLE',
+            message: reason instanceof Error
+              ? `IndexedDB was explicitly requested but is unavailable: ${reason.message}`
+              : 'IndexedDB was explicitly requested but is unavailable.'
+          });
+        }
+      }
+      // 'auto' preserves the original IndexedDB-first, legacy-fallback behavior.
+      try {
+        const db = new IndexedDbEngine();
+        await db.getMode();
+        return db;
+      } catch {
+        try {
+          if (typeof localStorage !== 'undefined') {
+            void localStorage.length;
+            return new LegacyFallbackEngine();
+          }
+        } catch { /* unavailable */ }
+        return new ReadonlyRecoveryEngine();
+      }
     })();
   }
   return productionEnginePromise;
 }
-export function __resetStorageForTesting(): void { injectedEngine = null; productionEnginePromise = null; }
+export function __resetStorageForTesting(): void { injectedEngine = null; productionEnginePromise = null; cachedStorageModePreference = null; }
 
 /**
  * Test-only cleanup: close every live IndexedDB connection opened by this module.

@@ -1,14 +1,67 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import App from './App';
-import { initialShuttles } from './data/mockData';
+import App, { type AppInitialData } from './App';
+import { defaultSettings, initialBatteries, initialConnections, initialFaults, initialMaintenance, initialNotifications, initialShuttles } from './data/mockData';
 import { beforeEach, describe, it, expect, vi } from 'vitest';
 import '@testing-library/jest-dom/vitest';
-import { DEFAULT_CUSTOMIZATION } from './data/applicationCustomization';
+import { DEFAULT_CUSTOMIZATION, loadCustomization } from './data/applicationCustomization';
 import { webcrypto } from 'node:crypto';
-import { authenticateLocalAccount, createLocalAccount } from './security/localAuth';
+import { authenticateLocalAccount, createLocalAccount, listLocalAccounts, readLocalSession } from './security/localAuth';
+import { readOperationalStorageIssues } from './security/operationalStorage';
 
 const testCrypto = webcrypto as unknown as Crypto;
+
+function readTestValue<T>(key: string, fallback: T): T {
+  try {
+    const raw = window.localStorage.getItem(`shuttle-car-automation-v7:${key}`);
+    if (raw === null) return fallback;
+    const parsed: unknown = JSON.parse(raw);
+    if (key === 'shuttles' && Array.isArray(parsed)) {
+      return parsed.map((value) => {
+        if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
+        const shuttle = value as { model?: string; serialNumber?: string; connectivity?: string; status?: string; operatingHours?: number | null; operatingCycles?: number | null };
+        const placeholder = shuttle.model === 'Not recorded' && shuttle.serialNumber === 'Not recorded' &&
+          shuttle.connectivity === 'UNKNOWN' && shuttle.status === 'Unknown';
+        return placeholder ? {
+          ...shuttle,
+          operatingHours: shuttle.operatingHours === 0 ? null : shuttle.operatingHours,
+          operatingCycles: shuttle.operatingCycles === 0 ? null : shuttle.operatingCycles
+        } : shuttle;
+      }) as T;
+    }
+    return parsed as T;
+  } catch {
+    return fallback;
+  }
+}
+
+function getTestInitialData(): AppInitialData {
+  const session = readLocalSession(window.sessionStorage, window.localStorage);
+  listLocalAccounts(window.localStorage);
+  return {
+    language: readTestValue('language', 'en'),
+    theme: readTestValue('theme', 'dark'),
+    customization: loadCustomization(window.localStorage),
+    currentUser: session
+      ? { id: session.accountId, name: session.name, role: session.role, email: session.email, isAuthenticated: true, mustChangePassword: session.mustChangePassword }
+      : { id: 'local-guest', name: 'Local guest', role: 'Viewer', email: '', isAuthenticated: false },
+    shuttles: readTestValue('shuttles', initialShuttles),
+    batteries: readTestValue('batteries', initialBatteries),
+    faults: readTestValue('faults', initialFaults),
+    jobs: readTestValue('maintenance', initialMaintenance),
+    connections: readTestValue('connections', initialConnections),
+    notifications: readTestValue('notifications', initialNotifications),
+    settings: readTestValue('settings', defaultSettings),
+    sidebarCollapsed: readTestValue('sidebarCollapsed', false),
+    storageIssues: readOperationalStorageIssues(window.localStorage),
+    dailyReports: readTestValue('dailyReports', []),
+    shifts: readTestValue('shifts', [])
+  };
+}
+
+function renderApp() {
+  return render(<App initialData={getTestInitialData()} />);
+}
 
 describe('Shuttle Car Automation V10', () => {
   beforeEach(async () => {
@@ -31,7 +84,7 @@ describe('Shuttle Car Automation V10', () => {
   });
 
   it('renders the industrial dashboard and current application release label', () => {
-    render(<App />);
+    renderApp();
     expect(screen.getByText(/Total shuttle cars/i)).toBeInTheDocument();
     expect(screen.getByText(/Running shuttles/i)).toBeInTheDocument();
     expect(screen.getByText(/System communication status/i)).toBeInTheDocument();
@@ -40,7 +93,7 @@ describe('Shuttle Car Automation V10', () => {
 
   it('keeps protected destinations unavailable when the local session is missing', () => {
     window.sessionStorage.clear();
-    render(<App />);
+    renderApp();
     expect(screen.queryByRole('button', { name: /Battery Management/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Maintenance Management/i })).not.toBeInTheDocument();
     expect(screen.getByRole('status')).toHaveTextContent(/DEMO MODE/i);
@@ -48,31 +101,31 @@ describe('Shuttle Car Automation V10', () => {
 
   it('switches to Arabic and updates interface direction', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    renderApp();
     await user.click(screen.getByRole('button', { name: /Arabic/i }));
     expect(screen.getAllByText(/لوحة القيادة/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/إجمالي عربات النقل/i)).toBeInTheDocument();
   });
   it('clearly identifies the interface as a demo without live equipment access', () => {
-    render(<App />);
+    renderApp();
     expect(screen.getByRole('status')).toHaveTextContent(/DEMO MODE/i);
     expect(screen.getByRole('status')).toHaveTextContent(/No live equipment connection/i);
   });
 
   it('persists the selected appearance across a reload', async () => {
     const user = userEvent.setup();
-    const firstRender = render(<App />);
+    const firstRender = renderApp();
     await user.click(screen.getByRole('button', { name: /Light mode/i }));
     expect(firstRender.container.querySelector('.app-shell')).toHaveClass('light');
     firstRender.unmount();
 
-    const secondRender = render(<App />);
+    const secondRender = renderApp();
     expect(secondRender.container.querySelector('.app-shell')).toHaveClass('light');
   });
 
   it('allows manual battery status updates in the battery workspace', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    renderApp();
     await user.click(screen.getAllByRole('button', { name: /Battery Management/i })[0]);
     await user.click(screen.getByRole('button', { name: /Set charging/i }));
     await waitFor(() => expect(screen.getAllByText('Charging').length).toBeGreaterThan(0));
@@ -80,7 +133,7 @@ describe('Shuttle Car Automation V10', () => {
 
   it('does not allow a fault to be resolved without a corrective action', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    renderApp();
     await user.click(screen.getByRole('button', { name: /Fault & Diagnostics/i }));
     const resolveButtons = screen.getAllByRole('button', { name: /Resolve fault/i });
     expect(resolveButtons.some((button) => (button as HTMLButtonElement).disabled)).toBe(true);
@@ -88,7 +141,7 @@ describe('Shuttle Car Automation V10', () => {
 
   it('requires and records corrective action before resolving a fault', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    renderApp();
     await user.click(screen.getByRole('button', { name: /Fault & Diagnostics/i }));
     const actionFields = screen.getAllByPlaceholderText('Document corrective action');
     await user.type(actionFields[0], 'Replaced damaged sensor and verified detection in a controlled test.');
@@ -105,7 +158,7 @@ describe('Shuttle Car Automation V10', () => {
 
   it('navigates into the engineering workspace and changes drawing views', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    renderApp();
     await user.click(screen.getAllByRole('button', { name: /Engineering Visualization/i })[0]);
     expect(await screen.findByText(/ISOMETRIC ASSEMBLY/i)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /^Top$/i }));
@@ -115,7 +168,7 @@ describe('Shuttle Car Automation V10', () => {
 
   it('provides direct access to editable parametric CAD source files', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    renderApp();
     await user.click(screen.getAllByRole('button', { name: /Engineering Visualization/i })[0]);
     const sourceLink = await screen.findByRole('link', { name: /Open editable parametric CAD source/i });
     expect(sourceLink).toHaveAttribute('href', 'https://github.com/som3a83/shuttle-car-automation/tree/main/cad');
@@ -124,7 +177,7 @@ describe('Shuttle Car Automation V10', () => {
 
   it('switches between fleet, battery, fault and maintenance workspaces', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    renderApp();
     await user.click(screen.getAllByRole('button', { name: /Fleet Control Center/i })[0]);
     expect(screen.getByText(/Register new equipment/i)).toBeInTheDocument();
     await user.click(screen.getAllByRole('button', { name: /Battery Management/i })[0]);
@@ -137,7 +190,7 @@ describe('Shuttle Car Automation V10', () => {
 
   it('uses address-based navigation so modules can be opened, refreshed and revisited', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    renderApp();
     await user.click(screen.getAllByRole('button', { name: /Fleet Control Center/i })[0]);
     expect(window.location.hash).toBe('#/fleet');
     expect(screen.getAllByRole('button', { name: /Fleet Control Center/i })[0]).toHaveAttribute('aria-current', 'page');
@@ -147,14 +200,14 @@ describe('Shuttle Car Automation V10', () => {
   });
 
   it('provides direct mobile destinations for the main operating workspaces', () => {
-    render(<App />);
+    renderApp();
     expect(screen.getByRole('navigation', { name: /Quick navigation/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /More/i })).toBeInTheDocument();
   });
 
   it('allows the operator to inspect individual engineering assemblies', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    renderApp();
     await user.click(screen.getAllByRole('button', { name: /Engineering Visualization/i })[0]);
     await user.click(screen.getByRole('button', { name: /Traction wheels/i }));
     expect(screen.getByText(/SELECTED COMPONENT INSPECTOR/i)).toBeInTheDocument();
@@ -164,7 +217,7 @@ describe('Shuttle Car Automation V10', () => {
 
   it('shows a traceable manufacturer reference and does not invent the installed cold-room rating', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    renderApp();
     await user.click(screen.getAllByRole('button', { name: /Engineering Visualization/i })[0]);
     expect(screen.getByText(/ISAT pallet shuttle satellite — reference family/i)).toBeInTheDocument();
     expect(screen.getByText(/exact configuration on SC-01 to SC-03 is not verified/i)).toBeInTheDocument();
@@ -177,7 +230,7 @@ describe('Shuttle Car Automation V10', () => {
 
   it('opens the shift workspace and persists completed handover records in local storage', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    renderApp();
     await user.click(screen.getAllByRole('button', { name: /Shift Operations & Handover/i })[0]);
     expect(window.location.hash).toBe('#/shifts');
     await user.type(screen.getByLabelText(/Shift supervisor/i), 'Operations Supervisor');
@@ -199,14 +252,14 @@ describe('Shuttle Car Automation V10', () => {
 
   it('opens a module directly from its URL hash', () => {
     window.history.replaceState({ tab: 'batteries' }, '', '#/batteries');
-    render(<App />);
+    renderApp();
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Battery Management');
     expect(window.location.hash).toBe('#/batteries');
   });
 
   it('synchronizes the displayed module when browser history changes', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    renderApp();
     await user.click(screen.getAllByRole('button', { name: /Fleet Control Center/i })[0]);
     await user.click(screen.getAllByRole('button', { name: /Engineering Visualization/i })[0]);
     act(() => {
@@ -218,7 +271,7 @@ describe('Shuttle Car Automation V10', () => {
 
   it('opens remaining modules from the mobile More drawer and closes it after navigation', async () => {
     const user = userEvent.setup();
-    const { container } = render(<App />);
+    const { container } = renderApp();
     await user.click(screen.getByRole('button', { name: /More/i }));
     expect(container.querySelector('.sidebar')).toHaveClass('mobile-open');
     await user.click(screen.getByRole('button', { name: /AI Technical Assistant/i }));
@@ -229,7 +282,7 @@ describe('Shuttle Car Automation V10', () => {
 
   it('creates a local notification when a fault report is submitted', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    renderApp();
     await user.click(screen.getAllByRole('button', { name: /Fault & Diagnostics/i })[0]);
     await user.type(screen.getByLabelText(/Fault title/i), 'Photoelectric sensor interruption');
     await user.type(screen.getByLabelText(/Observed symptom/i), 'Sensor signal was interrupted during inspection.');
@@ -241,7 +294,7 @@ describe('Shuttle Car Automation V10', () => {
 
   it('allows a local notification to be dismissed', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    renderApp();
     await user.click(screen.getAllByRole('button', { name: /Battery Management/i })[0]);
     await user.click(screen.getByRole('button', { name: /Set available/i }));
     await user.click(screen.getAllByRole('button', { name: /Notifications/i })[0]);
@@ -252,7 +305,7 @@ describe('Shuttle Car Automation V10', () => {
 
   it('respects the master notification preference', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    renderApp();
     await user.click(screen.getAllByRole('button', { name: /System Settings/i })[0]);
     await user.click(screen.getByRole('checkbox', { name: /Enable local notifications/i }));
     await user.click(screen.getAllByRole('button', { name: /Fault & Diagnostics/i })[0]);
@@ -265,12 +318,12 @@ describe('Shuttle Car Automation V10', () => {
 
   it('persists notification records across an application remount', async () => {
     const user = userEvent.setup();
-    const first = render(<App />);
+    const first = renderApp();
     await user.click(screen.getAllByRole('button', { name: /Battery Management/i })[0]);
     await user.click(screen.getByRole('button', { name: /Set available/i }));
     first.unmount();
 
-    render(<App />);
+    renderApp();
     await user.click(screen.getAllByRole('button', { name: /Notifications/i })[0]);
     expect(screen.getByText('Battery status changed')).toBeInTheDocument();
     expect(screen.getByText(/BAT-ACME-01: Fault → Available/)).toBeInTheDocument();
@@ -278,7 +331,7 @@ describe('Shuttle Car Automation V10', () => {
 
   it('clears the complete local notification list', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    renderApp();
     await user.click(screen.getAllByRole('button', { name: /Battery Management/i })[0]);
     await user.click(screen.getByRole('button', { name: /Set available/i }));
     await user.click(screen.getAllByRole('button', { name: /Notifications/i })[0]);
@@ -288,7 +341,7 @@ describe('Shuttle Car Automation V10', () => {
 
   it('creates and advances a maintenance work order with matching local event records', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    renderApp();
     await user.click(screen.getAllByRole('button', { name: /Maintenance Management/i })[0]);
     await user.type(screen.getByLabelText(/Work order title/i), 'Monthly rail inspection');
     await user.type(screen.getByLabelText(/Scheduled date/i), '2026-11-20');
@@ -314,7 +367,7 @@ describe('Shuttle Car Automation V10', () => {
 
   it('registers a new fleet unit without fabricating manufacturer identity data', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    renderApp();
     await user.click(screen.getAllByRole('button', { name: /Fleet Control Center/i })[0]);
     await user.selectOptions(screen.getByLabelText(/^Manufacturer$/i), 'Craftsman');
     await user.type(screen.getByLabelText(/Operating zone/i), 'Cold room test zone');
@@ -343,7 +396,7 @@ describe('Shuttle Car Automation V10', () => {
       JSON.stringify(legacyShuttles)
     );
 
-    render(<App />);
+    renderApp();
 
     const saved = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:shuttles') || '[]') as Array<{
       id: string;
@@ -356,7 +409,7 @@ describe('Shuttle Car Automation V10', () => {
 
   it('keeps all thirteen named application destinations reachable from the main navigation', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    renderApp();
     const destinations = [
       ['Dashboard', 'Dashboard'],
       ['Fleet Control Center', 'Fleet Control Center'],
@@ -380,7 +433,7 @@ describe('Shuttle Car Automation V10', () => {
 
   it('edits a shuttle identity record and persists the updated model details', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    renderApp();
     await user.click(screen.getAllByRole('button', { name: /Fleet Control Center/i })[0]);
     await user.click(screen.getByRole('button', { name: /Edit equipment/i }));
     await user.clear(screen.getAllByLabelText(/^Model$/i)[0]);
@@ -398,7 +451,7 @@ describe('Shuttle Car Automation V10', () => {
 
   it('archives a shuttle without deleting its history and supports restoring it', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    renderApp();
     await user.click(screen.getAllByRole('button', { name: /Fleet Control Center/i })[0]);
     await user.click(screen.getByRole('button', { name: /Archive device/i }));
     await user.click(screen.getByRole('button', { name: /Confirm archive/i }));
@@ -414,7 +467,7 @@ describe('Shuttle Car Automation V10', () => {
 
   it('blocks shuttle archiving while a linked fault is unresolved', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    renderApp();
     await user.click(screen.getAllByRole('button', { name: /Fleet Control Center/i })[0]);
     await user.click(screen.getByRole('button', { name: /SC-04 Craftsman/i }));
     await user.click(screen.getByRole('button', { name: /Archive device/i }));
@@ -431,7 +484,7 @@ describe('Shuttle Car Automation V10', () => {
         : item);
     window.localStorage.setItem('shuttle-car-automation-v7:shuttles', JSON.stringify(shuttles));
     const user = userEvent.setup();
-    render(<App />);
+    renderApp();
     await user.click(screen.getAllByRole('button', { name: /Fleet Control Center/i })[0]);
     await user.click(screen.getByRole('button', { name: /Show archived devices/i }));
     await user.click(screen.getAllByRole('button', { name: /Restore/i })[0]);
@@ -442,7 +495,7 @@ describe('Shuttle Car Automation V10', () => {
 
   it('registers and assigns a new battery to an active shuttle', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    renderApp();
     await user.click(screen.getAllByRole('button', { name: /Battery Management/i })[0]);
     await user.type(screen.getByLabelText(/^Manufacturer$/i), 'ACME');
     await user.type(screen.getByLabelText(/^Model$/i), 'Pack test A');
@@ -465,7 +518,7 @@ describe('Shuttle Car Automation V10', () => {
 
   it('saves manually entered battery readings without marking them as live telemetry', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    renderApp();
     await user.click(screen.getAllByRole('button', { name: /Battery Management/i })[0]);
     await user.click(screen.getByRole('button', { name: /Edit battery details/i }));
     await user.clear(screen.getByLabelText(/SOC %/i));
@@ -478,14 +531,14 @@ describe('Shuttle Car Automation V10', () => {
 
   it('generates and retains a daily equipment status snapshot', async () => {
     const user = userEvent.setup();
-    const first = render(<App />);
+    const first = renderApp();
     await user.click(screen.getAllByRole('button', { name: /Reports Center/i })[0]);
     await user.click(screen.getByRole('button', { name: /Generate today.s report/i }));
     await waitFor(() => expect(screen.getByText(/LATEST SAVED DAILY REPORT/i)).toBeInTheDocument());
     expect(screen.getByRole('button', { name: /Download daily report CSV/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Download daily report Excel/i })).toBeInTheDocument();
     first.unmount();
-    render(<App />);
+    renderApp();
     await user.click(screen.getAllByRole('button', { name: /Reports Center/i })[0]);
     expect(screen.getByText(/Daily report history/i)).toBeInTheDocument();
     const reports = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:dailyReports') || '[]') as Array<{shuttleCount:number;verifiedTelemetryCount:number}>;
@@ -494,7 +547,7 @@ describe('Shuttle Car Automation V10', () => {
 
   it('deletes only the selected daily report snapshot after confirmation', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    renderApp();
     await user.click(screen.getAllByRole('button', { name: /Reports Center/i })[0]);
     await user.click(screen.getByRole('button', { name: /Generate today.s report/i }));
     await waitFor(() => expect(screen.getByText(/LATEST SAVED DAILY REPORT/i)).toBeInTheDocument());
@@ -515,7 +568,7 @@ describe('Shuttle Car Automation V10', () => {
 
   it('provides working in-app back and home navigation controls', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    renderApp();
     await user.click(screen.getAllByRole('button', { name: /Fleet Control Center/i })[0]);
     await user.click(screen.getAllByRole('button', { name: /Engineering Visualization/i })[0]);
     await user.click(screen.getByRole('button', { name: /Go back/i }));
@@ -526,7 +579,7 @@ describe('Shuttle Car Automation V10', () => {
 
   it('collapses and expands the desktop engineering sidebar and remembers the choice locally', async () => {
     const user = userEvent.setup();
-    const { container } = render(<App />);
+    const { container } = renderApp();
     const shell = container.querySelector('.app-shell');
     expect(shell).not.toHaveClass('sidebar-collapsed');
 
@@ -542,7 +595,7 @@ describe('Shuttle Car Automation V10', () => {
 
   it('opens system settings directly from the fixed workspace controls', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    renderApp();
     await user.click(screen.getByRole('button', { name: /^Settings$/i }));
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('System Settings');
     expect(screen.getByText(/Backup and restore/i)).toBeInTheDocument();
@@ -556,7 +609,7 @@ describe('Shuttle Car Automation V10', () => {
 
   it('applies saved navigation labels and dashboard widget visibility to the live application', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    renderApp();
     const customization = JSON.parse(JSON.stringify(DEFAULT_CUSTOMIZATION)) as typeof DEFAULT_CUSTOMIZATION;
     const reportsEntry = customization.navigation.find((item) => item.id === 'reports');
     const batteryWidget = customization.dashboard.find((item) => item.id === 'battery-status');
@@ -579,7 +632,7 @@ describe('Shuttle Car Automation V10', () => {
   });
 
   it('removes disabled modules from navigation without deleting application records', () => {
-    render(<App />);
+    renderApp();
     const customization = JSON.parse(JSON.stringify(DEFAULT_CUSTOMIZATION)) as typeof DEFAULT_CUSTOMIZATION;
     const aiModule = customization.modules.find((item) => item.id === 'ai');
     if (!aiModule) throw new Error('Expected AI module preference is missing.');
@@ -594,7 +647,7 @@ describe('Shuttle Car Automation V10', () => {
   });
 
   it('applies compact sizing to the fleet dashboard widget', () => {
-    const { container } = render(<App />);
+    const { container } = renderApp();
     const customization = JSON.parse(JSON.stringify(DEFAULT_CUSTOMIZATION)) as typeof DEFAULT_CUSTOMIZATION;
     const fleetWidget = customization.dashboard.find((item) => item.id === 'fleet-status');
     if (!fleetWidget) throw new Error('Default fleet widget preference is missing.');
@@ -611,7 +664,7 @@ describe('Shuttle Car Automation V10', () => {
 
   it('edits, resolves, archives and restores a fault report without deleting corrective action', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    renderApp();
     await user.click(screen.getAllByRole('button', { name: /Fault & Diagnostics/i })[0]);
     await user.type(screen.getByLabelText(/Fault title/i), 'Test bearing inspection');
     await user.type(screen.getByLabelText(/Observed symptom/i), 'Newly observed vibration during manual inspection');
@@ -652,7 +705,7 @@ describe('Shuttle Car Automation V10', () => {
 
   it('edits and archives completed maintenance orders but keeps unfinished orders active', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    renderApp();
     await user.click(screen.getAllByRole('button', { name: /Maintenance Management/i })[0]);
     await user.type(screen.getByLabelText(/Work order title/i), 'Drive assembly inspection');
     await user.type(screen.getByLabelText(/Scheduled date/i), '2026-11-25');
@@ -691,7 +744,7 @@ describe('Shuttle Car Automation V10', () => {
 
   it('manages connection register entries locally without claiming live connectivity', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    renderApp();
     await user.click(screen.getAllByRole('button', { name: /Device Connections/i })[0]);
     await user.type(screen.getByLabelText(/Connection name/i), 'Test vendor gateway');
     await user.selectOptions(screen.getByLabelText(/^Protocol$/i), 'OPC UA');

@@ -15,16 +15,16 @@ import { getManufacturerReference } from './data/manufacturerReferences';
 import ShiftOperations from './components/ShiftOperations';
 import LiveGatewayPanel from './components/LiveGatewayPanel';
 import SecurityCenter from './components/SecurityCenter';
-import { loadCustomization, validateCustomization, type CustomizationConfig } from './data/applicationCustomization';
+import { loadCustomizationAsync, validateCustomization, type CustomizationConfig } from './data/applicationCustomization';
 import { archiveBatteryAndDetach, assignBatteryToShuttle, restoreBatteryRecord } from './data/batteryLifecycle';
 import { validateOperationalBackup } from './data/backupValidation';
 import { archiveCompletedWorkOrder, archiveFaultRecord, restoreFaultRecord, restoreWorkOrder } from './data/recordLifecycle';
 import { buildDailyReportSheets, buildRegisterSheets, downloadXlsx } from './data/excelExport';
 import { buildDailyReportCsv } from './data/dailyReportCsv';
 import { sanitizeSpreadsheetCell } from './data/csvSafety';
-import { appendAuditRecord } from './security/auditLog';
+import { appendAuditRecordAsync, readAllAuditRecordsAsync, verifyAuditLedgerAsync } from './security/auditLog';
 import { canAccessRoute, canPerformAction, type Permission } from './security/permissions';
-import { listLocalAccounts, readLocalSession } from './security/localAuth';
+import { listLocalAccountsAsync, readLocalSessionAsync } from './security/localAuth';
 import { OPERATIONAL_COLLECTIONS, persistOperationalSnapshot, readOperationalStorageIssues } from './security/operationalStorage';
 import type {
   AppSettings,
@@ -173,15 +173,74 @@ function readLocal<T>(key: string, fallback: T): T {
   }
 }
 
-function resolveInitialUser(): (typeof users)[number] {
-  try {
-    const session = readLocalSession(sessionStorage);
-    if (session) return { id: session.accountId, name: session.name, role: session.role, email: session.email, isAuthenticated: true, mustChangePassword: session.mustChangePassword };
-    if (listLocalAccounts(localStorage).length > 0) {
-      return { id: 'local-guest', name: 'Local guest', role: 'Viewer', email: '', isAuthenticated: false };
-    }
-  } catch { /* Fail closed to the guest identity when local session data cannot be read. */ }
-  return { id: 'local-guest', name: 'Local guest', role: 'Viewer', email: '', isAuthenticated: false };
+export interface AppInitialData {
+  language: Language;
+  theme: Theme;
+  customization: CustomizationConfig;
+  currentUser: (typeof users)[number];
+  shuttles: Shuttle[];
+  batteries: Battery[];
+  faults: Fault[];
+  jobs: MaintenanceJob[];
+  connections: CommunicationEndpoint[];
+  notifications: NotificationItem[];
+  settings: AppSettings;
+  sidebarCollapsed: boolean;
+  storageIssues: string[];
+  dailyReports: DailyReportSnapshot[];
+  shifts: ShiftRecord[];
+}
+
+/**
+ * Runs only after operational bootstrap/recovery has completed. All synchronous
+ * compatibility reads are deliberately contained here, before App is mounted.
+ * TODO(2B-4): async auth/audit/customization modules still construct LegacyFallbackEngine;
+ * route those APIs through storage/index.ts before enabling IndexedDB across the whole application.
+ */
+export async function hydrateApplicationState(): Promise<AppInitialData> {
+  const [session, accounts, customization] = await Promise.all([
+    readLocalSessionAsync(sessionStorage),
+    listLocalAccountsAsync(),
+    loadCustomizationAsync()
+  ]);
+
+  const ledger = await verifyAuditLedgerAsync();
+  if (!ledger.valid) {
+    throw new Error(ledger.reason || 'Audit ledger integrity verification failed; application startup is paused.');
+  }
+  // Load the complete ledger before mounting so pending archive recovery and audit reads finish first.
+  await readAllAuditRecordsAsync();
+
+  const currentUser = session
+    ? {
+        id: session.accountId, name: session.name, role: session.role, email: session.email,
+        isAuthenticated: true, mustChangePassword: session.mustChangePassword
+      }
+    : {
+        id: 'local-guest', name: 'Local guest', role: 'Viewer' as const, email: '', isAuthenticated: false
+      };
+
+  // Accounts are intentionally read above even when there is no session: an unreadable
+  // registry must fail startup rather than silently presenting an empty guest registry.
+  void accounts;
+
+  return {
+    language: readLocal('language', 'en'),
+    theme: readLocal('theme', 'dark'),
+    customization,
+    currentUser,
+    shuttles: readLocal('shuttles', initialShuttles),
+    batteries: readLocal('batteries', initialBatteries),
+    faults: readLocal('faults', initialFaults),
+    jobs: readLocal('maintenance', initialMaintenance),
+    connections: readLocal('connections', initialConnections),
+    notifications: readLocal('notifications', initialNotifications),
+    settings: readLocal('settings', defaultSettings),
+    sidebarCollapsed: readLocal('sidebarCollapsed', false),
+    storageIssues: readOperationalStorageIssues(localStorage),
+    dailyReports: readLocal('dailyReports', []),
+    shifts: readLocal('shifts', [])
+  };
 }
 
 function Icon({ name, size = 18 }: { name: string; size?: number }) {
@@ -307,19 +366,19 @@ function BatteryPack({ battery }: { battery?: Battery }) {
   </div>;
 }
 
-function App() {
-  const [language, setLanguage] = useState<Language>(() => readLocal('language', 'en'));
-  const [theme, setTheme] = useState<Theme>(() => readLocal('theme', 'dark'));
+function App({ initialData }: { initialData: AppInitialData }) {
+  const [language, setLanguage] = useState<Language>(initialData.language);
+  const [theme, setTheme] = useState<Theme>(initialData.theme);
   const [activeTab, setActiveTab] = useState<Tab>(() => tabFromLocation());
-  const [customization, setCustomization] = useState<CustomizationConfig>(() => loadCustomization());
-  const [currentUser, setCurrentUser] = useState(resolveInitialUser);
-  const [shuttles, setShuttles] = useState<Shuttle[]>(() => readLocal('shuttles', initialShuttles));
-  const [batteries, setBatteries] = useState<Battery[]>(() => readLocal('batteries', initialBatteries));
-  const [faults, setFaults] = useState<Fault[]>(() => readLocal('faults', initialFaults));
-  const [jobs, setJobs] = useState<MaintenanceJob[]>(() => readLocal('maintenance', initialMaintenance));
-  const [connections, setConnections] = useState<CommunicationEndpoint[]>(() => readLocal('connections', initialConnections));
-  const [notifications, setNotifications] = useState(() => readLocal('notifications', initialNotifications));
-  const [settings, setSettings] = useState<AppSettings>(() => readLocal('settings', defaultSettings));
+  const [customization, setCustomization] = useState<CustomizationConfig>(initialData.customization);
+  const [currentUser, setCurrentUser] = useState(initialData.currentUser);
+  const [shuttles, setShuttles] = useState<Shuttle[]>(initialData.shuttles);
+  const [batteries, setBatteries] = useState<Battery[]>(initialData.batteries);
+  const [faults, setFaults] = useState<Fault[]>(initialData.faults);
+  const [jobs, setJobs] = useState<MaintenanceJob[]>(initialData.jobs);
+  const [connections, setConnections] = useState<CommunicationEndpoint[]>(initialData.connections);
+  const [notifications, setNotifications] = useState(initialData.notifications);
+  const [settings, setSettings] = useState<AppSettings>(initialData.settings);
   const [selectedId, setSelectedId] = useState('SC-01');
   const [selectedBatteryId, setSelectedBatteryId] = useState('BAT-ACME-01');
   const [modelView, setModelView] = useState<ModelView>('iso');
@@ -331,9 +390,9 @@ function App() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [mobileNav, setMobileNav] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => readLocal('sidebarCollapsed', false));
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(initialData.sidebarCollapsed);
   const [toast, setToast] = useState('');
-  const [storageIssues] = useState<string[]>(() => readOperationalStorageIssues(localStorage));
+  const [storageIssues] = useState<string[]>(initialData.storageIssues);
   const [newAsset, setNewAsset] = useState({ manufacturer: 'Cassioli', zone: '', model: '', serialNumber: '', hardwareVersion: '', firmwareVersion: '', assignedOperator: '', notes: '' });
   const [editingShuttle, setEditingShuttle] = useState<Shuttle | null>(null);
   const [editingBattery, setEditingBattery] = useState(false);
@@ -347,8 +406,8 @@ function App() {
   const [pendingShuttleArchive, setPendingShuttleArchive] = useState<string | null>(null);
   const [pendingBatteryArchive, setPendingBatteryArchive] = useState<string | null>(null);
   const [showArchived, setShowArchived] = useState(false);
-  const [dailyReports, setDailyReports] = useState<DailyReportSnapshot[]>(() => readLocal('dailyReports', []));
-  const [shifts, setShifts] = useState<ShiftRecord[]>(() => readLocal('shifts', []));
+  const [dailyReports, setDailyReports] = useState<DailyReportSnapshot[]>(initialData.dailyReports);
+  const [shifts, setShifts] = useState<ShiftRecord[]>(initialData.shifts);
   const routeStackRef = useRef<Tab[]>([tabFromLocation()]);
 
   const t = copy[language];
@@ -401,7 +460,12 @@ function App() {
   useEffect(() => {
     const values: Record<string, unknown> = { language, theme, sidebarCollapsed, shuttles, batteries, faults, maintenance: jobs, connections, notifications, settings, dailyReports, shifts };
     for (const [key, value] of Object.entries(values)) {
-      try { localStorage.setItem(PREFIX + key, JSON.stringify(value)); } catch { /* The verified write below reports quota or storage failures. */ }
+      try {
+        localStorage.setItem(PREFIX + key, JSON.stringify(value));
+      } catch (error) {
+        console.error(`Could not persist compatibility copy for ${key}:`, error);
+        setToast(language === 'ar' ? `تعذر حفظ النسخة المتوافقة من ${key}` : `Compatibility save failed for ${key}`);
+      }
       if ((OPERATIONAL_COLLECTIONS as readonly string[]).includes(key)) {
         void persistOperationalSnapshot(key as typeof OPERATIONAL_COLLECTIONS[number], value).catch((error) => {
           console.error(`Could not persist verified ${key} snapshot:`, error);
@@ -476,7 +540,7 @@ function App() {
   const canGoBack = routeStackRef.current.length > 1 || activeTab !== 'dashboard';
   const showToast = (message: string) => { setToast(message); window.setTimeout(() => setToast(''), 2400); };
   const recordAudit = (action: string, entityType: string, entityId: string, detail = '') => {
-    void appendAuditRecord({
+    void appendAuditRecordAsync({
       actorId: currentUser.id,
       actorRole: currentUser.role,
       action,
@@ -490,7 +554,7 @@ function App() {
   const authorize = async (permission: Permission, entityType = 'application', entityId: string = activeTab): Promise<boolean> => {
     const allowed = canPerformAction(currentUser, permission);
     try {
-      await appendAuditRecord({
+      await appendAuditRecordAsync({
         actorId: currentUser.id,
         actorRole: currentUser.role,
         action: allowed ? 'ACTION_AUTHORIZATION_GRANTED' : 'ACCESS_DENIED',

@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { __closeForTesting, __resetStorageForTesting, __setBackendForTesting, get } from '../../index';
+import { __closeForTesting, __resetStorageForTesting, __setBackendForTesting, setStorageModePreference, STORAGE_MODE_KEY, get } from '../../index';
 import { AUTH_LEGACY_KEY_MAP, EXCLUDED_SESSION_STORAGE_KEY, LEGACY_KEY_MAP } from '../legacyKeyMap';
 import { importAuthData } from '../authAdapter';
 
@@ -15,6 +15,8 @@ async function resetDatabase(): Promise<void> {
     request.onblocked = () => resolve();
   });
   localStorage.clear();
+  localStorage.removeItem(STORAGE_MODE_KEY);
+  setStorageModePreference('auto');
   sessionStorage.clear();
 }
 
