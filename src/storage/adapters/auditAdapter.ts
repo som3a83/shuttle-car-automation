@@ -1,6 +1,7 @@
 import {
   AUDIT_LEGACY_KEY_MAP,
   AUDIT_ARCHIVE_PENDING_LEGACY_KEY,
+  importDefaultForMissing,
   importMappedLegacyKey,
   readAuditArchivePendingMarker,
   type AdapterResult,
@@ -157,21 +158,23 @@ export async function importAuditData(legacyStorage: LegacyReadStorage = globalT
 
   const activeCanonical = canonical(activeParsed);
   const archivesCanonical = canonical(archivesParsed);
+  const activeResult = await importMappedLegacyKey(
+    AUDIT_LEGACY_KEY_MAP.active.legacyKey,
+    (value): value is AuditRecord[] => isAuditRecordArray(value) && canonical(value) === activeCanonical,
+    legacyStorage,
+    undefined,
+    'audit'
+  );
+  const archivesResult = await importMappedLegacyKey(
+    AUDIT_LEGACY_KEY_MAP.archives.legacyKey,
+    (value): value is AuditArchiveEntry[] => isAuditArchiveArray(value) && canonical(value) === archivesCanonical,
+    legacyStorage,
+    undefined,
+    'audit'
+  );
   return [
-    await importMappedLegacyKey(
-      AUDIT_LEGACY_KEY_MAP.active.legacyKey,
-      (value): value is AuditRecord[] => isAuditRecordArray(value) && canonical(value) === activeCanonical,
-      legacyStorage,
-      undefined,
-      'audit'
-    ),
-    await importMappedLegacyKey(
-      AUDIT_LEGACY_KEY_MAP.archives.legacyKey,
-      (value): value is AuditArchiveEntry[] => isAuditArchiveArray(value) && canonical(value) === archivesCanonical,
-      legacyStorage,
-      undefined,
-      'audit'
-    )
+    await importDefaultForMissing(activeResult, []),
+    await importDefaultForMissing(archivesResult, [])
   ];
 }
 
