@@ -278,19 +278,23 @@ describe('Shuttle Car Automation V10', () => {
     await user.type(screen.getByLabelText(/Work order title/i), 'Monthly rail inspection');
     await user.type(screen.getByLabelText(/Scheduled date/i), '2026-11-20');
     await user.click(screen.getByRole('button', { name: /Save work order/i }));
-    expect(screen.getByText('Monthly rail inspection')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText('Monthly rail inspection')).toBeInTheDocument());
     await user.click(screen.getByRole('button', { name: /Start job/i }));
-    expect(screen.getByText('In Progress')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText('In Progress')).toBeInTheDocument());
     await user.click(screen.getByRole('button', { name: /Complete job/i }));
     await user.type(screen.getByLabelText(/Completion result \/ work performed/i), 'Inspected rails and documented clearance verification.');
     await user.click(screen.getByRole('button', { name: /Save result & complete/i }));
-    expect(screen.getByText('Completed')).toBeInTheDocument();
-    expect(screen.getByText(/Completion result: Inspected rails and documented clearance verification/i)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('Completed')).toBeInTheDocument();
+      expect(screen.getByText(/Completion result: Inspected rails and documented clearance verification/i)).toBeInTheDocument();
+    });
 
     await user.click(screen.getAllByRole('button', { name: /Notifications/i })[0]);
-    expect(screen.getByText('Maintenance work order created')).toBeInTheDocument();
-    expect(screen.getByText('Maintenance work order updated')).toBeInTheDocument();
-    expect(screen.getByText('Work order completed with recorded result')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('Maintenance work order created')).toBeInTheDocument();
+      expect(screen.getByText('Maintenance work order updated')).toBeInTheDocument();
+      expect(screen.getByText('Work order completed with recorded result')).toBeInTheDocument();
+    });
   });
 
   it('registers a new fleet unit without fabricating manufacturer identity data', async () => {
