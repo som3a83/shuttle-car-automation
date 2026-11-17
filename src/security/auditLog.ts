@@ -1,4 +1,4 @@
-import { sanitizeSpreadsheetCell } from '../data/csvSafety';
+import { sanitizeSpreadsheetCell } from '../data/csvSafety.ts';
 
 export interface AuditRecordInput {
   actorId: string;
