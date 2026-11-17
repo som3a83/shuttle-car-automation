@@ -44,3 +44,11 @@ jobs:
 
       - name: Build production bundle
         run: npm run build
+
+      - name: Upload Google Play listing artwork
+        uses: actions/upload-artifact@v4
+        with:
+          name: shuttle-car-automation-store-artwork
+          path: artifacts/store-listing/
+          if-no-files-found: error
+          retention-days: 30
