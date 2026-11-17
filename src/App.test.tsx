@@ -1,8 +1,8 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import App, { type AppInitialData } from './App';
+import App, { flushApplicationPersistence, type AppInitialData } from './App';
 import { defaultSettings, initialBatteries, initialConnections, initialFaults, initialMaintenance, initialNotifications, initialShuttles } from './data/mockData';
-import { beforeEach, describe, it, expect, vi } from 'vitest';
+import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 import '@testing-library/jest-dom/vitest';
 import { DEFAULT_CUSTOMIZATION, loadCustomization } from './data/applicationCustomization';
 import { webcrypto } from 'node:crypto';
@@ -64,7 +64,14 @@ function renderApp() {
 }
 
 describe('Shuttle Car Automation V10', () => {
-  beforeEach(async () => {
+  afterEach(async () => {
+  await flushApplicationPersistence();
+  window.localStorage.clear();
+  window.sessionStorage.clear();
+  vi.restoreAllMocks();
+});
+
+beforeEach(async () => {
     window.localStorage.clear();
     window.sessionStorage.clear();
     vi.stubGlobal('crypto', webcrypto);
