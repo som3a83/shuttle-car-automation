@@ -155,7 +155,7 @@ def validate_ingest(payload: Any, config: dict[str, Any]) -> dict[str, Any]:
     if unit is not None and (not isinstance(unit, str) or len(unit) > 24):
         raise GatewayError(400, "unit must be a string of at most 24 characters.")
     quality = payload.get("quality", "GOOD")
-    if quality not in ALLOWED_QUALITIES:
+    if not isinstance(quality, str) or quality not in ALLOWED_QUALITIES:
         raise GatewayError(400, "quality must be GOOD, UNCERTAIN, BAD or STALE.")
     source_dt = parse_aware_timestamp(payload.get("sourceTimestamp"))
     now = datetime.now(timezone.utc)
