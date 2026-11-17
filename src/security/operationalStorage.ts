@@ -175,8 +175,10 @@ export async function bootstrapOperationalStorage(storage: StorageLike = globalT
       // previous copy before normal writes can rotate over it.
       if (snapshot.previous.status === 'invalid' ||
           (snapshot.previous.status === 'valid' && snapshot.previous.envelope.schemaVersion !== OPERATIONAL_STORAGE_SCHEMA)) {
-        quarantineRaw(storage, `${legacyKey}:verified:previous`, snapshot.previous.raw);
-        storage.removeItem?.(`${legacyKey}:verified:previous`);
+        const previousKey = `${OPERATIONAL_PREFIX}verified:${collection}:previous`;
+        quarantineRaw(storage, previousKey, snapshot.previous.raw);
+        if (!storage.removeItem) throw new Error('Storage removal is unavailable; cannot safely quarantine the damaged previous snapshot.');
+        storage.removeItem(previousKey);
         issues.push(`${collection}: incompatible previous snapshot quarantined; verified primary retained.`);
       }
 
@@ -202,7 +204,9 @@ export async function bootstrapOperationalStorage(storage: StorageLike = globalT
       snapshot.previous.envelope.schemaVersion === OPERATIONAL_STORAGE_SCHEMA
       ? snapshot.previous.envelope.payload
       : undefined;
-    const primaryData = snapshot.primary.status === 'valid' ? snapshot.primary.envelope.payload : undefined;
+    const primaryData = snapshot.primary.status === 'valid' && snapshot.primary.envelope.schemaVersion === OPERATIONAL_STORAGE_SCHEMA
+      ? snapshot.primary.envelope.payload
+      : undefined;
 
     let reason = 'No compatible primary snapshot is available.';
     if (snapshot.primary.status === 'invalid') reason = snapshot.primary.reason;
