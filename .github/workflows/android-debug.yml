@@ -52,9 +52,11 @@ jobs:
           npm run check
           npm test
           npm run build
+          npm run assets:render
 
       - name: Generate Android project
         run: npx cap add android
+          npx capacitor-assets generate --android --iconBackgroundColor '#111820' --iconBackgroundColorDark '#111820' --splashBackgroundColor '#111820' --splashBackgroundColorDark '#111820'
 
       - name: Sync web assets to Android
         run: npx cap sync android
