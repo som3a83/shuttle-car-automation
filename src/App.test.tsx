@@ -78,10 +78,10 @@ describe('Shuttle Car Automation V10', () => {
     const user = userEvent.setup();
     render(<App />);
     await user.click(screen.getAllByRole('button', { name: /Engineering Visualization/i })[0]);
-    expect(screen.getByText(/ISOMETRIC ASSEMBLY/i)).toBeInTheDocument();
+    expect(await screen.findByText(/ISOMETRIC ASSEMBLY/i)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /^Top$/i }));
-    expect(screen.getByText(/TOP PLAN/i)).toBeInTheDocument();
-    expect(screen.getByText(/ASSEMBLY BREAKDOWN/i)).toBeInTheDocument();
+    expect(await screen.findByText(/TOP PLAN/i)).toBeInTheDocument();
+    expect(await screen.findByText(/ASSEMBLY BREAKDOWN/i)).toBeInTheDocument();
   });
 
   it('switches between fleet, battery, fault and maintenance workspaces', async () => {
