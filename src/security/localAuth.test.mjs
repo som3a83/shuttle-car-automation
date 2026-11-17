@@ -20,7 +20,7 @@ import {
   LOCAL_AUTH_STORAGE_KEY,
   LOCAL_SESSION_STORAGE_KEY
 } from './localAuth.ts';
-import { LegacyFallbackEngine, StorageError } from '../storage';
+import { LegacyFallbackEngine, StorageError } from '../storage/index.ts';
 
 class MemoryStorage {
   values = new Map();

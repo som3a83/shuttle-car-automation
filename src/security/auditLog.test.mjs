@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { appendAuditRecord, appendAuditRecordAsync, archiveAuditRecords, archiveAuditRecordsAsync, AUDIT_ARCHIVE_PENDING_KEY, AUDIT_ARCHIVE_STORAGE_KEY, AUDIT_STORAGE_KEY, auditRecordsToCsv, filterAuditRecords, readAllAuditRecords, readAllAuditRecordsAsync, readAuditRecords, readAuditRecordsAsync, recoverPendingAuditArchive, recoverPendingAuditArchiveAsync, verifyAuditChain, verifyAuditLedger, verifyAuditLedgerAsync } from './auditLog.ts';
-import { LegacyFallbackEngine, StorageError } from '../storage';
+import { LegacyFallbackEngine, StorageError } from '../storage/index.ts';
 
 class MemoryStorage {
   values = new Map();
