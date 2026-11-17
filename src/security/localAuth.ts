@@ -91,7 +91,9 @@ function readAccounts(storage: AuthStorage): LocalAccount[] {
 }
 async function derive(password: string, salt: Uint8Array, cryptoApi: Crypto, iterations = LOCAL_AUTH_ITERATIONS): Promise<Uint8Array> {
   const key = await cryptoApi.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']);
-  const bits = await cryptoApi.subtle.deriveBits({ name: 'PBKDF2', salt, iterations, hash: 'SHA-256' }, key, 256);
+  const saltBuffer = new ArrayBuffer(salt.byteLength);
+  new Uint8Array(saltBuffer).set(salt);
+  const bits = await cryptoApi.subtle.deriveBits({ name: 'PBKDF2', salt: saltBuffer, iterations, hash: 'SHA-256' }, key, 256);
   return new Uint8Array(bits);
 }
 function randomId(cryptoApi: Crypto): string {
