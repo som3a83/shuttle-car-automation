@@ -34,8 +34,8 @@ if (!fs.existsSync(variablesPath) || !fs.existsSync(appGradlePath)) {
 let variables = fs.readFileSync(variablesPath, 'utf8');
 function setGradleInteger(source, name, value) {
   const patterns = [
-    new RegExp('(\\b' + name + '\\s*=\\s*)\d+'),
-    new RegExp('(\\b' + name + '\\s+)\d+')
+    new RegExp('(\\b' + name + '\\s*=\\s*)\\d+'),
+    new RegExp('(\\b' + name + '\\s+)\\d+')
   ];
   let changed = false;
   for (const pattern of patterns) {
