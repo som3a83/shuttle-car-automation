@@ -479,7 +479,7 @@ function App() {
       showToast(language === 'ar' ? 'تعذر تحديث سجل التدقيق؛ راجع سلامة السجل' : 'Audit log write failed; review audit integrity.');
     });
   };
-  const authorize = (permission: Permission, entityType = 'application', entityId = activeTab) => {
+  const authorize = (permission: Permission, entityType = 'application', entityId: string = activeTab) => {
     if (canPerformAction(currentUser, permission)) return true;
     recordAudit('ACCESS_DENIED', entityType, entityId, `Missing permission: ${permission}`);
     showToast(language === 'ar' ? 'ليس لديك صلاحية لتنفيذ هذا الإجراء' : 'You do not have permission to perform this action.');
