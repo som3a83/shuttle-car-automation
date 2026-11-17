@@ -70,7 +70,7 @@ const copy = {
     engineering: 'Engineering visualization', engineeringSub: 'Interactive orthographic 3D reference assembly with selectable views, exploded components and engineering callouts.',
     selectAsset: 'Select shuttle', status: 'Operating state', manufacturer: 'Manufacturer', model: 'Model', serial: 'Serial number', zone: 'Operating zone', batteryPack: 'Installed battery', communication: 'Communication', lastSeen: 'Last communication',
     noData: 'Not recorded', unknown: 'Unknown / not verified', openFleet: 'Open fleet register', openEngineering: 'Open engineering view',
-    modelDisclaimer: 'Parametric 3D reference assembly with orthographic views and internal model-unit callouts — not manufacturer CAD or certified physical dimensions.',
+    modelDisclaimer: 'Editable parametric reference assembly with orthographic views. Default dimensions are illustrative study values, not verified OEM measurements. Do not use for fit checks, fabrication or service release until replaced with approved manufacturer drawings.',
     iso: 'Isometric', side: 'Side', front: 'Front', top: 'Top', exploded: 'Exploded view', animate: 'Animate mechanism', stop: 'Stop animation',
     componentLegend: 'Mechanical assemblies', chassis: 'Main chassis', drive: 'Drive motor & gearbox', wheel: 'Traction wheels', batteryComp: 'Removable battery tray', sensors: 'Sensors & safety zone',
     localChanges: 'Local simulation only. This action does not send commands to a shuttle.',
@@ -104,7 +104,7 @@ const copy = {
     engineering: 'التصور الهندسي', engineeringSub: 'تجميعة مرجعية ثلاثية الأبعاد بإسقاطات متعامدة وتفكيك للمكونات وبيانات هندسية توضيحية.',
     selectAsset: 'اختر العربة', status: 'حالة التشغيل', manufacturer: 'الشركة المصنعة', model: 'الموديل', serial: 'الرقم المسلسل', zone: 'منطقة التشغيل', batteryPack: 'البطارية المركبة', communication: 'الاتصال', lastSeen: 'آخر اتصال',
     noData: 'غير مسجل', unknown: 'غير معروف / لم يتم التحقق', openFleet: 'فتح سجل الأسطول', openEngineering: 'فتح التصور الهندسي',
-    modelDisclaimer: 'تجميعة ثلاثية الأبعاد بارامترية بإسقاطات متعامدة ووحدات قياس داخلية — ليست ملف CAD أصليًا من المصنع ولا أبعادًا فعلية معتمدة.',
+    modelDisclaimer: 'تجميعة هندسية بارامترية قابلة للتعديل بإسقاطات متعامدة. الأبعاد الافتراضية قيم توضيحية وليست قياسات مصنع معتمدة. لا تستخدمها للفحص التركيبي أو التصنيع أو اعتماد الصيانة قبل استبدالها برسومات الشركة المعتمدة.',
     iso: 'منظور مجسم', side: 'جانبي', front: 'أمامي', top: 'علوي', exploded: 'عرض تفكيكي', animate: 'تحريك الآلية', stop: 'إيقاف الحركة',
     componentLegend: 'المجموعات الميكانيكية', chassis: 'الشاسيه الرئيسي', drive: 'المحرك وعلبة التروس', wheel: 'عجلات الحركة', batteryComp: 'درج البطارية القابل للفك', sensors: 'الحساسات ومنطقة الأمان',
     localChanges: 'تغيير محلي تجريبي فقط. لا يتم إرسال أوامر إلى عربة الشاتل.',
@@ -1374,6 +1374,16 @@ function App() {
              </div>
              <div className="model-zoom-control"><label htmlFor="model-zoom">{language==='ar'?'تكبير الرسم':'Orthographic zoom'}</label><input id="model-zoom" type="range" min="0.75" max="1.25" step="0.05" value={modelZoom} onChange={event=>setModelZoom(Number(event.target.value))}/><output>{Math.round(modelZoom*100)}%</output></div>
             <p className="disclaimer">{t.modelDisclaimer}</p>
+            <a
+              className="cad-source-link"
+              style={{ display: 'inline-flex', marginTop: 10, color: 'var(--copper-2)', fontSize: 10, fontWeight: 800, textDecoration: 'none', borderBottom: '1px solid var(--line-strong)', paddingBottom: 3 }}
+              href="https://github.com/som3a83/shuttle-car-automation/tree/main/cad"
+              target="_blank"
+              rel="noreferrer"
+              aria-label={language === 'ar' ? 'فتح ملفات التصميم الهندسي البارامترية' : 'Open editable parametric CAD source'}
+            >
+              {language === 'ar' ? 'فتح ملفات CAD القابلة للتعديل' : 'Open editable parametric CAD source'}
+            </a>
           </div>
           <div className="engineering-side">
             <div className="surface-card"><div className="card-head"><div><span className="eyebrow">ASSET IDENTITY</span><h3>{selected.id}</h3></div><StatusPill status={selected.status} language={language}/></div><div className="spec-list"><Detail label={t.manufacturer} value={selected.manufacturer}/><Detail label={t.model} value={selected.model}/><Detail label={t.serial} value={selected.serialNumber}/><Detail label="Hardware / firmware" value={selected.hardwareVersion + ' / ' + selected.firmwareVersion}/><Detail label={t.batteryPack} value={selected.installedBattery}/><Detail label={t.lastSeen} value={selected.lastCommunication}/></div></div>

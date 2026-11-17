@@ -4,7 +4,7 @@
 **Default branch:** `main`  
 **Owner:** `som3a83`
 
-This repository is public. The repository API currently reports that `main` is not protected and no repository rulesets are present. The GitHub integration available to this session can manage source files, pull requests and workflow runs, but it does not expose the repository-settings write operation needed to create branch-protection rules or toggle GitHub Advanced Security features. The files and workflows below are committed as code; the settings in sections 1 and 2 require one-time activation in GitHub Settings.
+This repository is public. The repository API currently reports that `main` has a ruleset named main, but its enforcement is disabled; main is not protected until the rule is enabled and required status checks are configured. The GitHub integration available to this session can manage source files, pull requests and workflow runs, but it does not expose the repository-settings write operation needed to create branch-protection rules or toggle GitHub Advanced Security features. The files and workflows below are committed as code; the settings in sections 1 and 2 require one-time activation in GitHub Settings.
 
 ## 1. Protect the main branch
 

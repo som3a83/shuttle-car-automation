@@ -1,0 +1,59 @@
+name: Parametric CAD validation
+
+on:
+  push:
+    branches:
+      - main
+      - "development/**"
+      - "release/**"
+      - "feature/**"
+  pull_request:
+    branches:
+      - main
+      - "development/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: parametric-cad-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  openscad:
+    name: Render and validate parametric CAD
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Install OpenSCAD
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y openscad
+
+      - name: Render shuttle reference assembly
+        run: |
+          mkdir -p artifacts/cad
+          QT_QPA_PLATFORM=offscreen openscad --render -o artifacts/cad/shuttle-car-reference.stl cad/shuttle_car_reference.scad
+          test -s artifacts/cad/shuttle-car-reference.stl
+          test "$(wc -c < artifacts/cad/shuttle-car-reference.stl)" -gt 5000
+
+      - name: Render lithium battery reference assembly
+        run: |
+          QT_QPA_PLATFORM=offscreen openscad --render -o artifacts/cad/lithium-battery-pack-reference.stl cad/lithium_battery_pack_reference.scad
+          test -s artifacts/cad/lithium-battery-pack-reference.stl
+          test "$(wc -c < artifacts/cad/lithium-battery-pack-reference.stl)" -gt 5000
+
+      - name: Publish editable CAD sources and rendered STL files
+        uses: actions/upload-artifact@v7
+        with:
+          name: shuttle-parametric-cad-reference
+          path: |
+            cad/*.scad
+            cad/README.md
+            artifacts/cad/*.stl
+          if-no-files-found: error
+          retention-days: 90
