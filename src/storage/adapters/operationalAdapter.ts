@@ -1,4 +1,5 @@
 import { importMappedLegacyKey, OPERATIONAL_LEGACY_KEY_MAP, type AdapterResult, type LegacyReadStorage } from './legacyKeyMap';
+import type { AppSettings, Language, Theme } from '../../types';
 
 type OperationalLegacyKey = (typeof OPERATIONAL_LEGACY_KEY_MAP)[number]['legacyKey'];
 
@@ -6,6 +7,33 @@ const ARRAY_COLLECTIONS = new Set([
   'shuttles', 'batteries', 'faults', 'maintenance', 'connections',
   'notifications', 'dailyReports', 'shifts'
 ]);
+
+const APP_SETTINGS_FIELDS = [
+  'language', 'theme', 'notificationsEnabled', 'maintenanceReminders',
+  'batteryAlerts', 'communicationAlerts'
+] as const satisfies readonly (keyof AppSettings)[];
+
+// Compile-time guard: this list must cover every declared AppSettings field.
+type AppSettingsFieldsAreComplete =
+  Exclude<keyof AppSettings, (typeof APP_SETTINGS_FIELDS)[number]> extends never ? true : never;
+const appSettingsFieldsAreComplete: AppSettingsFieldsAreComplete = true;
+void appSettingsFieldsAreComplete;
+
+function isAppSettings(value: unknown): value is AppSettings {
+  if (!isRecord(value)) return false;
+  const keys = Object.keys(value);
+  if (keys.length !== APP_SETTINGS_FIELDS.length ||
+      keys.some((key) => !APP_SETTINGS_FIELDS.includes(key as (typeof APP_SETTINGS_FIELDS)[number]))) {
+    return false;
+  }
+
+  return (value.language === 'ar' || value.language === 'en') &&
+    (value.theme === 'dark' || value.theme === 'light') &&
+    typeof value.notificationsEnabled === 'boolean' &&
+    typeof value.maintenanceReminders === 'boolean' &&
+    typeof value.batteryAlerts === 'boolean' &&
+    typeof value.communicationAlerts === 'boolean';
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
@@ -20,15 +48,7 @@ function isOperationalValue(legacyKey: OperationalLegacyKey, value: unknown): bo
   if (collection === 'language') return value === 'ar' || value === 'en';
   if (collection === 'theme') return value === 'dark' || value === 'light';
   if (collection === 'sidebarCollapsed') return typeof value === 'boolean';
-  if (collection === 'settings') {
-    return isRecord(value) &&
-      (value.language === 'ar' || value.language === 'en') &&
-      (value.theme === 'dark' || value.theme === 'light') &&
-      typeof value.notificationsEnabled === 'boolean' &&
-      typeof value.maintenanceReminders === 'boolean' &&
-      typeof value.batteryAlerts === 'boolean' &&
-      typeof value.communicationAlerts === 'boolean';
-  }
+  if (collection === 'settings') return isAppSettings(value);
   return false;
 }
 
