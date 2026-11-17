@@ -2,6 +2,7 @@ import type {
   Language, Theme, Shuttle, Battery, Fault, MaintenanceJob,
   CommunicationEndpoint, NotificationItem, AppSettings, DailyReportSnapshot, ShiftRecord,
 } from '../types';
+import { resolveLegacyKey } from './adapters/legacyKeyResolver';
 
 /** Local placeholders; align with existing domain types in 2B-2. */
 export interface LocalAccountRecord { id: string; [field: string]: unknown } // TODO: align with existing type in 2B-2
@@ -180,7 +181,8 @@ export async function quarantineRecord(key: StorageKey, rawValue: unknown, reaso
     }
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem('shuttle.storage.quarantine.' + entry.id, stableJson(entry));
-      localStorage.removeItem(LEGACY_PREFIX + key);
+      const legacyKey = resolveLegacyKey(key)?.legacyKey ?? (LEGACY_PREFIX + key);
+      localStorage.removeItem(legacyKey);
       localStorage.removeItem(LEGACY_REVISION_PREFIX + key);
       return;
     }
@@ -331,40 +333,47 @@ export class LegacyFallbackEngine implements StorageEngine {
     catch { fail('STORAGE_UNAVAILABLE', 'No usable storage backend is available.'); }
   }
   async read(key: StorageKey): Promise<RevisionedValue<unknown> | null> {
+    const resolution = resolveLegacyKey(key);
+    if (!resolution) return null;
+
     const storage = this.storage();
-    const raw = storage.getItem(LEGACY_PREFIX + key);
+    const raw = storage.getItem(resolution.legacyKey);
     if (raw === null) return null;
     try {
-      const value: unknown = JSON.parse(raw);
-      if (!validateStoredShape(key, value)) {
+      const parsed: unknown = JSON.parse(raw);
+      if (!validateStoredShape(key, parsed)) {
         const moved = await quarantineWithoutMasking(key, raw, 'Legacy fallback record failed stored-shape validation.');
-        if (moved) { storage.removeItem(LEGACY_PREFIX + key); storage.removeItem(LEGACY_REVISION_PREFIX + key); }
+        if (moved) { storage.removeItem(resolution.legacyKey); storage.removeItem(LEGACY_REVISION_PREFIX + key); }
         fail('STORAGE_CORRUPT', 'Stored data failed shape validation.', { key });
       }
       const revisionRaw = storage.getItem(LEGACY_REVISION_PREFIX + key);
       const revision = revisionRaw === null ? 0 : Number(revisionRaw);
       if (!Number.isSafeInteger(revision) || revision < 0) {
         const moved = await quarantineWithoutMasking(key, raw, 'Legacy fallback revision metadata is invalid.');
-        if (moved) { storage.removeItem(LEGACY_PREFIX + key); storage.removeItem(LEGACY_REVISION_PREFIX + key); }
+        if (moved) { storage.removeItem(resolution.legacyKey); storage.removeItem(LEGACY_REVISION_PREFIX + key); }
         fail('STORAGE_CORRUPT', 'Stored revision metadata is invalid.', { key });
       }
+      const value = resolution.transform ? resolution.transform(parsed) : parsed;
       return { value, revision };
     } catch (error) {
       if (error instanceof StorageError) throw error;
       const moved = await quarantineWithoutMasking(key, raw, 'Legacy fallback record could not be decoded.');
-      if (moved) { storage.removeItem(LEGACY_PREFIX + key); storage.removeItem(LEGACY_REVISION_PREFIX + key); }
+      if (moved) { storage.removeItem(resolution.legacyKey); storage.removeItem(LEGACY_REVISION_PREFIX + key); }
       fail('STORAGE_CORRUPT', 'Stored data could not be decoded.', { key });
     }
   }
   async write(key: StorageKey, value: unknown, expectedRevision?: number): Promise<number> {
+    const resolution = resolveLegacyKey(key);
+    if (!resolution) fail('STORAGE_SCHEMA_UNSUPPORTED', 'No approved legacy key mapping exists for this storage key.', { key });
+
     const storage = this.storage();
-    const raw = storage.getItem(LEGACY_PREFIX + key);
+    const raw = storage.getItem(resolution.legacyKey);
     const revisionRaw = storage.getItem(LEGACY_REVISION_PREFIX + key);
     // Legacy records without a revision sidecar are revision 0: expectedRevision 0 creates the sidecar.
+    // The sidecar remains keyed by the unified StorageKey, exactly as in 2B-1.
     const actual = revisionRaw === null ? 0 : Number(revisionRaw);
     if (!Number.isSafeInteger(actual) || actual < 0) {
-      const rawValue = raw;
-      await quarantineWithoutMasking(key, rawValue, 'Legacy fallback revision sidecar is invalid.');
+      await quarantineWithoutMasking(key, raw, 'Legacy fallback revision sidecar is invalid.');
       fail('STORAGE_CORRUPT', 'Stored revision metadata is invalid.', { key });
     }
     if (expectedRevision !== undefined && actual !== expectedRevision) {
@@ -373,7 +382,8 @@ export class LegacyFallbackEngine implements StorageEngine {
     }
     const revision = actual + 1;
     try {
-      storage.setItem(LEGACY_PREFIX + key, stableJson(value));
+      // Read transforms are intentionally not applied to writes: persist the exact caller value.
+      storage.setItem(resolution.legacyKey, stableJson(value));
       storage.setItem(LEGACY_REVISION_PREFIX + key, String(revision));
       return revision;
     } catch (error) {
@@ -382,8 +392,10 @@ export class LegacyFallbackEngine implements StorageEngine {
     }
   }
   async remove(key: StorageKey): Promise<void> {
+    const resolution = resolveLegacyKey(key);
+    if (!resolution) fail('STORAGE_SCHEMA_UNSUPPORTED', 'No approved legacy key mapping exists for this storage key.', { key });
     const storage = this.storage();
-    storage.removeItem(LEGACY_PREFIX + key);
+    storage.removeItem(resolution.legacyKey);
     storage.removeItem(LEGACY_REVISION_PREFIX + key);
   }
   async backup(): Promise<BackupEnvelope> { fail('STORAGE_ATOMICITY_UNAVAILABLE', 'Backup requires transaction guarantees unavailable in fallback mode.'); }
