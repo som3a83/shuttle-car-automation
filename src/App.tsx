@@ -788,6 +788,144 @@ function App() {
     event.currentTarget.reset(); showToast(t.done);
   };
 
+  const saveFaultEdit = (event: React.FormEvent<HTMLFormElement>, id: string) => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const title = String(form.get('title') || '').trim();
+    const description = String(form.get('description') || '').trim();
+    if (!title || !description) {
+      showToast(language === 'ar' ? 'العنوان والوصف مطلوبان' : 'Fault title and description are required.');
+      return;
+    }
+    setFaults(prev => prev.map(item => item.id === id ? {
+      ...item,
+      title,
+      severity: String(form.get('severity') || item.severity) as Fault['severity'],
+      description,
+      probableCauses: String(form.get('cause') || '').split(/[\\n,،]+/).map(value => value.trim()).filter(Boolean),
+      diagnosticProcedure: String(form.get('procedure') || '').trim() || 'Field verification required',
+      assignedTechnician: String(form.get('technician') || '').trim() || 'Not assigned'
+    } : item));
+    setEditingFaultId(null);
+    pushNotification(language === 'ar' ? 'تم تعديل بلاغ العطل' : 'Fault report updated', id, 'info');
+    showToast(language === 'ar' ? 'تم حفظ التعديلات' : 'Fault report changes saved');
+  };
+
+  const archiveFault = (id: string) => {
+    const result = archiveFaultRecord(faults, id);
+    if (!result.changed) {
+      showToast(language === 'ar' ? 'لا يمكن أرشفة البلاغ قبل إغلاقه' : (result.message || 'Fault record cannot be archived.'));
+      return;
+    }
+    setFaults(result.records);
+    setEditingFaultId(null);
+    pushNotification(language === 'ar' ? 'تمت أرشفة بلاغ عطل' : 'Fault report archived', id, 'warning');
+    showToast(language === 'ar' ? 'تمت الأرشفة مع الاحتفاظ بسجل البلاغ' : 'Fault archived; report history retained');
+  };
+
+  const restoreFault = (id: string) => {
+    const result = restoreFaultRecord(faults, id);
+    if (!result.changed) return;
+    setFaults(result.records);
+    pushNotification(language === 'ar' ? 'تمت استعادة بلاغ عطل' : 'Fault report restored', id);
+  };
+
+  const saveJobEdit = (event: React.FormEvent<HTMLFormElement>, id: string) => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const title = String(form.get('title') || '').trim();
+    const scheduledDate = String(form.get('date') || '').trim();
+    if (!title || !scheduledDate) {
+      showToast(language === 'ar' ? 'عنوان أمر الصيانة والتاريخ مطلوبان' : 'Work-order title and scheduled date are required.');
+      return;
+    }
+    setJobs(prev => prev.map(item => item.id === id ? {
+      ...item,
+      title,
+      type: String(form.get('type') || item.type) as MaintenanceJob['type'],
+      scheduledDate,
+      technician: String(form.get('technician') || '').trim() || 'Not assigned',
+      notes: String(form.get('notes') || '').trim()
+    } : item));
+    setEditingJobId(null);
+    pushNotification(language === 'ar' ? 'تم تعديل أمر الصيانة' : 'Work order updated', id);
+    showToast(language === 'ar' ? 'تم حفظ أمر الصيانة' : 'Work order changes saved');
+  };
+
+  const archiveJob = (id: string) => {
+    const result = archiveCompletedWorkOrder(jobs, id);
+    if (!result.changed) {
+      showToast(language === 'ar' ? 'لا يمكن أرشفة أمر صيانة غير مكتمل' : (result.message || 'Only completed work orders can be archived.'));
+      return;
+    }
+    setJobs(result.records);
+    setEditingJobId(null);
+    pushNotification(language === 'ar' ? 'تمت أرشفة أمر صيانة مكتمل' : 'Completed work order archived', id);
+  };
+
+  const restoreJob = (id: string) => {
+    const result = restoreWorkOrder(jobs, id);
+    if (!result.changed) return;
+    setJobs(result.records);
+    pushNotification(language === 'ar' ? 'تمت استعادة أمر صيانة' : 'Work order restored', id);
+  };
+
+  const addConnection = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const name = String(form.get('name') || '').trim();
+    if (!name) return;
+    if (connections.some(item => item.name.trim().toLocaleLowerCase() === name.toLocaleLowerCase())) {
+      showToast(language === 'ar' ? 'اسم نقطة الاتصال موجود بالفعل' : 'A connection with this name already exists.');
+      return;
+    }
+    const endpoint: CommunicationEndpoint = {
+      name,
+      protocol: String(form.get('protocol') || 'REST API') as CommunicationEndpoint['protocol'],
+      mode: 'UNKNOWN',
+      notes: String(form.get('notes') || '').trim() || 'Not configured. Approved vendor interface and read-only gateway details are required.'
+    };
+    setConnections(prev => [endpoint, ...prev]);
+    event.currentTarget.reset();
+    pushNotification(language === 'ar' ? 'تمت إضافة سجل نقطة اتصال' : 'Connection register entry added', endpoint.name + ' · ' + endpoint.protocol);
+    showToast(language === 'ar' ? 'تم حفظ سجل الاتصال المحلي' : 'Local connection record saved');
+  };
+
+  const saveConnectionEdit = (event: React.FormEvent<HTMLFormElement>, previousName: string) => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const name = String(form.get('name') || '').trim();
+    if (!name) {
+      showToast(language === 'ar' ? 'اسم نقطة الاتصال مطلوب' : 'Connection name is required.');
+      return;
+    }
+    const duplicate = connections.some(item =>
+      item.name !== previousName && item.name.trim().toLocaleLowerCase() === name.toLocaleLowerCase()
+    );
+    if (duplicate) {
+      showToast(language === 'ar' ? 'اسم نقطة الاتصال مستخدم بالفعل' : 'A connection with this name already exists.');
+      return;
+    }
+    setConnections(prev => prev.map(item => item.name === previousName ? {
+      ...item,
+      name,
+      protocol: String(form.get('protocol') || item.protocol) as CommunicationEndpoint['protocol'],
+      notes: String(form.get('notes') || '').trim(),
+      mode: 'UNKNOWN'
+    } : item));
+    setEditingConnectionName(null);
+    showToast(language === 'ar' ? 'تم حفظ بيانات نقطة الاتصال' : 'Connection record updated');
+  };
+
+  const archiveConnection = (name: string) => {
+    setConnections(prev => prev.map(item => item.name === name ? { ...item, archivedAt: new Date().toISOString() } : item));
+    setEditingConnectionName(null);
+  };
+
+  const restoreConnection = (name: string) => {
+    setConnections(prev => prev.map(item => item.name === name ? { ...item, archivedAt: null } : item));
+  };
+
   const statusText = (status: ShuttleStatus) => {
     const key: Record<ShuttleStatus, string> = { Ready: 'statusReady', Running: 'statusRunning', Idle: 'statusIdle', Charging: 'statusCharging', Maintenance: 'statusMaintenance', Fault: 'statusFault', Disconnected: 'statusDisconnected', Unknown: 'statusUnknown' };
     return t[key[status] as keyof typeof copy.en];
