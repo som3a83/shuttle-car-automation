@@ -4,19 +4,15 @@
 **Default branch:** `main`  
 **Owner:** `som3a83`
 
-This repository is public. The repository API currently reports that `main` is not protected and no repository rulesets are present. The GitHub integration available to this session can manage source files, pull requests and workflow runs, but it does not expose the repository-settings write operation needed to create branch-protection rules or toggle GitHub Advanced Security features. The files and workflows below are committed as code; the settings in sections 1 and 2 require one-time activation in GitHub Settings.
+This repository is public. The repository API reports that `main` is not protected. A repository ruleset named `main` exists, but its enforcement state is `disabled`, so it currently protects nothing. The GitHub integration available to this session can manage source files, pull requests and workflow runs, but it does not expose the repository-settings write operation needed to activate the ruleset or toggle GitHub Advanced Security features. The files and workflows below are committed as code; the settings in sections 1 and 2 require one-time activation in GitHub Settings.
 
 ## 1. Protect the main branch
 
-Open **Settings → Branches → Add branch protection rule**.
+Open **Settings → Rules → Rulesets** and locate the existing ruleset named `main`.
 
-Set **Branch name pattern** to:
+Change its **Enforcement status** from `Disabled` to `Active`, and confirm that its target is the `main` branch. Do not create a duplicate ruleset with weaker settings. If your GitHub interface does not expose the existing ruleset, use **Settings → Branches** to configure an equivalent branch-protection rule for `main`.
 
-```text
-main
-```
-
-Enable the following:
+Enable or retain the following protections:
 
 - Require a pull request before merging.
 - Require status checks to pass before merging.
@@ -88,7 +84,7 @@ Open a test pull request and confirm that the named status checks are required a
 
 The repository contains a bilingual policy at [PRIVACY_POLICY.md](PRIVACY_POLICY.md), and the app includes a privacy notice in System Settings. Because the repository is public, the current raw HTTPS policy URL is:
 
-https://raw.githubusercontent.com/som3a83/shuttle-car-automation/copilot/complete-shuttle-automation-v6/PRIVACY_POLICY.md
+https://raw.githubusercontent.com/som3a83/shuttle-car-automation/main/PRIVACY_POLICY.md
 
 The PR has been merged. Use the stable `main` branch URL:
 
