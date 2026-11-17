@@ -1068,3 +1068,72 @@ button,select,input,textarea { touch-action:manipulation; }
   .shuttle-dimension-width,.battery-dimension-width { right:1px; }
   .shuttle-cad-stamp,.battery-cad-stamp { left:6px; bottom:6px; font-size:5px; }
 }
+
+
+/* Mobile engineering viewport: keep the WebGL canvas inside its drawing sheet.
+   The model dimensions are reference parameters, not OEM-certified measurements. */
+.three-viewer-shell {
+  position: absolute;
+  inset: 34px 0 35px;
+}
+@media (max-width: 640px) {
+  .three-model-canvas {
+    min-height: 355px;
+  }
+  .three-viewer-shell {
+    inset: 36px 0 34px;
+  }
+  .three-model-canvas .canvas-bottomline,
+  .shuttle-cad-overlay,
+  .battery-cad-overlay,
+  .shuttle-dimension-overlay,
+  .battery-dimension-overlay,
+  .shuttle-dimension-width,
+  .battery-dimension-width,
+  .shuttle-cad-crosshair,
+  .battery-cad-crosshair,
+  .shuttle-cad-stamp,
+  .battery-cad-stamp {
+    display: none !important;
+  }
+  .shuttle-dimension-length,
+  .battery-dimension-length {
+    top: 42px;
+    right: auto;
+    bottom: auto;
+    left: 10px;
+    max-width: calc(100% - 20px);
+    padding: 4px 6px;
+    transform: none;
+    font-size: 7px;
+    letter-spacing: .04em;
+  }
+  .three-viewer-badge {
+    top: 7px;
+    right: 8px;
+    padding: 4px 6px;
+    font-size: 6px;
+  }
+  .three-viewer-id {
+    right: 8px;
+    bottom: 7px;
+    padding: 4px 6px;
+    font-size: 6px;
+  }
+  .battery-3d-shell {
+    height: 320px;
+  }
+  .battery-3d-caption,
+  .battery-3d-id {
+    bottom: 8px;
+    padding: 4px 6px;
+    font-size: 6px;
+  }
+  .customization-launcher {
+    right: 10px;
+    bottom: calc(10px + env(safe-area-inset-bottom));
+    min-height: 34px;
+    padding: 0 10px;
+    font-size: 9px;
+  }
+}
