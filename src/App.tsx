@@ -517,7 +517,15 @@ function App() {
       status: assignment === 'Unassigned' ? 'Spare' : 'Installed',
       connectionMode: 'UNKNOWN'
     };
-    setBatteries(prev => [...prev, record]);
+    const previouslyInstalled = assignment !== 'Unassigned'
+      ? shuttles.find(item => item.id === assignment)?.installedBattery
+      : undefined;
+    setBatteries(prev => [
+      ...prev.map(item => previouslyInstalled && item.id === previouslyInstalled
+        ? { ...item, assignment: 'Unassigned', status: 'Available' as const }
+        : item),
+      record
+    ]);
     setSelectedBatteryId(id);
     if (assignment !== 'Unassigned') {
       setShuttles(prev => prev.map(shuttle => shuttle.id === assignment ? { ...shuttle, installedBattery: id } : shuttle));
@@ -1074,7 +1082,7 @@ function App() {
         <div className="surface-card danger-settings"><h3>{language==='ar'?'إعادة بيانات التطبيق':'Reset local records'}</h3><p className="muted-text">{language==='ar'?'إعادة السجلات المحلية إلى بيانات البداية. لا يمكن التراجع عن ذلك دون نسخة احتياطية.':'Restore local records to the original seed data. This cannot be undone without a backup.'}</p><button className="btn-danger" onClick={resetLocalData}>{language==='ar'?'إعادة بيانات البداية':'Reset local records'}</button></div>
       </div></section>}
 
-      <footer className="app-footer"><span>SHUTTLE OPS · V9 ENGINEERING PLATFORM</span><span>{t.dataNotice}</span></footer>
+      <footer className="app-footer"><span>SHUTTLE OPS · V10 OPERATIONS PLATFORM</span><span>{t.dataNotice}</span></footer>
     </main>
     {mobileNav && <button className="nav-scrim" onClick={()=>setMobileNav(false)} aria-label="Close navigation overlay"/>}
     {toast && <div className="toast"><Icon name="check"/>{toast}</div>}
