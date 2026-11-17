@@ -1,3 +1,7 @@
+> **CURRENT-STATE NOTICE — 17 November 2026:** The detailed inventory below is a historical snapshot generated before PR #23 was merged. Its statements that PR #23 is open/draft and that the audited `main` SHA is `faff09f63779e70074209dd1d8f808768a2c6021` are no longer current. The current official `main` commit is `f7574cf5db3cfa636d0dae957e1b254cea68b369`; PR #23 was merged at that commit. The current main tree has 118 Git tree entries including directories and is not truncated. The current engineering status and verified CI evidence are maintained in `TECHNICAL_AUDIT.md` and `PROJECT_EXECUTION_STATE.md`. Do not use the historical per-file table below as a current SHA or PR-state inventory.
+
+---
+
 # REPOSITORY UNIFICATION REPORT — IN PROGRESS
 
 Generated from a live GitHub repository snapshot.
