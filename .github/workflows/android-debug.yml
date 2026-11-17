@@ -136,15 +136,15 @@ jobs:
             adb logcat -c
             adb shell am force-stop com.shuttlecar.automation
             adb shell am start -W -n com.shuttlecar.automation/.MainActivity | tee "$EVIDENCE/launch-result.txt"
-            grep -F "Status: ok" $EVIDENCE/launch-result.txt
+            grep -F "Status: ok" "$EVIDENCE/launch-result.txt"
 
             sleep 8
             APP_PID="$(adb shell pidof com.shuttlecar.automation | tr -d '\r' || true)"
             test -n "$APP_PID"
             adb exec-out screencap -p > "$EVIDENCE/android-app-screen.png"
             test -s "$EVIDENCE/android-app-screen.png"
-            adb shell dumpsys activity activities > ""$EVIDENCE/activities.txt""
-            adb logcat -d -t 3000 > ""$EVIDENCE/device-logcat.txt""
+            adb shell dumpsys activity activities > "$EVIDENCE/activities.txt"
+            adb logcat -d -t 3000 > "$EVIDENCE/device-logcat.txt"
 
             if grep -E "FATAL EXCEPTION|Process: com\.shuttlecar\.automation" "$EVIDENCE/device-logcat.txt"; then
               echo "Android app crash signature found in device log."
