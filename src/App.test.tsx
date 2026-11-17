@@ -124,6 +124,19 @@ describe('Shuttle Car Automation V9', () => {
     expect(screen.getByLabelText(/Drawing zoom/i)).toBeInTheDocument();
   });
 
+  it('shows a traceable manufacturer reference and does not invent the installed cold-room rating', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getAllByRole('button', { name: /Engineering Visualization/i })[0]);
+    expect(screen.getByText(/ISAT pallet shuttle satellite — reference family/i)).toBeInTheDocument();
+    expect(screen.getByText(/exact configuration on SC-01 to SC-03 is not verified/i)).toBeInTheDocument();
+    expect(screen.getByText(/does not specify a cold-room temperature rating/i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Open Cassioli product reference/i })).toHaveAttribute(
+      'href',
+      'https://www.cassioli.com/intralogistics-division/automated-warehouses/pallet-shuttle/'
+    );
+  });
+
   it('opens a module directly from its URL hash', () => {
     window.history.replaceState({ tab: 'batteries' }, '', '#/batteries');
     render(<App />);
