@@ -1,8 +1,23 @@
-# REPOSITORY UNIFICATION REPORT — IN PROGRESS
+> **CURRENT-STATE NOTICE — 17 November 2026:** The detailed inventory below is a historical snapshot generated before PR #23 was merged. Its statements that PR #23 is open/draft and that the audited `main` SHA is `faff09f63779e70074209dd1d8f808768a2c6021` are no longer current. The current official `main` commit is `28eeca047863d39b1126a1e3116640ac791f65f2`; PR #23 and PR #24 are merged. The current main tree has 118 Git tree entries (106 files and 12 directories) and is not truncated. The current engineering status and verified CI evidence are maintained in `TECHNICAL_AUDIT.md` and `PROJECT_EXECUTION_STATE.md`. Do not use the historical per-file table below as a current SHA or PR-state inventory.
+
+---
+
+# REPOSITORY UNIFICATION REPORT — CURRENT BASELINE AND HISTORICAL INVENTORY
 
 Generated from a live GitHub repository snapshot.
 
-## 1. Snapshot and invariants
+## 1. Current verified baseline (17 November 2026)
+
+- Official `main` SHA: `28eeca047863d39b1126a1e3116640ac791f65f2`.
+- PR #23 security/storage integration and PR #24 Android emulator CI repair are merged.
+- PR #24 Android run `44073395778` passed end-to-end: APK build, KVM-enabled emulator boot, install, app launch, process verification, screenshot and log evidence upload.
+- CI `44073395899`, CodeQL `44073395755`, Secret Scan `44073395834`, and Dependency Review `44073395776` passed on the PR #24 head before it was merged.
+- Main post-merge CI `44074458927`, CodeQL `44074458926`, and Secret Scan `44074458837` passed. The post-merge main Android run `44074458921` was still running at this report refresh.
+- Main has 106 tracked files and 12 directories; no files were removed by PR #23 or PR #24.
+- The `main` ruleset exists but remains Disabled. The ruleset must be activated in GitHub Settings.
+- A Debug APK and emulator evidence are available as Actions artifacts. This is not a signed Play Store AAB.
+
+## 2. Historical snapshot and invariants
 
 - Repository: som3a83/shuttle-car-automation
 - Official branch: main
@@ -19,7 +34,7 @@ Generated from a live GitHub repository snapshot.
 - File deletions made during this unification pass: **0**
 - Changes remain on the development branch; no direct write or merge to main was performed.
 
-## 2. Extension inventory
+## 3. Historical extension inventory
 
 - .ts: 25
 - .md: 19
@@ -37,7 +52,7 @@ Generated from a live GitHub repository snapshot.
 - .webmanifest: 1
 - .zip: 1
 
-## 3. Per-file inventory and disposition
+## 4. Historical per-file inventory and disposition
 
 The table gives every tracked file a category and explicit disposition. “Reviewed — targeted audit” means the file was read in context for the current security/recovery/build work; it does not mean every feature inside it has completed exhaustive testing. Other source and documentation files remain retained and require deeper content review.
 
@@ -185,7 +200,7 @@ All 30 current branches were enumerated. Diverged branches are not merged wholes
 | industrial/live-telemetry-gateway-v1 | c5e2ca65cd | PR #22 merged; preserve source history; no duplicate merge. |
 | main | faff09f637 | Official baseline; unchanged. |
 
-## 5. Pull request inventory
+## 6. Historical pull request inventory
 
 - PR #1: closed; development/v4-industrial-upgrade → main; merged 2026-11-15T06:52:12Z — Development/v4 industrial upgrade
 - PR #2: closed; copilot/complete-shuttle-automation-v6 → main; merged 2026-11-17T01:56:58Z — V10 shuttle operations, fleet lifecycle & industrial engineering suite
@@ -211,7 +226,7 @@ All 30 current branches were enumerated. Diverged branches are not merged wholes
 - PR #22: closed; industrial/live-telemetry-gateway-v1 → main; merged 2026-11-17T08:35:46Z — Add read-only industrial telemetry gateway and app client
 - PR #23: open (draft); engineering/industrial-ui-security-v1 → main; not merged — Security foundation: local identity, audit integrity and recoverable storage
 
-## 6. Confirmed changes in this unification pass
+## 7. Confirmed changes in the original unification pass
 
 - Added a startup recovery gate. App state and autosave are not mounted while operational storage inspection requires a recovery decision.
 - Reworked the storage engine so ordinary saves reject damaged/incompatible envelopes; inspection does not silently restore a previous copy.
@@ -224,35 +239,37 @@ All 30 current branches were enumerated. Diverged branches are not merged wholes
 - Removed the temporary lockfile artifact step from CI and removed write permission/self-commit behavior from the standalone APK workflow.
 - Updated GitHub Actions versions across workflows: checkout v7, setup-node v7, setup-java v6, upload-artifact v7, dependency-review v5, setup-android v4, gitleaks v3, and softprops release v3.
 
-## 7. Focused audit notes and unresolved risks
+## 8. Historical focused audit notes (some items superseded by merged PR #23)
 
 1. Local identity remains device-local, not server identity, shared users, backend authorization, or central revocation.
 2. Audit log chaining exists, but the 5,000-record limit currently blocks appends. Durable archive/anchor, search, filter, CSV/JSON export and retention management remain outstanding.
 3. Authorization intent is written before an action. Post-action outcome audit calls are still asynchronous in parts of the application; transactional outcome logging remains outstanding.
 4. Recovery UI is implemented; quota-failure, restart and repeated-recovery testing remains outstanding.
-5. Account management still needs edit, disable/enable, password change/reset, self-promotion prevention and last-Super-Admin protection.
-6. Full visual, responsive and per-control UI audit remains pending.
-7. Android emulator install/launch and screen-navigation smoke tests are still required. No Play production signing claim is made.
+5. Account management safeguards were added in PR #23: edit, disable/enable, password change/reset, temporary-password change enforcement and self-promotion/self-session safeguards. Authentication remains device-local.
+6. A static audit of 10 primary UI files checked 137 buttons and 19 forms: none lacked an action/submit handler. Physical-device and exhaustive manual scenario acceptance remain pending.
+7. Android emulator build/install/launch smoke testing passed in PR #24; broad screen-navigation testing on a physical Android device remains outstanding. No Play production signing claim is made.
 8. shuttle-control-v4.0.0.zip is retained. Its binary contents have not yet been unpacked and compared, so it is not marked unused or obsolete.
 9. No file or asset has been deleted based on lack of direct imports; dynamic/runtime use still needs review.
 10. All branches were reported as unprotected. Branch-protection write capability has not yet been applied/verified.
 
-## 8. Validation status
+## 9. Current validation status
 
-Earlier run at commit 608669eba19ada8deade45879fe3a47465c50ac1 passed TypeScript, 92 Vitest tests, 25 Node security tests, release-script checks and Vite production build. The current recovery/auth refactor is under retest; the latest test run at the time of this report had 9 application UI failures caused by async form-event handling, which was then corrected by retaining form references. Do not treat this as a fully passing current build until a fresh run passes.
+- PR #23 head `b0f8a86`: 14 test files passed; 43/43 security/account tests passed; 2/2 industrial gateway tests passed; TypeScript, production build, CodeQL, secret scan and dependency review passed.
+- PR #24 head `b7ecfd6`: CI, CodeQL, secret scan, dependency review and Android emulator install/launch smoke all passed.
+- Post-merge `main` SHA `28eeca0`: CI `44074458927`, CodeQL `44074458926`, and Secret Scan `44074458837` passed. A fresh Android run `44074458921` was in progress at the time of refresh.
 
 ## 9. Files intentionally not removed
 
 No files were removed. The V4 ZIP archive, documentation, all test files and all historical branches are retained. Deletion remains blocked pending evidence that replacements cover all use cases and that dynamic imports, scripts, workflows and runtime file access have been checked.
 
-## 10. Next audit gates
+## 11. Remaining audit gates
 
 - Pass current TypeScript, Vitest + Node security tests, release config and production bundle on the same PR head.
-- Run Android debug build and emulator install/launch without branch-update cancellation.
+- Confirm the fresh post-merge Android workflow on `main`; PR #24 already passed an end-to-end emulator test and was merged.
 - Add recovery UI component tests and Storage API failure/quota/restart tests.
-- Complete user/account management safeguards.
+- Complete physical-device/manual acceptance and independently review local authentication/authorization threat boundaries.
 - Implement audit archival/retention/export and make post-action result logging reliable.
 - Finish reference/dead-code/dynamic asset audit and inspect the V4 ZIP archive.
 - Review every Dependabot PR independently; do not bulk merge.
-- Verify/apply main branch protection without changing main source.
+- Activate the existing `main` ruleset (currently Disabled) and verify required checks without direct source changes.
 - Update this report as each file reaches a fully evidenced content-audit decision.
