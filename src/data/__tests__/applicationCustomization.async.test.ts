@@ -6,8 +6,8 @@ import {
   readCustomizationAuditAsync,
   saveCustomizationAsync,
   validateCustomization
-} from './applicationCustomization.ts';
-import { LegacyFallbackEngine, StorageError } from '../storage/index.ts';
+} from '../applicationCustomization.ts';
+import { LegacyFallbackEngine, StorageError } from '../../storage/index.ts';
 
 class MemoryStorage implements Storage {
   private readonly values = new Map<string, string>();

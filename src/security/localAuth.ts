@@ -412,14 +412,31 @@ async function withAsyncAccountStorage<T>(
   throw new Error('LOCAL_ACCOUNT_UPDATE_FAILED_AFTER_RETRIES');
 }
 
-/** Async account read for components moving to the backend storage layer. */
-export async function listLocalAccountsAsync(): Promise<LocalAccountSummary[]> {
+/** Async account read used by the backend APIs. Password material stays internal. */
+async function readAccountsAsync(): Promise<LocalAccount[]> {
   const engine = await getAsyncAuthEngine();
   const current = await engine.read('auth.accounts');
   if (!current) return [];
   const storage = new MemoryAuthStorage();
   storage.setItem(LOCAL_AUTH_STORAGE_KEY, JSON.stringify(current.value));
-  return readAccounts(storage).map(toSummary);
+  return readAccounts(storage);
+}
+
+/** Async counterpart to the synchronous session resolver. */
+export async function readLocalSessionAsync(
+  sessionStorage: AuthStorage = globalThis.sessionStorage,
+  now = Date.now()
+): Promise<LocalSession | null> {
+  const accounts = await readAccountsAsync();
+  const accountStorage = new MemoryAuthStorage();
+  accountStorage.setItem(LOCAL_AUTH_STORAGE_KEY, JSON.stringify(accounts));
+  return readLocalSession(sessionStorage, accountStorage, now);
+}
+
+/** Async account read for components moving to the backend storage layer. */
+
+export async function listLocalAccountsAsync(): Promise<LocalAccountSummary[]> {
+  return (await readAccountsAsync()).map(toSummary);
 }
 
 export async function localAccountRegistryErrorAsync(): Promise<string | null> {
@@ -487,6 +504,11 @@ export async function changeLocalAccountPasswordAsync(
     changeLocalAccountPassword(accountId, currentPassword, newPassword, actor, storage, cryptoApi, now)
   );
 }
+
+/** Stable async API names for callers that do not need the legacy naming. */
+export const createAccountAsync = createLocalAccountAsync;
+export const updateAccountAsync = updateLocalAccountAsync;
+export const changePasswordAsync = changeLocalAccountPasswordAsync;
 
 export function generateTemporaryPassword(cryptoApi: Crypto = globalThis.crypto): string {
   const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%&*';

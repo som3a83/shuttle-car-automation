@@ -10,8 +10,8 @@ import {
   readLocalSession,
   setLocalAccountDisabledAsync,
   updateLocalAccountAsync
-} from './localAuth.ts';
-import { LegacyFallbackEngine, StorageError } from '../storage/index.ts';
+} from '../localAuth.ts';
+import { LegacyFallbackEngine, StorageError } from '../../storage/index.ts';
 
 class MemoryStorage implements Storage {
   private readonly values = new Map<string, string>();
@@ -51,6 +51,11 @@ describe('async local account backend', () => {
   it('persists accounts through the async API while preserving synchronous compatibility reads and session storage', async () => {
     const admin = await createLocalAccountAsync(initialAdmin, cryptoApi);
     expect(admin.role).toBe('Super Admin');
+    const rawAdmin = JSON.parse(storage.getItem('shuttle-car-automation-v1:local-accounts') || '[]')[0];
+    expect(rawAdmin.iterations).toBe(210_000);
+    expect(atob(rawAdmin.passwordSalt)).toHaveLength(16);
+    expect(atob(rawAdmin.passwordHash)).toHaveLength(32);
+    expect(rawAdmin.credentialVersion).toBe(1);
     expect(storage.getItem('shuttle-car-automation-v1:local-accounts')).not.toBeNull();
     expect(listLocalAccounts(storage).map((account) => account.id)).toEqual([admin.id]);
     expect((await listLocalAccountsAsync()).map((account) => account.id)).toEqual([admin.id]);
@@ -88,6 +93,25 @@ describe('async local account backend', () => {
     expect(readLocalSession(sessions, storage)).toBeNull();
     expect((await authenticateLocalAccountAsync('async-admin', nextPassword, sessions, cryptoApi)).ok).toBe(true);
     expect(await localAccountRegistryErrorAsync()).toBeNull();
+    const activeSession = await import('../localAuth.ts').then(({ readLocalSessionAsync }) => readLocalSessionAsync(sessions));
+    expect(activeSession?.accountId).toBe(admin.id);
+    expect(activeSession?.credentialVersion).toBe(2);
+  });
+
+  it('enforces the five-failure lockout and rejects short passwords', async () => {
+    await createLocalAccountAsync(initialAdmin, cryptoApi);
+    await expect(createLocalAccountAsync({
+      ...initialAdmin, username: 'short-pass', email: 'short@example.test', password: 'too-short'
+    }, cryptoApi)).rejects.toThrow(/12–128/);
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const result = await authenticateLocalAccountAsync('async-admin', 'wrong-password', sessions, cryptoApi, 10_000 + attempt);
+      expect(result.ok).toBe(false);
+    }
+    const locked = await authenticateLocalAccountAsync('async-admin', initialAdmin.password, sessions, cryptoApi, 10_006);
+    expect(locked).toEqual({ ok: false, reason: 'locked' });
+    const account = JSON.parse(storage.getItem('shuttle-car-automation-v1:local-accounts') || '[]')[0];
+    expect(account.failedAttempts).toBe(0);
+    expect(account.lockedUntil).toBe(70_005);
   });
 
   it('retries a revision conflict without overwriting the existing account registry', async () => {
