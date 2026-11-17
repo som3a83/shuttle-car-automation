@@ -167,7 +167,7 @@ function isDailyReport(value: unknown): value is DailyReportSnapshot {
 
 function isShift(value: unknown): value is ShiftRecord {
   if (!isRecord(value)) return false;
-  return isString(value.id) && (value.shiftType === 'Day' || value.shiftType === 'Night') &&
+  return isString(value.id) && isOptionalArchive(value.archivedAt) && (value.shiftType === 'Day' || value.shiftType === 'Night') &&
     isString(value.startedAt) && (value.endedAt === null || isString(value.endedAt)) &&
     isString(value.supervisor) && isString(value.operators) &&
     isString(value.openingNotes) && isString(value.handoverNotes) &&

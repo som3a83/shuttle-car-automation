@@ -706,7 +706,7 @@ function App() {
     const formElement = event.currentTarget;
     if (!await authorize('batteries.manage', 'battery', 'new')) return;
     const form = new FormData(formElement);
-    const seq = Math.max(0, ...batteries.map(b => Number(b.id.match(/^BAT-(\\d+)$/)?.[1]) || 0)) + 1;
+    const seq = Math.max(0, ...batteries.map(b => Number(b.id.match(/^BAT-(\d+)$/)?.[1]) || 0)) + 1;
     const id = 'BAT-' + String(seq).padStart(3, '0');
     const requestedAssignment = String(form.get('assignment') || '').trim();
     const now = new Date().toISOString();
@@ -814,7 +814,7 @@ function App() {
       batteryCount: activeBatteries.length,
       faultedBatteryCount: activeBatteries.filter(item => item.status === 'Fault').length,
       verifiedTelemetryCount: activeShuttles.filter(item => item.connectivity === 'REAL').length + activeBatteries.filter(item => item.connectionMode === 'REAL').length,
-      activeShift: (() => { const current = shifts.find(item => !item.endedAt); return current ? { id: current.id, shiftType: current.shiftType, supervisor: current.supervisor, startedAt: current.startedAt } : null; })(),
+      activeShift: (() => { const current = shifts.find(item => !item.endedAt && !item.archivedAt); return current ? { id: current.id, shiftType: current.shiftType, supervisor: current.supervisor, startedAt: current.startedAt } : null; })(),
       shuttles: activeShuttles.map(item => ({ id: item.id, manufacturer: item.manufacturer, status: item.status, connectivity: item.connectivity, warehouseZone: item.warehouseZone })),
       batteries: activeBatteries.map(item => ({ id: item.id, manufacturer: item.manufacturer, status: item.status, assignment: item.assignment, soc: item.soc, connectionMode: item.connectionMode, movementHistory: (item.movementHistory || []).map(move => ({ ...move })) }))
     };
@@ -941,7 +941,7 @@ function App() {
       title,
       severity: String(form.get('severity') || item.severity) as Fault['severity'],
       description,
-      probableCauses: String(form.get('cause') || '').split(/[\\n,،]+/).map(value => value.trim()).filter(Boolean),
+      probableCauses: String(form.get('cause') || '').split(/[\n,،]+/).map(value => value.trim()).filter(Boolean),
       diagnosticProcedure: String(form.get('procedure') || '').trim() || 'Field verification required',
       assignedTechnician: String(form.get('technician') || '').trim() || 'Not assigned'
     } : item));
@@ -1313,7 +1313,7 @@ function App() {
         <div className="fleet-layout">
           <div className="surface-card fleet-list-card">
             <div className="list-toolbar"><div className="search-box"><Icon name="grid"/><input value={search} onChange={e => setSearch(e.target.value)} placeholder={t.search}/></div><select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}><option value="ALL">{t.allStates}</option>{statusOptions.map(s => <option key={s} value={s}>{statusText(s)}</option>)}</select></div>
-            <div className="asset-list">{filteredShuttles.map(s => <button key={s.id} onClick={() => setSelectedId(s.id)} className={'asset-row ' + (selected?.id === s.id ? 'selected' : '')}><div className={'asset-icon icon-' + s.manufacturer.toLowerCase()}><Icon name="truck" size={22}/></div><div className="asset-main"><div><strong>{s.id}</strong><span className="asset-maker">{s.manufacturer}</span></div><small>{s.model} · {s.warehouseZone}</small></div><StatusPill status={s.status} language={language}/></button>)}</div>
+            <div className="asset-list">{filteredShuttles.map(s => <button key={s.id} onClick={() => setSelectedId(s.id)} aria-label={`${s.id} ${s.manufacturer}`} className={'asset-row ' + (selected?.id === s.id ? 'selected' : '')}><div className={'asset-icon icon-' + s.manufacturer.toLowerCase()}><Icon name="truck" size={22}/></div><div className="asset-main"><div><strong>{s.id}</strong><span className="asset-maker">{s.manufacturer}</span></div><small>{s.model} · {s.warehouseZone}</small></div><StatusPill status={s.status} language={language}/></button>)}</div>
             {filteredShuttles.length === 0 && <div className="empty-state">{t.empty}</div>}
             <button className="btn-secondary full" onClick={() => {setSearch('');setStatusFilter('ALL');}}>{t.removeFilters}</button>
           </div>
@@ -1357,7 +1357,23 @@ function App() {
           </div>
           </section>}
 
-      {activeTab === 'shifts' && <ShiftOperations language={language} shifts={shifts} shuttles={shuttles} faults={faults} jobs={jobs} onChange={async next => { if (!await authorize('shifts.manage', 'shift', 'shift-register')) return; const action = next[0]?.endedAt ? 'SHIFT_CLOSED' : 'SHIFT_OPENED'; setShifts(next); recordAudit(action, 'shift', next[0]?.id || 'shift-register'); }} />}
+      {activeTab === 'shifts' && <ShiftOperations language={language} shifts={shifts} shuttles={shuttles} faults={faults} jobs={jobs} onChange={async next => {
+        if (!await authorize('shifts.manage', 'shift', 'shift-register')) return;
+        const before = new Map(shifts.map(item => [item.id, item]));
+        const added = next.find(item => !before.has(item.id));
+        const changed = next.find(item => before.has(item.id) && JSON.stringify(before.get(item.id)) !== JSON.stringify(item));
+        let action = 'SHIFT_UPDATED';
+        let entityId = changed?.id || next[0]?.id || 'shift-register';
+        if (added) { action = 'SHIFT_OPENED'; entityId = added.id; }
+        else if (changed) {
+          const previous = before.get(changed.id)!;
+          if (!previous.archivedAt && changed.archivedAt) action = 'SHIFT_ARCHIVED';
+          else if (previous.archivedAt && !changed.archivedAt) action = 'SHIFT_RESTORED';
+          else if (!previous.endedAt && changed.endedAt) action = 'SHIFT_CLOSED';
+        }
+        setShifts(next);
+        recordAudit(action, 'shift', entityId);
+      }} />}
 
       {activeTab === 'engineering' && selected && <section className="page-content">
         <PageIntro eyebrow="MECHANICAL INTELLIGENCE / DIGITAL SCHEMATIC" title={t.engineering} subtitle={t.engineeringSub}/>

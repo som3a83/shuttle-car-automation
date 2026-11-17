@@ -1,7 +1,7 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from './App';
-import { initialShuttles } from './data/mockData';
+import { initialBatteries, initialShuttles } from './data/mockData';
 import { beforeEach, describe, it, expect, vi } from 'vitest';
 import '@testing-library/jest-dom/vitest';
 import { DEFAULT_CUSTOMIZATION } from './data/applicationCustomization';
@@ -463,6 +463,42 @@ describe('Shuttle Car Automation V10', () => {
     });
   });
 
+  it('assigns a sequential numeric battery ID when a legacy non-numeric record exists', async () => {
+    const user = userEvent.setup();
+    window.localStorage.setItem('shuttle-car-automation-v7:batteries', JSON.stringify([
+      { ...initialBatteries[0] },
+      {
+        id: 'BAT-007', manufacturer: 'ACME', model: 'Not recorded', chemistry: 'Not verified',
+        nominalVoltage: 'Not recorded', capacity: 'Not recorded', soc: null, soh: null, temperature: null,
+        voltage: null, current: null, cycles: null, installationDate: 'Not recorded',
+        lastMaintenance: 'Not recorded', assignment: 'Unassigned', notes: '', status: 'Available', connectionMode: 'UNKNOWN'
+      }
+    ]));
+    render(<App />);
+    await user.click(screen.getAllByRole('button', { name: /Battery Management/i })[0]);
+    await user.type(screen.getByLabelText(/^Manufacturer$/i), 'Craftsman');
+    await user.click(screen.getByRole('button', { name: /Save battery$/i }));
+    await waitFor(() => {
+      const saved = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:batteries') || '[]') as Array<{id:string}>;
+      expect(saved.map(item => item.id)).toContain('BAT-008');
+    });
+  });
+
+  it('splits probable causes entered in the fault editor without corrupting the text', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getAllByRole('button', { name: /Fault & Diagnostics/i })[0]);
+    await user.click(screen.getAllByRole('button', { name: /Edit report/i })[0]);
+    const causeField = screen.getAllByLabelText(/Possible cause/i)[0];
+    await user.clear(causeField);
+    await user.type(causeField, 'sensor lens contamination, connector corrosion');
+    await user.click(screen.getByRole('button', { name: /Save changes/i }));
+    await waitFor(() => {
+      const saved = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:faults') || '[]') as Array<{probableCauses:string[]}>;
+      expect(saved[0].probableCauses).toEqual(['sensor lens contamination', 'connector corrosion']);
+    });
+  });
+
   it('saves manually entered battery readings without marking them as live telemetry', async () => {
     const user = userEvent.setup();
     render(<App />);
@@ -508,8 +544,10 @@ describe('Shuttle Car Automation V10', () => {
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
     await user.click(screen.getByRole('button', { name: /^Delete$/i }));
     confirmSpy.mockRestore();
-    saved = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:dailyReports') || '[]') as Array<{id:string}>;
-    expect(saved).toHaveLength(0);
+    await waitFor(() => {
+      saved = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:dailyReports') || '[]') as Array<{id:string}>;
+      expect(saved).toHaveLength(0);
+    });
     await waitFor(() => expect(screen.queryByText(/LATEST SAVED DAILY REPORT/i)).not.toBeInTheDocument());
   });
 

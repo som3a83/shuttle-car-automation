@@ -70,6 +70,8 @@ export interface BatteryMovement {
 
 export interface ShiftRecord {
   id: string;
+  /** Soft archive retains the handover record without showing it as an active shift. */
+  archivedAt?: string | null;
   shiftType: 'Day' | 'Night';
   startedAt: string;
   endedAt: string | null;

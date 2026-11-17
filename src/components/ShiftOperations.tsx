@@ -27,7 +27,12 @@ export default function ShiftOperations({ language, shifts, shuttles, faults, jo
   const [operators, setOperators] = useState('');
   const [openingNotes, setOpeningNotes] = useState('');
   const [handoverNotes, setHandoverNotes] = useState('');
-  const openShift = shifts.find(item => !item.endedAt) || null;
+  const [editingShiftId, setEditingShiftId] = useState<string | null>(null);
+  const [pendingArchiveShiftId, setPendingArchiveShiftId] = useState<string | null>(null);
+  const [showArchivedShifts, setShowArchivedShifts] = useState(false);
+  const activeShifts = shifts.filter(item => !item.archivedAt);
+  const archivedShifts = shifts.filter(item => Boolean(item.archivedAt));
+  const openShift = activeShifts.find(item => !item.endedAt) || null;
   const activeShuttles = shuttles.filter(item => !item.archivedAt);
   const openFaults = faults.filter(item => item.status !== 'Resolved').length;
   const openJobs = jobs.filter(item => item.status !== 'Completed').length;
@@ -72,6 +77,35 @@ export default function ShiftOperations({ language, shifts, shuttles, faults, jo
     setHandoverNotes('');
   };
 
+  const saveShiftEdit = (event: React.FormEvent<HTMLFormElement>, id: string) => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const nextSupervisor = String(form.get('supervisor') || '').trim();
+    const nextOperators = String(form.get('operators') || '').trim();
+    if (!nextSupervisor || !nextOperators) return;
+    onChange(shifts.map(item => item.id === id ? {
+      ...item,
+      shiftType: String(form.get('shiftType') || item.shiftType) as ShiftRecord['shiftType'],
+      supervisor: nextSupervisor,
+      operators: nextOperators,
+      openingNotes: String(form.get('openingNotes') || '').trim(),
+      handoverNotes: String(form.get('handoverNotes') || '').trim()
+    } : item));
+    setEditingShiftId(null);
+  };
+
+  const archiveShift = (id: string) => {
+    const target = shifts.find(item => item.id === id && !item.archivedAt);
+    if (!target || !target.endedAt) return;
+    onChange(shifts.map(item => item.id === id ? { ...item, archivedAt: new Date().toISOString() } : item));
+    setPendingArchiveShiftId(null);
+    setEditingShiftId(null);
+  };
+
+  const restoreShift = (id: string) => {
+    onChange(shifts.map(item => item.id === id ? { ...item, archivedAt: null } : item));
+  };
+
   const formatTime = (value: string | null) => {
     if (!value) return ar ? 'مفتوحة' : 'Open';
     const date = new Date(value);
@@ -89,7 +123,7 @@ export default function ShiftOperations({ language, shifts, shuttles, faults, jo
     </div>
 
     <div className="shift-metric-grid">
-      <div className="metric-card"><span>{ar ? 'الورديات المسجلة' : 'Recorded shifts'}</span><strong>{shifts.length}</strong></div>
+      <div className="metric-card"><span>{ar ? 'الورديات المسجلة' : 'Recorded shifts'}</span><strong>{activeShifts.length}</strong></div>
       <div className="metric-card"><span>{ar ? 'الأجهزة النشطة الآن' : 'Active fleet'}</span><strong>{activeShuttles.length}</strong></div>
       <div className="metric-card"><span>{ar ? 'الأعطال المفتوحة' : 'Open faults'}</span><strong>{openFaults}</strong></div>
       <div className="metric-card"><span>{ar ? 'أوامر الصيانة المفتوحة' : 'Open maintenance'}</span><strong>{openJobs}</strong></div>
@@ -135,15 +169,35 @@ export default function ShiftOperations({ language, shifts, shuttles, faults, jo
     <div className="surface-card shift-history-card">
       <div className="card-head"><div><span className="eyebrow">{ar ? 'سجل الورديات' : 'SHIFT HISTORY'}</span><h3>{ar ? 'الورديات السابقة ومحاضر التسليم' : 'Previous shifts & handover records'}</h3></div><button className="btn-secondary" type="button" onClick={() => downloadCsv([
         ['ID','Shift','Started','Ended','Supervisor','Operators','Opening faults','Closing faults','Opening notes','Handover notes'],
-        ...shifts.map(item => [item.id,item.shiftType,item.startedAt,item.endedAt || 'OPEN',item.supervisor,item.operators,item.openingOpenFaults,item.closingOpenFaults ?? '',item.openingNotes,item.handoverNotes])
-      ])} disabled={shifts.length === 0}>{ar ? 'تصدير سجل الورديات CSV' : 'Export shift register CSV'}</button></div>
-      {shifts.length === 0 ? <div className="empty-state">{ar ? 'لم يتم تسجيل ورديات بعد. ابدأ أول وردية لتفعيل سجل التسليم.' : 'No shifts yet. Start the first shift to activate handover records.'}</div> :
-        <div className="shift-history-list">{shifts.map(item => <article className="shift-history-item" key={item.id}>
+        ...activeShifts.map(item => [item.id,item.shiftType,item.startedAt,item.endedAt || 'OPEN',item.supervisor,item.operators,item.openingOpenFaults,item.closingOpenFaults ?? '',item.openingNotes,item.handoverNotes])
+      ])} disabled={activeShifts.length === 0}>{ar ? 'تصدير سجل الورديات CSV' : 'Export shift register CSV'}</button></div>
+      {activeShifts.length === 0 ? <div className="empty-state">{ar ? 'لم يتم تسجيل ورديات بعد. ابدأ أول وردية لتفعيل سجل التسليم.' : 'No shifts yet. Start the first shift to activate handover records.'}</div> :
+        <div className="shift-history-list">{activeShifts.map(item => <article className="shift-history-item" key={item.id}>
           <div className="record-top"><div><span className="eyebrow">{item.id} · {item.shiftType === 'Day' ? (ar ? 'صباحية' : 'DAY') : (ar ? 'ليلية' : 'NIGHT')}</span><h3>{item.supervisor}</h3></div><span className={'status-pill ' + (item.endedAt ? 'status-completed' : 'status-running')}>{item.endedAt ? (ar ? 'مغلقة' : 'CLOSED') : (ar ? 'مفتوحة' : 'OPEN')}</span></div>
-          <div className="record-meta"><span>{ar ? 'بداية:' : 'Started:'} {formatTime(item.startedAt)}</span><span>{ar ? 'نهاية:' : 'Ended:'} {formatTime(item.endedAt)}</span><span>{ar ? 'الفريق:' : 'Team:'} {item.operators}</span></div>
-          <div className="shift-snapshot-line">{ar ? 'لقطة الأسطول عند البداية:' : 'Opening fleet snapshot:'} {item.openingFleet.length} · {ar ? 'أعطال:' : 'Faults:'} {item.openingOpenFaults} · {ar ? 'صيانة:' : 'Work orders:'} {item.openingOpenMaintenance}</div>
-          {item.handoverNotes && <p className="shift-notes">{item.handoverNotes}</p>}
+          {editingShiftId === item.id ? <form className="stack-form record-edit-form" onSubmit={event => saveShiftEdit(event, item.id)}>
+            <label>{ar ? 'نوع الوردية' : 'Shift type'}<select name="shiftType" defaultValue={item.shiftType}><option value="Day">{ar ? 'صباحية' : 'Day shift'}</option><option value="Night">{ar ? 'ليلية' : 'Night shift'}</option></select></label>
+            <label>{ar ? 'مشرف الوردية *' : 'Shift supervisor *'}<input name="supervisor" defaultValue={item.supervisor} required maxLength={80}/></label>
+            <label>{ar ? 'أسماء المشغلين والفنيين *' : 'Operators / technicians *'}<input name="operators" defaultValue={item.operators} required maxLength={180}/></label>
+            <label>{ar ? 'ملاحظات بداية الوردية' : 'Opening notes'}<textarea name="openingNotes" defaultValue={item.openingNotes} maxLength={1200}/></label>
+            <label>{ar ? 'ملاحظات التسليم' : 'Handover notes'}<textarea name="handoverNotes" defaultValue={item.handoverNotes} maxLength={1200}/></label>
+            <div className="record-actions"><button className="btn-primary" type="submit">{ar ? 'حفظ التعديل' : 'Save changes'}</button><button className="btn-secondary" type="button" onClick={() => setEditingShiftId(null)}>{ar ? 'إلغاء' : 'Cancel'}</button></div>
+          </form> : <>
+            <div className="record-meta"><span>{ar ? 'بداية:' : 'Started:'} {formatTime(item.startedAt)}</span><span>{ar ? 'نهاية:' : 'Ended:'} {formatTime(item.endedAt)}</span><span>{ar ? 'الفريق:' : 'Team:'} {item.operators}</span></div>
+            <div className="shift-snapshot-line">{ar ? 'لقطة الأسطول عند البداية:' : 'Opening fleet snapshot:'} {item.openingFleet.length} · {ar ? 'أعطال:' : 'Faults:'} {item.openingOpenFaults} · {ar ? 'صيانة:' : 'Work orders:'} {item.openingOpenMaintenance}</div>
+            {item.handoverNotes && <p className="shift-notes">{item.handoverNotes}</p>}
+            <div className="record-actions">
+              <button className="btn-secondary" type="button" onClick={() => setEditingShiftId(item.id)}>{ar ? 'تعديل السجل' : 'Edit record'}</button>
+              {item.endedAt
+                ? (pendingArchiveShiftId === item.id
+                    ? <><button className="btn-danger" type="button" onClick={() => archiveShift(item.id)}>{ar ? 'تأكيد الأرشفة' : 'Confirm archive'}</button><button className="btn-secondary" type="button" onClick={() => setPendingArchiveShiftId(null)}>{ar ? 'إلغاء' : 'Cancel'}</button></>
+                    : <button className="btn-danger" type="button" onClick={() => setPendingArchiveShiftId(item.id)}>{ar ? 'أرشفة' : 'Archive'}</button>)
+                : <span className="muted-text">{ar ? 'أغلق الوردية قبل الأرشفة' : 'Close the shift before archiving'}</span>}
+            </div>
+          </>}
         </article>)}</div>}
+      <div className="archive-panel"><button className="text-button" type="button" onClick={() => setShowArchivedShifts(value => !value)}>{showArchivedShifts ? (ar ? 'إخفاء أرشيف الورديات' : 'Hide shift archive') : (ar ? 'عرض الورديات المؤرشفة' : 'Show archived shifts')} · {archivedShifts.length}</button>
+        {showArchivedShifts && archivedShifts.map(item => <div className="archive-row" key={item.id}><div><strong>{item.id} · {item.supervisor}</strong><small>{item.shiftType} · {formatTime(item.startedAt)} · {formatTime(item.endedAt)}</small></div><button className="btn-secondary" onClick={() => restoreShift(item.id)}>{ar ? 'استعادة' : 'Restore'}</button></div>)}
+      </div>
     </div>
     <p className="shift-footnote">{ar ? 'السجلات محفوظة محليًا على هذا الجهاز. أسماء المشرفين والمشغلين إدخالات تشغيلية وليست إثبات هوية أو توقيعًا إلكترونيًا.' : 'Shift records are stored locally on this device. Supervisor/operator names are operational entries, not authenticated identity or electronic signatures.'}</p>
   </section>;
