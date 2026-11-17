@@ -1,100 +1,106 @@
-# INSTALLATION GUIDE — SHUTTLE CAR AUTOMATION SYSTEM
+# Installation and Release Guide — Shuttle Car Automation 1.0.0
 
-## الحالة الحالية
+This guide applies to the current React/TypeScript/Capacitor implementation on the feature branch and the pull request targeting `main`. It replaces the historical V4 ZIP-only installation instructions below.
 
-هذا المستودع لا يحتوي حاليًا على شجرة مصدر تطبيق قابلة للتشغيل؛ يحتوي على `shuttle-control-v4.0.0.zip` وملفات توثيق للمراجعة. لم يتم التحقق من أعضاء ZIP أو استخراجها في بيئة الجلسة، لذلك لا يمكن تحديد إطار العمل أو أمر بدء التطبيق، ولا توجد حاليًا APK/AAB جاهزة للتثبيت.
+## 1. Requirements
 
-**لا تتبع أوامر تشغيل تخمينية ولا تثبّت ملفات تنفيذية من الأرشيف قبل التحقق منه.** الخطوات التالية تُنزّل المشروع وتتحقق من الأرشيف وتستخرجه فقط؛ ولا تدعي بناء التطبيق.
-
-## المتطلبات
-
+- Node.js 22 or newer.
+- npm.
 - Git.
-- Python 3.
-- صلاحية وصول إلى المستودع الخاص `som3a83/shuttle-car-automation`، عبر Git Credential Manager أو SSH. لا تضع رمز الوصول في الأمر أو سجل الطرفية.
+- Android Studio/Android SDK only when building locally for Android.
 
-## تنزيل فرع التطوير
+## 2. Run the web app
 
 ```bash
-git clone --branch development/v4-industrial-upgrade https://github.com/som3a83/shuttle-car-automation.git
+git clone https://github.com/som3a83/shuttle-car-automation.git
 cd shuttle-car-automation
+git switch copilot/complete-shuttle-automation-v6
+npm install
+npm run dev
 ```
 
-إذا كنت قد نسخت المستودع مسبقًا، تأكد أنك على فرع التطوير قبل متابعة العمل:
+Use the local URL printed by Vite.
+
+## 3. Run checks and build
 
 ```bash
-git switch development/v4-industrial-upgrade
-git status --short --branch
+npm run check
+npm test
+npm run build
+npm run assets:render
 ```
 
-لا تنفذ أوامر على `main` لهذا الإجراء. احتفظ بنسخة مستقلة من المجلد إذا كان لديك تغييرات محلية.
+The CI pipeline runs TypeScript, Vitest, the production bundle and store-artwork rendering. Check the workflow run corresponding to the exact commit you intend to release.
 
-## فحص ZIP واستخراجه بأمان إلى مجلد جديد
-
-يشغّل هذا الإجراء مدققًا من مكتبة Python القياسية. يتحقق من سلامة أعضاء ZIP عبر CRC، ويرفض المسارات المطلقة وعبور المجلدات والروابط الرمزية والمسارات ذات الفواصل أو جذور الأقراص غير المحمولة، ثم يستخرج إلى مجلد جديد لا يستبدل مجلدًا قائمًا.
-
-شغّله من جذر المستودع:
+## 4. Build a local Android debug APK
 
 ```bash
-python3 - <<'PY'
-from pathlib import Path, PurePosixPath
-from zipfile import ZipFile
-import stat
-
-archive = Path("shuttle-control-v4.0.0.zip")
-target = Path("../shuttle-v4-validated")
-if not archive.is_file():
-    raise SystemExit(f"Archive not found: {archive}")
-if target.exists():
-    raise SystemExit(f"Refusing to overwrite existing directory: {target}")
-target.mkdir(mode=0o700, parents=True)
-try:
-    with ZipFile(archive) as zf:
-        bad = zf.testzip()
-        if bad:
-            raise SystemExit(f"CRC failure in archive member: {bad}")
-        members = zf.infolist()
-        for info in members:
-            name = info.filename
-            path = PurePosixPath(name)
-            mode = info.external_attr >> 16
-            if path.is_absolute() or ".." in path.parts or not path.parts:
-                raise SystemExit(f"Unsafe archive path: {name!r}")
-            if "\\" in name or (len(name) > 1 and name[1] == ":"):
-                raise SystemExit(f"Non-portable / rooted archive path: {name!r}")
-            if stat.S_ISLNK(mode):
-                raise SystemExit(f"Symlink member rejected: {name!r}")
-        for info in members:
-            print(info.filename)
-        zf.extractall(target)
-except Exception:
-    # Keep any partially-created output for manual inspection; never overwrite it.
-    raise
-print(f"Validated extraction completed in: {target.resolve()}")
-PY
+npm install
+npm run build
+npx cap add android
+npx capacitor-assets generate --android --iconBackgroundColor '#111820' --iconBackgroundColorDark '#111820' --splashBackgroundColor '#111820' --splashBackgroundColorDark '#111820'
+npx cap sync android
+cd android
+./gradlew assembleDebug
 ```
 
-راجِع قائمة الملفات المستخرجة وتأكد يدويًا من أنها المصدر المتوقع. هذا الفحص لا يثبت أن الكود موثوق أو آمن، ولا يفحص الأسرار أو الثغرات.
+The debug APK is created at:
 
-## تشغيل التطبيق
+`android/app/build/outputs/apk/debug/app-debug.apk`
 
-لا يوجد أمر تشغيل موثق أو manifest ظاهر في المستودع الحالي، لذلك لا يمكن إعطاء أوامر دقيقة مثل `npm install` أو `gradle assemble` دون معرفة محتوى المصدر. بعد الاستخراج:
+This is an evaluation build, not a Play Store upload bundle.
 
-1. حدّد مجلد المشروع الذي يحتوي ملفات الإعداد الفعلية.
-2. راجع README وملفات الاعتماديات وسكربتات التشغيل قبل تثبيت أي اعتماديات.
-3. افحص المحتوى بحثًا عن مفاتيح أو بيانات حساسة قبل مشاركة الملفات أو رفعها.
-4. اتبع تعليمات الإطار الفعلية الموجودة في المصدر، ولا تستخدم بيانات اعتماد الإنتاج.
-5. نفّذ الاختبارات والبناء في بيئة مناسبة، وسجّل النتائج والأخطاء الفعلية.
+## 5. Get the APK from GitHub Actions
 
-لا توصّل التطبيق بمركبة أو PLC/معدات فعلية قبل مراجعة وثائق الشركة المصنّعة، والصلاحيات، وآليات الإيقاف الآمن واختبارها بواسطة مختصين. لم يتم التحقق من اتصال أجهزة أو أوامر حركة في هذه المراجعة.
+Open **Actions → Build Android Debug APK** and select the successful run for the exact release commit. Download the `shuttle-car-automation-debug-apk` artifact. Review the separate emulator evidence artifact. Do not use an APK from an earlier commit after the source has changed.
 
-## Android APK/AAB
+The **Package Android Debug APK** workflow creates an APK plus SHA256 checksum. Compare the downloaded file against the checksum before installation.
 
-لا توجد حزمة APK أو AAB مُنشأة أو مُتحقق منها في المستودع. لا يمكن تثبيت التطبيق على Android أو إصدار أوامر Gradle موثوقة حتى يثبت أن المصدر يتضمن مشروع Android وإعدادات بناء سليمة. إذا أمكن البناء لاحقًا:
+## 6. Produce the signed Google Play AAB
 
-- اختبر APK تجريبية غير موقعة/موقعة للاختبار وفق إعدادات المشروع، وتحقق منها على جهاز أو محاكي مناسب.
-- احتفظ بمفاتيح التوقيع وكلمات المرور خارج المستودع وسجلات CI.
-- أنشئ AAB للنشر فقط بعد استكمال مراجعة واختبارات الإصدار.
+1. Create an Android upload keystore and securely store at least two independent backups of the keystore and passwords. Do not upload the keystore file into Git or attach it to a public issue.
+2. Open repository **Settings → Secrets and variables → Actions** and add:
+   - `ANDROID_KEYSTORE_BASE64`
+   - `ANDROID_KEYSTORE_PASSWORD`
+   - `ANDROID_KEY_ALIAS`
+   - `ANDROID_KEY_PASSWORD`
+3. Open **Actions → Android Play Store AAB → Run workflow**.
+4. Enter the semantic version and an unused, strictly increasing Android `versionCode`.
+5. Download the `shuttle-car-automation-play-aab` artifact only after the workflow succeeds. Verify the attached SHA256 checksum and confirm the AAB signature.
+6. Upload the signed AAB in Google Play Console. Play App Signing enrollment and all publisher declarations are completed in Play Console, not in this repository.
 
-## ملفات التسليم
+The workflow targets compile/target API 36. Verify the current Google Play target API requirement again when releasing a later version.
 
-الحالة الحالية لا تتضمن `SHUTTLE_CAR_AUTOMATION_FINAL.zip` أو `SHUTTLE_CAR_AUTOMATION.apk` أو `SHUTTLE_CAR_AUTOMATION.aab`. لا تعتبر هذه الملفات متاحة للتنزيل حتى تُنشأ من المصدر وتُختبر فعليًا ويُرفع ملفها الثنائي إلى إصدار أو Artifact موثوق.
+Detailed signing and release instructions are in [PLAY_STORE_RELEASE.md](PLAY_STORE_RELEASE.md).
+
+## 7. Store graphics
+
+The repository contains vector sources in `assets/`. Run:
+
+```bash
+npm run assets:render
+```
+
+This produces:
+
+- `artifacts/store-listing/icon-512.png`
+- `artifacts/store-listing/feature-graphic-1024x500.png`
+- PWA icons in `public/`
+
+CI uploads the two Google Play graphics as `shuttle-car-automation-store-artwork`. Obtain genuine screenshots from the app running on the intended release build. A feature graphic or store icon is not a substitute for app screenshots.
+
+## 8. Store declarations and policy
+
+Before submission, the publisher must:
+
+- Publish [PRIVACY_POLICY.md](PRIVACY_POLICY.md) at a stable public HTTPS page and enter that URL in Play Console.
+- Add support contact details.
+- Complete content rating, target audience, data safety, app access, ads and country distribution forms accurately.
+- Verify all store screenshots, icon, feature graphic, app name and descriptions.
+- Test the signed release on physical Android devices.
+
+Listing text is in [STORE_LISTING.md](STORE_LISTING.md).
+
+## 9. Current scope and limitations
+
+This release is a local single-device recordkeeping app. It has no app-operated backend, cloud database, account login, secure server-enforced roles, connected AI diagnosis, real PLC/manufacturer telemetry or machine-control interface. Its 3D engineering models are conceptual, not vendor-certified CAD. These limitations are stated in the app, privacy policy, terms and Play listing. Do not submit marketing material that implies otherwise.
