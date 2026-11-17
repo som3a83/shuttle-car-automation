@@ -18,6 +18,8 @@ The gateway cannot produce real telemetry until a qualified integrator obtains t
 
 The service binds to 127.0.0.1:8765 by default. Do not expose that listener directly to a plant or public network. For remote access, use the plant-approved OT architecture: firewall allowlists, VPN or managed identity-aware access, and a TLS reverse proxy. Set a non-loopback bind only after OT approval. Never place PLC credentials in the mobile application.
 
+For container deployment, the included Dockerfile listens on the container interface and uses the disabled example asset register. Run it only on a private container network behind an approved TLS reverse proxy; do not publish an unencrypted host port. Mount the commissioned asset JSON as a read-only file and set SHUTTLE_GATEWAY_CONFIG to its container path. Supply the two tokens through the deployment secret manager, not a committed file.
+
 ## API contract
 
 - GET /health — minimal unauthenticated process health.
