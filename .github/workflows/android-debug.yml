@@ -18,8 +18,8 @@ permissions:
 
 concurrency:
   group: shuttle-android-smoke-${{ github.ref }}
-  # Emulator boots are expensive; queue newer commits instead of cancelling an active smoke test.
-  cancel-in-progress: false
+  # Only the newest commit on a PR branch needs an emulator run; cancel stale queued/running builds.
+  cancel-in-progress: true
 
 jobs:
   build-android:
@@ -101,6 +101,8 @@ jobs:
       - name: Install and launch APK in Android emulator
         uses: reactivecircus/android-emulator-runner@v2
         timeout-minutes: 18
+        env:
+          GITHUB_WORKSPACE: ${{ github.workspace }}
         with:
           api-level: 35
           system-image-api-level: 35
@@ -111,32 +113,7 @@ jobs:
           emulator-options: -no-snapshot -no-window -noaudio -no-boot-anim
           disable-animations: true
           script: >-
-            set -euo pipefail &&
-            WORKSPACE="$PWD" &&
-            APK="$WORKSPACE/android/app/build/outputs/apk/debug/app-debug.apk" &&
-            EVIDENCE="$WORKSPACE/artifacts/android-smoke" &&
-            echo "Emulator script working directory: $PWD" &&
-            find "$WORKSPACE/android/app/build/outputs" -maxdepth 5 -type f -name '*.apk' -print &&
-            test -s "$APK" &&
-            mkdir -p "$EVIDENCE" &&
-            adb wait-for-device &&
-            adb shell wm size | tee "$EVIDENCE/display-size.txt" &&
-            adb shell wm density | tee "$EVIDENCE/display-density.txt" &&
-            adb install -r "$APK" &&
-            adb logcat -c &&
-            adb shell am force-stop com.shuttlecar.automation &&
-            adb shell am start -W -n com.shuttlecar.automation/.MainActivity | tee "$EVIDENCE/launch-result.txt" &&
-            grep -F "Status: ok" "$EVIDENCE/launch-result.txt" &&
-            sleep 8 &&
-            APP_PID="$(adb shell pidof com.shuttlecar.automation | tr -d '\r' || true)" &&
-            test -n "$APP_PID" &&
-            adb exec-out screencap -p > "$EVIDENCE/android-app-screen.png" &&
-            test -s "$EVIDENCE/android-app-screen.png" &&
-            adb shell dumpsys activity activities > "$EVIDENCE/activities.txt" &&
-            adb logcat -d -t 3000 > "$EVIDENCE/device-logcat.txt" &&
-            ! grep -E "FATAL EXCEPTION|Process: com\\.shuttlecar\\.automation" "$EVIDENCE/device-logcat.txt" &&
-            grep -F "com.shuttlecar.automation/.MainActivity" "$EVIDENCE/activities.txt" &&
-            echo "Android emulator install, launch, foreground-process, screenshot, and crash-log checks passed."
+            bash "$GITHUB_WORKSPACE/scripts/android-emulator-smoke.sh"
       - name: Upload Android emulator evidence
         if: always()
         uses: actions/upload-artifact@v7
