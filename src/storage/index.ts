@@ -347,8 +347,8 @@ export async function backup(): Promise<BackupEnvelope> {
   return active.backup();
 }
 export async function restore(input: BackupEnvelope): Promise<void> {
-  validateBackup(input);
   const active = await engine();
   if (await active.getMode() === 'readonly-recovery') fail('STORAGE_RECOVERY_REQUIRED', 'Storage recovery must be completed before restoring a backup.');
+  validateBackup(input);
   await active.restore(input);
 }
