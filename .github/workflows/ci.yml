@@ -45,6 +45,9 @@ jobs:
       - name: Build production bundle
         run: npm run build
 
+      - name: Render store listing artwork and PWA icons
+        run: npm run assets:render
+
       - name: Upload Google Play listing artwork
         uses: actions/upload-artifact@v4
         with:
