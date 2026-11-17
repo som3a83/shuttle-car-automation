@@ -97,8 +97,8 @@ export default function LiveGatewayPanel({ language }: Props) {
       <span className="gateway-readonly">{label('readOnly')}</span>
     </div>
     <div className="gateway-connect-form">
-      <label><span>{label('url')}</span><input value={url} onChange={(event) => setUrl(event.target.value)} placeholder="https://ot-gateway.example" inputMode="url" autoComplete="url"/></label>
-      <label><span>{label('token')}</span><input type="password" value={token} onChange={(event) => setToken(event.target.value)} placeholder={ar ? 'يُدخل يدويًا ولا يُحفظ' : 'Entered manually; never persisted'} autoComplete="off"/></label>
+      <label><span>{label('url')}</span><input value={url} onChange={(event) => { setUrl(event.target.value); setStatus(null); setSamples({}); setLastChecked(null); setError(""); }} placeholder="https://ot-gateway.example" inputMode="url" autoComplete="url"/></label>
+      <label><span>{label('token')}</span><input type="password" value={token} onChange={(event) => { setToken(event.target.value); setStatus(null); setSamples({}); setLastChecked(null); setError(""); }} placeholder={ar ? 'يُدخل يدويًا ولا يُحفظ' : 'Entered manually; never persisted'} autoComplete="off"/></label>
       <button type="button" className="gateway-connect-button" onClick={() => void refresh()} disabled={busy}>{busy ? label('checking') : label('connect')}</button>
       <label className="gateway-auto-toggle"><input type="checkbox" checked={autoRefresh} onChange={(event) => setAutoRefresh(event.target.checked)}/><span>{label('auto')}</span></label>
     </div>
