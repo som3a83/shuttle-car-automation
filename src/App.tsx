@@ -898,7 +898,7 @@ function App() {
         </div>
         <div className="section-heading"><div><span className="eyebrow">FLEET TELEMETRY / LOCAL RECORDS</span><h2>{language === 'ar' ? 'مؤشرات الأسطول' : 'Fleet at a glance'}</h2></div><button className="text-button" onClick={() => go('fleet')}>{t.viewRegister}<Icon name="chevron" size={15}/></button></div>
         <div className="dashboard-composition">
-        {dashboardWidgets.some((widget) => widget.id === 'fleet-status') && <section className="dashboard-fleet-widget" style={{ order: dashboardWidgets.find((widget) => widget.id === 'fleet-status')?.order ?? 0 }}>
+        {dashboardWidgets.some((widget) => widget.id === 'fleet-status') && <section className={`dashboard-fleet-widget ${dashboardWidgets.find((widget) => widget.id === 'fleet-status')?.size === 'wide' ? 'dashboard-widget-wide' : ''}`} style={{ order: dashboardWidgets.find((widget) => widget.id === 'fleet-status')?.order ?? 0 }}>
         <div className="metric-grid">
           <Metric icon="truck" label={t.total} value={metrics.total} accent="blue" detail={language === 'ar' ? 'إجمالي السجلات' : 'Registered assets'}/>
           <Metric icon="grid" label={t.running} value={metrics.running} accent="green" detail={language === 'ar' ? 'لا توجد قراءة تشغيل مؤكدة' : 'No verified running signal'}/>
