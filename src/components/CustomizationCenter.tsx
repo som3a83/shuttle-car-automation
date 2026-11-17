@@ -1,12 +1,12 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { Role } from '../types';
 import {
-  appendCustomizationAudit,
+  appendCustomizationAuditAsync,
   DEFAULT_CUSTOMIZATION,
-  loadCustomization,
+  loadCustomizationAsync,
   PROTECTED_ROUTES,
-  readCustomizationAudit,
-  saveCustomization,
+  readCustomizationAuditAsync,
+  saveCustomizationAsync,
   validateCustomization,
   type CustomizableRoute,
   type CustomizationConfig,
@@ -23,36 +23,57 @@ export default function CustomizationCenter({
   canManage,
   roles = ['Super Admin', 'Admin', 'Supervisor', 'Maintenance Engineer', 'Technician', 'Operator', 'Viewer']
 }: CustomizationCenterProps) {
-  const [config, setConfig] = useState(loadCustomization);
+  const [config, setConfig] = useState<CustomizationConfig>(DEFAULT_CUSTOMIZATION);
   const [message, setMessage] = useState('');
   const [tab, setTab] = useState<'modules' | 'navigation' | 'dashboard'>('modules');
   const [draftLabel, setDraftLabel] = useState('');
   const [draftLabelAr, setDraftLabelAr] = useState('');
   const [draftGroup, setDraftGroup] = useState('CUSTOM');
   const [newRoute, setNewRoute] = useState<CustomizableRoute>('reports');
-  const [audit, setAudit] = useState(readCustomizationAudit);
+  const [audit, setAudit] = useState<Awaited<ReturnType<typeof readCustomizationAuditAsync>>>([]);
+  const [ready, setReady] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
 
-  const commit = (next: CustomizationConfig, action: string, target: string, detail: string) => {
-    if (!canManage) return;
+  useEffect(() => {
+    let active = true;
+    void Promise.all([loadCustomizationAsync(), readCustomizationAuditAsync()])
+      .then(([loadedConfig, loadedAudit]) => {
+        if (!active) return;
+        setConfig(loadedConfig);
+        setAudit(loadedAudit);
+      })
+      .catch((reason: unknown) => {
+        if (!active) return;
+        setLoadFailed(true);
+        setMessage(reason instanceof Error ? reason.message : 'Could not load local customization data.');
+      })
+      .finally(() => {
+        if (active) setReady(true);
+      });
+    return () => { active = false; };
+  }, []);
+
+  const commit = async (next: CustomizationConfig, action: string, target: string, detail: string) => {
+    if (!canManage || !ready || loadFailed) return;
     const normalized = validateCustomization(next);
     try {
-      saveCustomization(normalized);
-    } catch {
-      setMessage('Could not save customization. Check local device storage.');
+      await saveCustomizationAsync(normalized);
+    } catch (reason) {
+      setMessage(reason instanceof Error ? reason.message : 'Could not save customization. Check local device storage.');
       return;
     }
     let auditSaved = true;
     try {
-      appendCustomizationAudit({ action, target, detail });
+      await appendCustomizationAuditAsync({ action, target, detail });
+      setAudit(await readCustomizationAuditAsync());
     } catch {
       auditSaved = false;
     }
     setConfig(normalized);
-    setAudit(readCustomizationAudit());
     window.dispatchEvent(new CustomEvent<CustomizationConfig>('shuttle-customization-change', { detail: normalized }));
     setMessage(auditSaved
       ? 'Saved on this device. These preferences can be changed by anyone with access to this device.'
-      : 'Preferences were saved, but the local audit log could not be updated because device storage is full.');
+      : 'Preferences were saved, but the local audit log could not be updated. Check device storage and try again.');
   };
 
   const reorder = <T extends { order: number }>(items: T[], index: number, delta: number): T[] => {
@@ -126,6 +147,20 @@ export default function CustomizationCenter({
       `Removed menu alias “${item.label}”; destination records were retained.`
     );
   };
+
+  if (!ready) {
+    return <section className="surface-card customization-center" aria-labelledby="customization-title">
+      <h2 id="customization-title">Customization center</h2>
+      <p role="status">Loading local customization data…</p>
+    </section>;
+  }
+
+  if (loadFailed) {
+    return <section className="surface-card customization-center" aria-labelledby="customization-title">
+      <h2 id="customization-title">Customization center</h2>
+      <p role="alert">{message || 'Local customization data could not be loaded. No defaults were saved.'}</p>
+    </section>;
+  }
 
   return (
     <section className="surface-card customization-center" aria-labelledby="customization-title">
