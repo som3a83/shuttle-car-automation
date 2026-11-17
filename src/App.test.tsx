@@ -492,7 +492,7 @@ describe('Shuttle Car Automation V10', () => {
     render(<App />);
     await user.click(screen.getAllByRole('button', { name: /Fault & Diagnostics/i })[0]);
     await user.type(screen.getByLabelText(/Fault title/i), 'Test bearing inspection');
-    await user.type(screen.getByLabelText(/Description/i), 'Newly observed vibration during manual inspection');
+    await user.type(screen.getByLabelText(/Observed symptom/i), 'Newly observed vibration during manual inspection');
     await user.click(screen.getByRole('button', { name: /Register fault/i }));
 
     const editButtons = screen.getAllByRole('button', { name: /Edit report/i });
@@ -505,8 +505,8 @@ describe('Shuttle Car Automation V10', () => {
 
     const actionFields = screen.getAllByPlaceholderText(/corrective action/i);
     await user.type(actionFields[0], 'Inspected bearing and recorded measured clearance; technician verification completed.');
-    await user.click(screen.getAllByRole('button', { name: /Save action/i })[0]);
-    await user.click(screen.getAllByRole('button', { name: /Investigate/i })[0]);
+    await user.click(screen.getAllByRole('button', { name: /Save corrective action/i })[0]);
+    await user.click(screen.getAllByRole('button', { name: /Start investigation/i })[0]);
     await user.click(screen.getAllByRole('button', { name: /Resolve/i })[0]);
 
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
@@ -563,7 +563,7 @@ describe('Shuttle Car Automation V10', () => {
     await user.click(screen.getByRole('button', { name: /Save connection record/i }));
 
     expect(screen.getByText('Test vendor gateway')).toBeInTheDocument();
-    expect(screen.getByText(/Not configured · read-only after commissioning/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Not configured · read-only after commissioning/i).length).toBeGreaterThan(0);
 
     await user.click(screen.getAllByRole('button', { name: /Edit record/i }).find(button => button.closest('article')?.textContent?.includes('Test vendor gateway'))!);
     const editName = screen.getAllByLabelText(/Connection name/i).find(input => (input as HTMLInputElement).value === 'Test vendor gateway');
