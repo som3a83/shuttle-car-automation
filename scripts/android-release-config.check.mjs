@@ -51,7 +51,13 @@ test('prepares API 36, release version, and upload signing configuration', () =>
     assert.match(gradle, /versionCode\s+1002003/);
     assert.match(gradle, /versionName\s+"1\.2\.3"/);
     assert.match(gradle, /signingConfigs\s*\{[\s\S]*release\s*\{/);
-    assert.match(gradle, /signingConfig\s+signingConfigs\.release/);
+    const signingAssignment = gradle.indexOf('signingConfig signingConfigs.release');
+    const buildTypesStart = gradle.indexOf('buildTypes {');
+    const signingConfigsStart = gradle.indexOf('signingConfigs {');
+    assert.ok(signingAssignment > buildTypesStart, 'signing assignment must be inside buildTypes');
+    assert.ok(!gradle.slice(signingConfigsStart, buildTypesStart).includes('signingConfig signingConfigs.release'),
+      'signing assignment must not be nested inside signingConfigs.release');
+    assert.equal(gradle.match(/signingConfig signingConfigs\.release/g)?.length, 1);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
