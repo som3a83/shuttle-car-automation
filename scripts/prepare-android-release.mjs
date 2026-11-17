@@ -3,7 +3,11 @@ import path from 'node:path';
 
 const root = process.cwd();
 const versionName = process.env.APP_VERSION || '1.0.0';
-const versionCode = Number.parseInt(process.env.APP_VERSION_CODE || '1', 10);
+const versionCodeRaw = process.env.APP_VERSION_CODE || '';
+if (!/^[1-9]\\d*$/.test(versionCodeRaw)) {
+  throw new Error('APP_VERSION_CODE must contain only a positive integer.');
+}
+const versionCode = Number(versionCodeRaw);
 const requiredSecrets = [
   'ANDROID_KEYSTORE_FILE',
   'ANDROID_KEYSTORE_PASSWORD',
