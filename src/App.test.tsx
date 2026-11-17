@@ -332,7 +332,7 @@ describe('Shuttle Car Automation V9', () => {
     await user.click(screen.getAllByRole('button', { name: /Battery Management/i })[0]);
     await user.type(screen.getByLabelText(/^Manufacturer$/i), 'ACME');
     await user.type(screen.getByLabelText(/^Model$/i), 'Pack test A');
-    await user.selectOptions(screen.getByLabelText(/Assign battery to shuttle/i), 'SC-01');
+    await user.selectOptions(screen.getByLabelText(/^Assign to shuttle$/i), 'SC-01');
     await user.click(screen.getByRole('button', { name: /Save battery$/i }));
     expect(screen.getAllByText('BAT-001').length).toBeGreaterThan(0);
     expect(screen.getByText('ACME · SC-01')).toBeInTheDocument();
