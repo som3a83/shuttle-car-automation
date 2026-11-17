@@ -248,7 +248,7 @@ class IndexedDbEngine implements StorageEngine {
       await transactionDone(tx);
       return revision;
     } catch (error) {
-      if (tx && tx.readyState !== 'done') { try { tx.abort(); } catch { /* transaction may already be closed */ } }
+      if (tx) { try { tx.abort(); } catch { /* transaction may already be closed */ } }
       indexedDbFailure(error, key);
     }
   }
