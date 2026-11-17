@@ -81,4 +81,21 @@ describe('local application customization center', () => {
     expect(parsed.navigation.some((item) => item.id === 'alias-good')).toBe(true);
     expect(parsed.navigation.some((item) => item.id === 'alias-bad')).toBe(false);
   });
+  it('preserves an individual hidden menu entry when its module is disabled and re-enabled', () => {
+    const preferences = JSON.parse(JSON.stringify(DEFAULT_CUSTOMIZATION)) as typeof DEFAULT_CUSTOMIZATION;
+    const aiEntry = preferences.navigation.find((item) => item.route === 'ai');
+    if (!aiEntry) throw new Error('Default AI navigation entry is missing.');
+    aiEntry.visible = false;
+    localStorage.setItem(CUSTOMIZATION_STORAGE_KEY, JSON.stringify(preferences));
+
+    render(<CustomizationCenter canManage />);
+    const toggle = screen.getByRole('checkbox', { name: 'Enable AI Technical Assistant' });
+    fireEvent.click(toggle);
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Enable AI Technical Assistant' }));
+
+    const saved = JSON.parse(localStorage.getItem(CUSTOMIZATION_STORAGE_KEY) || '{}');
+    expect(saved.modules.find((item: { id: string }) => item.id === 'ai').enabled).toBe(true);
+    expect(saved.navigation.find((item: { id: string }) => item.id === 'ai').visible).toBe(false);
+  });
+
 });
