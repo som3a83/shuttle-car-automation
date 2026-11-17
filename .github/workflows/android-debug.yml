@@ -121,9 +121,10 @@ jobs:
           retention-days: 14
 
       - name: Upload debug APK
+        if: always()
         uses: actions/upload-artifact@v6
         with:
           name: shuttle-car-automation-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: error
+          if-no-files-found: ignore
           retention-days: 14
