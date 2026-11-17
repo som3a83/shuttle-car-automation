@@ -14,11 +14,16 @@ const Battery3DViewer = lazy(() => import('./components/Battery3DViewer'));
 import { getManufacturerReference } from './data/manufacturerReferences';
 import ShiftOperations from './components/ShiftOperations';
 import LiveGatewayPanel from './components/LiveGatewayPanel';
+import SecurityCenter from './components/SecurityCenter';
 import { loadCustomization, validateCustomization, type CustomizationConfig } from './data/applicationCustomization';
 import { archiveBatteryAndDetach, assignBatteryToShuttle, restoreBatteryRecord } from './data/batteryLifecycle';
 import { validateOperationalBackup } from './data/backupValidation';
 import { archiveCompletedWorkOrder, archiveFaultRecord, restoreFaultRecord, restoreWorkOrder } from './data/recordLifecycle';
 import { buildDailyReportSheets, buildRegisterSheets, downloadXlsx } from './data/excelExport';
+import { appendAuditRecord } from './security/auditLog';
+import { canAccessRoute, canPerformAction, type Permission } from './security/permissions';
+import { listLocalAccounts, readLocalSession } from './security/localAuth';
+import { OPERATIONAL_COLLECTIONS, persistOperationalSnapshot, readOperationalStorageIssues } from './security/operationalStorage';
 import type {
   AppSettings,
   Battery,
@@ -78,7 +83,7 @@ const copy = {
     aiSub: 'Engineering support checklist. AI service is not connected, so no diagnosis is generated automatically.',
     reportsSub: 'Export the current local register for review. Demonstration and unverified fields remain clearly marked.',
     exportCsv: 'Export CSV', backup: 'Download JSON backup', print: 'Print / Save PDF',
-    noNotifications: 'No new local notifications.', noUsers: 'Role preview only — no real authentication or server-enforced permissions.',
+    noNotifications: 'No new local notifications.', noUsers: 'Local device identity only; shared deployments require a trusted backend.',
     language: 'Language', theme: 'Appearance', dark: 'Dark', light: 'Light', role: 'Preview role', reset: 'Reset preview',
     statusReady: 'Ready', statusRunning: 'Running', statusIdle: 'Idle', statusCharging: 'Charging', statusMaintenance: 'Maintenance', statusFault: 'Fault', statusDisconnected: 'Disconnected', statusUnknown: 'Unknown',
     protocols: 'Protocol adapters', readOnly: 'Read-only integration first', noConnection: 'Not connected', notConfigured: 'Not configured',
@@ -112,7 +117,7 @@ const copy = {
     aiSub: 'قائمة مساعدة فنية. خدمة الذكاء الاصطناعي غير مربوطة، لذلك لا يتم توليد تشخيص تلقائي.',
     reportsSub: 'تصدير السجلات المحلية للمراجعة مع توضيح البيانات التجريبية وغير المؤكدة.',
     exportCsv: 'تصدير CSV', backup: 'تنزيل نسخة JSON', print: 'طباعة / حفظ PDF',
-    noNotifications: 'لا توجد إشعارات محلية جديدة.', noUsers: 'معاينة أدوار فقط — لا يوجد تسجيل دخول حقيقي أو صلاحيات مؤمنة على خادم.',
+    noNotifications: 'لا توجد إشعارات محلية جديدة.', noUsers: 'هوية محلية على الجهاز فقط؛ التشغيل المشترك يتطلب خادم هوية وصلاحيات.',
     language: 'اللغة', theme: 'المظهر', dark: 'داكن', light: 'فاتح', role: 'معاينة الدور', reset: 'إعادة المعاينة',
     statusReady: 'جاهز', statusRunning: 'يعمل', statusIdle: 'متوقف', statusCharging: 'يشحن', statusMaintenance: 'صيانة', statusFault: 'عطل', statusDisconnected: 'غير متصل', statusUnknown: 'غير معروف',
     protocols: 'واجهات الاتصال', readOnly: 'البدء بالقراءة فقط', noConnection: 'غير متصل', notConfigured: 'غير مُعد',
@@ -164,6 +169,17 @@ function readLocal<T>(key: string, fallback: T): T {
   } catch {
     return fallback;
   }
+}
+
+function resolveInitialUser(): (typeof users)[number] {
+  try {
+    const session = readLocalSession(sessionStorage);
+    if (session) return { id: session.accountId, name: session.name, role: session.role, email: session.email, isAuthenticated: true };
+    if (listLocalAccounts(localStorage).length > 0) {
+      return { id: 'local-guest', name: 'Local guest', role: 'Viewer', email: '', isAuthenticated: false };
+    }
+  } catch { /* Fail closed to the guest identity when local session data cannot be read. */ }
+  return { id: 'local-guest', name: 'Local guest', role: 'Viewer', email: '', isAuthenticated: false };
 }
 
 function Icon({ name, size = 18 }: { name: string; size?: number }) {
@@ -294,7 +310,7 @@ function App() {
   const [theme, setTheme] = useState<Theme>(() => readLocal('theme', 'dark'));
   const [activeTab, setActiveTab] = useState<Tab>(() => tabFromLocation());
   const [customization, setCustomization] = useState<CustomizationConfig>(() => loadCustomization());
-  const [currentUser, setCurrentUser] = useState(users[0]);
+  const [currentUser, setCurrentUser] = useState(resolveInitialUser);
   const [shuttles, setShuttles] = useState<Shuttle[]>(() => readLocal('shuttles', initialShuttles));
   const [batteries, setBatteries] = useState<Battery[]>(() => readLocal('batteries', initialBatteries));
   const [faults, setFaults] = useState<Fault[]>(() => readLocal('faults', initialFaults));
@@ -315,6 +331,7 @@ function App() {
   const [mobileNav, setMobileNav] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => readLocal('sidebarCollapsed', false));
   const [toast, setToast] = useState('');
+  const [storageIssues] = useState<string[]>(() => readOperationalStorageIssues(localStorage));
   const [newAsset, setNewAsset] = useState({ manufacturer: 'Cassioli', zone: '', model: '', serialNumber: '', hardwareVersion: '', firmwareVersion: '', assignedOperator: '', notes: '' });
   const [editingShuttle, setEditingShuttle] = useState<Shuttle | null>(null);
   const [editingBattery, setEditingBattery] = useState(false);
@@ -346,13 +363,14 @@ function App() {
     .filter((entry) => entry.visible)
     .filter((entry) => {
       const module = customization.modules.find((item) => item.id === entry.route);
-      return module !== undefined && module.enabled && !module.hiddenForRoles.includes(currentUser.role);
+      const identityEntry = entry.route === 'users';
+      return module !== undefined && module.enabled && !module.hiddenForRoles.includes(currentUser.role) && (identityEntry || canAccessRoute(currentUser.role, entry.route));
     })
     .flatMap((entry) => {
       const base = navItems.find((item) => item.id === entry.route);
       return base ? [{ ...base, en: entry.label, ar: entry.labelAr || base.ar, group: entry.group, menuId: entry.id, order: entry.order }] : [];
     })
-    .sort((a, b) => a.order - b.order), [customization, currentUser.role]);
+    .sort((a, b) => a.order - b.order), [customization, currentUser.role, currentUser.isAuthenticated]);
 
   const dashboardWidgets = customization.dashboard
     .filter((widget) => widget.visible)
@@ -378,7 +396,15 @@ function App() {
 
   useEffect(() => {
     const values: Record<string, unknown> = { language, theme, sidebarCollapsed, shuttles, batteries, faults, maintenance: jobs, connections, notifications, settings, dailyReports, shifts };
-    try { Object.entries(values).forEach(([key, value]) => localStorage.setItem(PREFIX + key, JSON.stringify(value))); } catch { /* local storage is optional */ }
+    for (const [key, value] of Object.entries(values)) {
+      try { localStorage.setItem(PREFIX + key, JSON.stringify(value)); } catch { /* The verified write below reports quota or storage failures. */ }
+      if ((OPERATIONAL_COLLECTIONS as readonly string[]).includes(key)) {
+        void persistOperationalSnapshot(key as typeof OPERATIONAL_COLLECTIONS[number], value).catch((error) => {
+          console.error(`Could not persist verified ${key} snapshot:`, error);
+          setToast(language === 'ar' ? `تعذر حفظ نسخة التحقق من ${key}` : `Verified save failed for ${key}`);
+        });
+      }
+    }
   }, [language, theme, sidebarCollapsed, shuttles, batteries, faults, jobs, connections, notifications, settings, dailyReports, shifts]);
 
   const metrics = {
@@ -417,6 +443,10 @@ function App() {
   }, [activeTab]);
 
   const go = (tab: Tab) => {
+    if (tab !== 'users' && !canAccessRoute(currentUser.role, tab)) {
+      showToast(language === 'ar' ? 'هذه الوجهة غير متاحة للدور الحالي' : 'This destination is not available to the current role.');
+      return;
+    }
     if (tab !== activeTab) {
       window.history.pushState({ tab }, '', `#/${tab}`);
       routeStackRef.current = [...routeStackRef.current, tab];
@@ -437,6 +467,33 @@ function App() {
   };
   const canGoBack = routeStackRef.current.length > 1 || activeTab !== 'dashboard';
   const showToast = (message: string) => { setToast(message); window.setTimeout(() => setToast(''), 2400); };
+  const recordAudit = (action: string, entityType: string, entityId: string, detail = '') => {
+    void appendAuditRecord({
+      actorId: currentUser.id,
+      actorRole: currentUser.role,
+      action,
+      entityType,
+      entityId,
+      detail
+    }).catch(() => {
+      showToast(language === 'ar' ? 'تعذر تحديث سجل التدقيق؛ راجع سلامة السجل' : 'Audit log write failed; review audit integrity.');
+    });
+  };
+  const authorize = (permission: Permission, entityType = 'application', entityId = activeTab) => {
+    if (canPerformAction(currentUser, permission)) return true;
+    recordAudit('ACCESS_DENIED', entityType, entityId, `Missing permission: ${permission}`);
+    showToast(language === 'ar' ? 'ليس لديك صلاحية لتنفيذ هذا الإجراء' : 'You do not have permission to perform this action.');
+    return false;
+  };
+
+  useEffect(() => {
+    if (canAccessRoute(currentUser.role, activeTab) || activeTab === 'users') return;
+    routeStackRef.current = ['dashboard'];
+    setActiveTab('dashboard');
+    window.history.replaceState({ tab: 'dashboard' }, '', '#/dashboard');
+    showToast(language === 'ar' ? 'تم منع فتح صفحة غير مسموح بها لهذا الدور' : 'Access to this destination is not allowed for the selected role.');
+    recordAudit('ROUTE_ACCESS_DENIED', 'route', activeTab, `Role: ${currentUser.role}`);
+  }, [activeTab, currentUser.role, currentUser.isAuthenticated, language]);
   const pushNotification = (title: string, detail: string, severity: NotificationItem['severity'] = 'info') => {
     if (!settings.notificationsEnabled) return;
     const item: NotificationItem = {
@@ -448,16 +505,18 @@ function App() {
     };
     setNotifications(prev => [item, ...prev].slice(0, 100));
   };
-  const dismissNotification = (id: string) => setNotifications(prev => prev.filter(item => item.id !== id));
-  const clearNotifications = () => setNotifications([]);
+  const dismissNotification = (id: string) => { if (!authorize('notifications.manage', 'notification', id)) return; setNotifications(prev => prev.filter(item => item.id !== id)); recordAudit('NOTIFICATION_DISMISSED', 'notification', id); };
+  const clearNotifications = () => { if (!authorize('notifications.manage', 'notification', 'all')) return; setNotifications([]); recordAudit('NOTIFICATIONS_CLEARED', 'notification', 'all'); };
   const formatNotificationTime = (value: string) => {
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return t.noData;
     return new Intl.DateTimeFormat(language === 'ar' ? 'ar-EG' : 'en-GB', { dateStyle: 'medium', timeStyle: 'short' }).format(date);
   };
   const updateShuttle = (id: string, patch: Partial<Shuttle>) => {
+    if (!authorize('fleet.manage', 'shuttle', id)) return;
     const current = shuttles.find(item => item.id === id);
     setShuttles(prev => prev.map(item => item.id === id ? { ...item, ...patch } : item));
+    recordAudit('SHUTTLE_UPDATED', 'shuttle', id, `Changed fields: ${Object.keys(patch).join(', ')}`);
     if (current && patch.connectivity && patch.connectivity !== current.connectivity && settings.communicationAlerts) {
       pushNotification(
         language === 'ar' ? 'تغيير حالة اتصال العربة' : 'Shuttle connection state changed',
@@ -467,8 +526,10 @@ function App() {
     }
   };
   const updateBattery = (id: string, patch: Partial<Battery>) => {
+    if (!authorize('batteries.manage', 'battery', id)) return;
     const current = batteries.find(item => item.id === id);
     setBatteries(prev => prev.map(item => item.id === id ? { ...item, ...patch } : item));
+    recordAudit('BATTERY_UPDATED', 'battery', id, `Changed fields: ${Object.keys(patch).join(', ')}`);
     if (current && patch.status && patch.status !== current.status && settings.batteryAlerts) {
       pushNotification(
         language === 'ar' ? 'تغيير حالة البطارية' : 'Battery status changed',
@@ -478,6 +539,7 @@ function App() {
     }
   };
   const changeFaultStatus = (id: string, status: Fault['status']) => {
+    if (!authorize(status === 'Resolved' ? 'faults.resolve' : 'faults.update', 'fault', id)) return;
     const current = faults.find(item => item.id === id);
     if (!current) return;
     if (status === 'Resolved' && !current.correctiveAction?.trim()) {
@@ -485,6 +547,7 @@ function App() {
       return;
     }
     setFaults(prev => prev.map(item => item.id === id ? { ...item, status } : item));
+    if (current.status !== status) recordAudit('FAULT_STATUS_CHANGED', 'fault', id, `${current.status} -> ${status}`);
     if (current && current.status !== status) {
       pushNotification(
         language === 'ar' ? 'تحديث سجل عطل' : 'Fault record updated',
@@ -494,8 +557,10 @@ function App() {
     }
   };
   const changeJobStatus = (id: string, status: MaintenanceJob['status']) => {
+    if (!authorize(status === 'Completed' ? 'maintenance.complete' : 'maintenance.update', 'maintenance', id)) return;
     const current = jobs.find(item => item.id === id);
     setJobs(prev => prev.map(item => item.id === id ? { ...item, status } : item));
+    if (current && current.status !== status) recordAudit('MAINTENANCE_STATUS_CHANGED', 'maintenance', id, `${current.status} -> ${status}`);
     if (current && current.status !== status && settings.maintenanceReminders) {
       pushNotification(
         language === 'ar' ? 'تحديث أمر صيانة' : 'Maintenance work order updated',
@@ -507,6 +572,7 @@ function App() {
 
   const addShuttle = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!authorize('fleet.manage', 'shuttle', 'new')) return;
     const requestedSerial = newAsset.serialNumber.trim().toLocaleLowerCase();
     const duplicateSerial = requestedSerial && requestedSerial !== 'not recorded' &&
       shuttles.some((item) => !item.archivedAt && item.serialNumber.trim().toLocaleLowerCase() === requestedSerial);
@@ -524,12 +590,14 @@ function App() {
       notes: newAsset.notes.trim() || 'New local asset record. Equipment identity and telemetry are not verified.'
     };
     setShuttles(prev => [...prev, record]); setSelectedId(id);
+    recordAudit('SHUTTLE_CREATED', 'shuttle', id, `Manufacturer: ${record.manufacturer}`);
     setNewAsset({ manufacturer: 'Cassioli', zone: '', model: '', serialNumber: '', hardwareVersion: '', firmwareVersion: '', assignedOperator: '', notes: '' });
     pushNotification(language === 'ar' ? 'تم تسجيل جهاز جديد' : 'New shuttle registered', `${id} · ${record.manufacturer}`);
     showToast(t.done);
   };
 
   const archiveShuttle = (id: string) => {
+    if (!authorize('fleet.manage', 'shuttle', id)) return;
     const unit = shuttles.find(item => item.id === id);
     const hasLinkedBattery = batteries.some(item => !item.archivedAt && item.assignment === id) ||
       Boolean(unit?.installedBattery && unit.installedBattery !== 'Not recorded');
@@ -549,6 +617,7 @@ function App() {
     }
     const archivedAt = new Date().toISOString();
     setShuttles(prev => prev.map(item => item.id === id ? { ...item, archivedAt } : item));
+    recordAudit('SHUTTLE_ARCHIVED', 'shuttle', id);
     const next = activeShuttles.find(item => item.id !== id);
     if (selectedId === id) setSelectedId(next?.id || '');
     setPendingShuttleArchive(null);
@@ -557,6 +626,7 @@ function App() {
   };
 
   const restoreShuttle = (id: string) => {
+    if (!authorize('fleet.manage', 'shuttle', id)) return;
     const archived = shuttles.find(item => item.id === id && item.archivedAt);
     if (!archived) return;
     const serial = archived.serialNumber.trim().toLocaleLowerCase();
@@ -567,12 +637,14 @@ function App() {
       return;
     }
     setShuttles(prev => prev.map(item => item.id === id ? { ...item, archivedAt: null } : item));
+    recordAudit('SHUTTLE_RESTORED', 'shuttle', id);
     setSelectedId(id);
     pushNotification(language === 'ar' ? 'تم استعادة جهاز' : 'Shuttle restored', id);
   };
 
   const saveShuttleEdit = (event: React.FormEvent<HTMLFormElement>, id: string) => {
     event.preventDefault();
+    if (!authorize('fleet.manage', 'shuttle', id)) return;
     const form = new FormData(event.currentTarget);
     const nextSerial = String(form.get('serialNumber') || 'Not recorded').trim() || 'Not recorded';
     const duplicateSerial = nextSerial.toLocaleLowerCase() !== 'not recorded' &&
@@ -599,6 +671,7 @@ function App() {
 
   const addBattery = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!authorize('batteries.manage', 'battery', 'new')) return;
     const form = new FormData(event.currentTarget);
     const seq = Math.max(0, ...batteries.map(b => Number(b.id.match(/^BAT-(\\d+)$/)?.[1]) || 0)) + 1;
     const id = 'BAT-' + String(seq).padStart(3, '0');
@@ -634,6 +707,7 @@ function App() {
       setShuttles(result.shuttles);
     }
     setSelectedBatteryId(id);
+    recordAudit('BATTERY_REGISTERED', 'battery', id, `Assignment: ${requestedAssignment || 'Unassigned'}`);
     event.currentTarget.reset();
     pushNotification(language === 'ar' ? 'تم تسجيل بطارية جديدة' : 'New battery registered', `${id} · ${requestedAssignment || 'Unassigned'}`);
     showToast(language === 'ar' ? 'تم تسجيل البطارية' : 'Battery registered');
@@ -641,6 +715,7 @@ function App() {
 
   const saveBatteryDetails = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!authorize('batteries.manage', 'battery', selectedBattery?.id || 'selected')) return;
     if (!selectedBattery) return;
     const form = new FormData(event.currentTarget);
     const numberOrNull = (key: string) => {
@@ -668,10 +743,12 @@ function App() {
   };
 
   const archiveBattery = (id: string) => {
+    if (!authorize('batteries.manage', 'battery', id)) return;
     const result = archiveBatteryAndDetach(batteries, shuttles, id);
     if (!result.changed) return;
     setBatteries(result.batteries);
     setShuttles(result.shuttles);
+    recordAudit('BATTERY_ARCHIVED', 'battery', id);
     setSelectedBatteryId(activeBatteries.find(item => item.id !== id)?.id || '');
     setPendingBatteryArchive(null);
     pushNotification(language === 'ar' ? 'تمت أرشفة بطارية' : 'Battery archived', id, 'warning');
@@ -679,12 +756,15 @@ function App() {
   };
 
   const restoreBattery = (id: string) => {
+    if (!authorize('batteries.manage', 'battery', id)) return;
     setBatteries(prev => restoreBatteryRecord(prev, id));
+    recordAudit('BATTERY_RESTORED', 'battery', id);
     setSelectedBatteryId(id);
     pushNotification(language === 'ar' ? 'تمت استعادة بطارية' : 'Battery restored', id);
   };
 
   const generateDailyReport = () => {
+    if (!authorize('reports.export', 'report', 'daily')) return;
     const now = new Date();
     const reportDate = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
     const report: DailyReportSnapshot = {
@@ -705,11 +785,13 @@ function App() {
       batteries: activeBatteries.map(item => ({ id: item.id, manufacturer: item.manufacturer, status: item.status, assignment: item.assignment, soc: item.soc, connectionMode: item.connectionMode, movementHistory: (item.movementHistory || []).map(move => ({ ...move })) }))
     };
     setDailyReports(prev => [report, ...prev].slice(0, 90));
+    recordAudit('DAILY_REPORT_GENERATED', 'report', report.id, report.reportDate);
     pushNotification(language === 'ar' ? 'تم إصدار التقرير اليومي' : 'Daily report generated', `${report.id} · ${report.reportDate}`);
     showToast(language === 'ar' ? 'تم حفظ التقرير اليومي' : 'Daily report saved locally');
   };
 
   const deleteDailyReport = (id: string) => {
+    if (!authorize('reports.export', 'report', id)) return;
     const report = dailyReports.find(item => item.id === id);
     if (!report) return;
     const confirmed = window.confirm(language === 'ar'
@@ -717,11 +799,13 @@ function App() {
       : 'Permanently delete this local report snapshot? This action cannot be undone.');
     if (!confirmed) return;
     setDailyReports(prev => prev.filter(item => item.id !== id));
+    recordAudit('DAILY_REPORT_DELETED', 'report', id);
     pushNotification(language === 'ar' ? 'تم حذف لقطة تقرير' : 'Report snapshot deleted', id, 'warning');
     showToast(language === 'ar' ? 'تم حذف التقرير المحلي' : 'Local report snapshot deleted');
   };
 
   const downloadDailyReport = (report: DailyReportSnapshot) => {
+    if (!authorize('reports.export', 'report', report.id)) return;
     const rows: Array<Array<string | number>> = [
       ['SHUTTLE CAR AUTOMATION · DAILY DEVICE STATUS', report.reportDate],
       ['Generated at', report.generatedAt],
@@ -757,6 +841,7 @@ function App() {
   };
 
   const assignSelectedBattery = (shuttleId: string) => {
+    if (!authorize('batteries.manage', 'battery', selectedBattery?.id || 'selected')) return;
     if (!selectedBattery) return;
     const result = assignBatteryToShuttle(batteries, shuttles, selectedBattery.id, shuttleId);
     if (!result.changed) {
@@ -765,12 +850,14 @@ function App() {
     }
     setBatteries(result.batteries);
     setShuttles(result.shuttles);
+    recordAudit('BATTERY_ASSIGNMENT_CHANGED', 'battery', selectedBattery.id, `Target shuttle: ${shuttleId || 'Unassigned'}`);
     pushNotification(language === 'ar' ? 'تم تحديث تخصيص البطارية' : 'Battery assignment updated', `${selectedBattery.id} → ${shuttleId || 'Unassigned'}`);
     showToast(language === 'ar' ? 'تم حفظ حركة البطارية' : 'Battery movement saved');
   };
 
   const addFault = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!authorize('faults.create', 'fault', 'new')) return;
     const form = new FormData(event.currentTarget);
     const record: Fault = {
       id: 'FLT-' + Date.now(), shuttleId: String(form.get('shuttleId') || selected?.id || 'Unassigned'),
@@ -780,6 +867,7 @@ function App() {
       correctiveAction: '', assignedTechnician: String(form.get('technician') || 'Not assigned')
     };
     setFaults(prev => [record, ...prev]);
+    recordAudit('FAULT_CREATED', 'fault', record.id, record.title);
     pushNotification(
       language === 'ar' ? 'تم تسجيل بلاغ عطل' : 'New fault report recorded',
       `${record.id} · ${record.shuttleId} · ${record.title} · ${record.severity}`,
@@ -790,6 +878,7 @@ function App() {
 
   const addJob = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!authorize('maintenance.create', 'maintenance', 'new')) return;
     const form = new FormData(event.currentTarget);
     const job: MaintenanceJob = {
       id: 'MNT-' + Date.now(), shuttleId: String(form.get('shuttleId') || selected?.id || 'Unassigned'),
@@ -798,6 +887,7 @@ function App() {
       notes: String(form.get('notes') || '')
     };
     setJobs(prev => [job, ...prev]);
+    recordAudit('MAINTENANCE_CREATED', 'maintenance', job.id, job.title);
     if (settings.maintenanceReminders) {
       pushNotification(
         language === 'ar' ? 'تم إنشاء أمر صيانة' : 'Maintenance work order created',
@@ -809,9 +899,12 @@ function App() {
   };
 
   const recordCorrectiveAction = (event: React.FormEvent<HTMLFormElement>, id: string) => {
-    event.preventDefault(); const form = new FormData(event.currentTarget);
+    event.preventDefault();
+    if (!authorize('faults.update', 'fault', id)) return;
+    const form = new FormData(event.currentTarget);
     const action = String(form.get('action') || '').trim(); if (!action) return;
     setFaults(prev => prev.map(f => f.id === id ? { ...f, correctiveAction: action } : f));
+    recordAudit('FAULT_CORRECTIVE_ACTION_RECORDED', 'fault', id, action);
     pushNotification(
       language === 'ar' ? 'تم توثيق إجراء تصحيحي' : 'Corrective action documented',
       `${id} · ${language === 'ar' ? 'تم حفظ الإجراء محليًا' : 'Action saved locally'}`,
@@ -822,6 +915,7 @@ function App() {
 
   const saveFaultEdit = (event: React.FormEvent<HTMLFormElement>, id: string) => {
     event.preventDefault();
+    if (!authorize('faults.update', 'fault', id)) return;
     const form = new FormData(event.currentTarget);
     const title = String(form.get('title') || '').trim();
     const description = String(form.get('description') || '').trim();
@@ -838,12 +932,14 @@ function App() {
       diagnosticProcedure: String(form.get('procedure') || '').trim() || 'Field verification required',
       assignedTechnician: String(form.get('technician') || '').trim() || 'Not assigned'
     } : item));
+    recordAudit('FAULT_UPDATED', 'fault', id);
     setEditingFaultId(null);
     pushNotification(language === 'ar' ? 'تم تعديل بلاغ العطل' : 'Fault report updated', id, 'info');
     showToast(language === 'ar' ? 'تم حفظ التعديلات' : 'Fault report changes saved');
   };
 
   const archiveFault = (id: string) => {
+    if (!authorize('faults.update', 'fault', id)) return;
     const result = archiveFaultRecord(faults, id);
     if (!result.changed) {
       showToast(language === 'ar' ? 'لا يمكن أرشفة البلاغ قبل إغلاقه' : (result.message || 'Fault record cannot be archived.'));
@@ -851,19 +947,23 @@ function App() {
     }
     setFaults(result.records);
     setEditingFaultId(null);
+    recordAudit('FAULT_ARCHIVED', 'fault', id);
     pushNotification(language === 'ar' ? 'تمت أرشفة بلاغ عطل' : 'Fault report archived', id, 'warning');
     showToast(language === 'ar' ? 'تمت الأرشفة مع الاحتفاظ بسجل البلاغ' : 'Fault archived; report history retained');
   };
 
   const restoreFault = (id: string) => {
+    if (!authorize('faults.update', 'fault', id)) return;
     const result = restoreFaultRecord(faults, id);
     if (!result.changed) return;
     setFaults(result.records);
+    recordAudit('FAULT_RESTORED', 'fault', id);
     pushNotification(language === 'ar' ? 'تمت استعادة بلاغ عطل' : 'Fault report restored', id);
   };
 
   const completeJob = (event: React.FormEvent<HTMLFormElement>, id: string) => {
     event.preventDefault();
+    if (!authorize('maintenance.complete', 'maintenance', id)) return;
     const form = new FormData(event.currentTarget);
     const completionNotes = String(form.get('completionNotes') || '').trim();
     if (!completionNotes) {
@@ -877,6 +977,7 @@ function App() {
       status: 'Completed',
       completionNotes
     } : item));
+    recordAudit('MAINTENANCE_COMPLETED', 'maintenance', id, completionNotes);
     setCompletingJobId(null);
     if (settings.maintenanceReminders) {
       pushNotification(
@@ -890,6 +991,7 @@ function App() {
 
   const saveJobEdit = (event: React.FormEvent<HTMLFormElement>, id: string) => {
     event.preventDefault();
+    if (!authorize('maintenance.update', 'maintenance', id)) return;
     const form = new FormData(event.currentTarget);
     const title = String(form.get('title') || '').trim();
     const scheduledDate = String(form.get('date') || '').trim();
@@ -905,12 +1007,14 @@ function App() {
       technician: String(form.get('technician') || '').trim() || 'Not assigned',
       notes: String(form.get('notes') || '').trim()
     } : item));
+    recordAudit('MAINTENANCE_UPDATED', 'maintenance', id);
     setEditingJobId(null);
     pushNotification(language === 'ar' ? 'تم تعديل أمر الصيانة' : 'Work order updated', id);
     showToast(language === 'ar' ? 'تم حفظ أمر الصيانة' : 'Work order changes saved');
   };
 
   const archiveJob = (id: string) => {
+    if (!authorize('maintenance.update', 'maintenance', id)) return;
     const result = archiveCompletedWorkOrder(jobs, id);
     if (!result.changed) {
       showToast(language === 'ar' ? 'لا يمكن أرشفة أمر صيانة غير مكتمل' : (result.message || 'Only completed work orders can be archived.'));
@@ -918,18 +1022,22 @@ function App() {
     }
     setJobs(result.records);
     setEditingJobId(null);
+    recordAudit('MAINTENANCE_ARCHIVED', 'maintenance', id);
     pushNotification(language === 'ar' ? 'تمت أرشفة أمر صيانة مكتمل' : 'Completed work order archived', id);
   };
 
   const restoreJob = (id: string) => {
+    if (!authorize('maintenance.update', 'maintenance', id)) return;
     const result = restoreWorkOrder(jobs, id);
     if (!result.changed) return;
     setJobs(result.records);
+    recordAudit('MAINTENANCE_RESTORED', 'maintenance', id);
     pushNotification(language === 'ar' ? 'تمت استعادة أمر صيانة' : 'Work order restored', id);
   };
 
   const addConnection = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!authorize('connections.manage', 'connection', 'new')) return;
     const form = new FormData(event.currentTarget);
     const name = String(form.get('name') || '').trim();
     if (!name) return;
@@ -944,6 +1052,7 @@ function App() {
       notes: String(form.get('notes') || '').trim() || 'Not configured. Approved vendor interface and read-only gateway details are required.'
     };
     setConnections(prev => [endpoint, ...prev]);
+    recordAudit('CONNECTION_REGISTER_CREATED', 'connection', endpoint.name, endpoint.protocol);
     event.currentTarget.reset();
     pushNotification(language === 'ar' ? 'تمت إضافة سجل نقطة اتصال' : 'Connection register entry added', endpoint.name + ' · ' + endpoint.protocol);
     showToast(language === 'ar' ? 'تم حفظ سجل الاتصال المحلي' : 'Local connection record saved');
@@ -951,6 +1060,7 @@ function App() {
 
   const saveConnectionEdit = (event: React.FormEvent<HTMLFormElement>, previousName: string) => {
     event.preventDefault();
+    if (!authorize('connections.manage', 'connection', previousName)) return;
     const form = new FormData(event.currentTarget);
     const name = String(form.get('name') || '').trim();
     if (!name) {
@@ -971,17 +1081,22 @@ function App() {
       notes: String(form.get('notes') || '').trim(),
       mode: 'UNKNOWN'
     } : item));
+    recordAudit('CONNECTION_REGISTER_UPDATED', 'connection', name);
     setEditingConnectionName(null);
     showToast(language === 'ar' ? 'تم حفظ بيانات نقطة الاتصال' : 'Connection record updated');
   };
 
   const archiveConnection = (name: string) => {
+    if (!authorize('connections.manage', 'connection', name)) return;
     setConnections(prev => prev.map(item => item.name === name ? { ...item, archivedAt: new Date().toISOString() } : item));
+    recordAudit('CONNECTION_REGISTER_ARCHIVED', 'connection', name);
     setEditingConnectionName(null);
   };
 
   const restoreConnection = (name: string) => {
+    if (!authorize('connections.manage', 'connection', name)) return;
     setConnections(prev => prev.map(item => item.name === name ? { ...item, archivedAt: null } : item));
+    recordAudit('CONNECTION_REGISTER_RESTORED', 'connection', name);
   };
 
   const statusText = (status: ShuttleStatus) => {
@@ -990,6 +1105,7 @@ function App() {
   };
 
   const exportCsv = () => {
+    if (!authorize('reports.export', 'report', 'register-csv')) return;
     const rows = [['Type','ID','Manufacturer','State','Connectivity','Notes'],
       ...shuttles.map(s => ['Shuttle',s.id,s.manufacturer,s.status,s.connectivity,s.notes]),
       ...batteries.map(b => ['Battery',b.id,b.manufacturer,b.status,b.connectionMode,b.notes]),
@@ -1001,6 +1117,7 @@ function App() {
     const link = document.createElement('a'); link.href = url; link.download = 'shuttle-register.csv'; link.click(); URL.revokeObjectURL(url);
   };
   const exportFullRegisterXlsx = async () => {
+    if (!authorize('reports.export', 'report', 'register-xlsx')) return;
     try {
       const sheets = buildRegisterSheets({ shuttles, batteries, faults, jobs, connections, shifts, dailyReports, notifications }, language);
       await downloadXlsx(sheets, 'shuttle-operations-register.xlsx');
@@ -1010,6 +1127,7 @@ function App() {
     }
   };
   const exportDailyReportXlsx = async (report: DailyReportSnapshot) => {
+    if (!authorize('reports.export', 'report', report.id)) return;
     try {
       await downloadXlsx(buildDailyReportSheets(report, language), `shuttle-daily-report-${report.reportDate}.xlsx`);
       showToast(language === 'ar' ? 'تم تصدير التقرير اليومي بصيغة Excel' : 'Daily report exported as Excel');
@@ -1019,12 +1137,14 @@ function App() {
   };
 
   const exportBackup = () => {
+    if (!authorize('data.backup', 'backup', 'operational-data')) return;
     const data = { schemaVersion: 11, exportedAt: new Date().toISOString(), warning: 'Local demo/record data only. Not a live PLC telemetry export.', shuttles, batteries, faults, jobs, connections, notifications, settings, dailyReports, shifts };
     const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
     const link = document.createElement('a'); link.href = url; link.download = 'shuttle-local-backup.json'; link.click(); URL.revokeObjectURL(url);
   };
 
   const importBackup = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!authorize('data.restore', 'backup', 'operational-data')) { event.target.value = ''; return; }
     const file = event.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
@@ -1046,6 +1166,7 @@ function App() {
         setNotifications(data.notifications);
         setDailyReports(data.dailyReports);
         setShifts(data.shifts);
+        recordAudit('BACKUP_RESTORED', 'backup', file.name, `Schema ${data.schemaVersion ?? 'legacy'}`);
         if (data.settings) setSettings(data.settings);
         setSelectedId(data.shuttles.find(item => !item.archivedAt)?.id || '');
         setSelectedBatteryId(data.batteries.find(item => !item.archivedAt)?.id || '');
@@ -1059,6 +1180,7 @@ function App() {
   };
 
   const resetLocalData = () => {
+    if (!authorize('data.reset', 'data', 'local-reset')) return;
     if (!window.confirm(language === 'ar' ? 'سيتم حذف السجلات المحلية وإعادة بيانات البداية. هل تريد المتابعة؟' : 'Delete local records and restore seed data?')) return;
     setShuttles(initialShuttles);
     setBatteries(initialBatteries);
@@ -1068,6 +1190,7 @@ function App() {
     setNotifications(initialNotifications);
     setDailyReports([]);
     setShifts([]);
+    recordAudit('LOCAL_DATA_RESET', 'data', 'operational-data');
     setSelectedId('SC-01');
     setSelectedBatteryId('BAT-ACME-01');
     showToast(language === 'ar' ? 'تمت إعادة بيانات البداية' : 'Seed data restored');
@@ -1096,12 +1219,13 @@ function App() {
     </aside>
 
     <main className="workspace">
+      {storageIssues.length > 0 && <div className="notice-inline storage-integrity-notice" role="status"><strong>{language === 'ar' ? 'تنبيه سلامة التخزين' : 'STORAGE INTEGRITY NOTICE'}</strong><span>{storageIssues.slice(0, 3).join(' · ')}</span></div>}
       <header className="topbar">
         <div className="topbar-heading"><button className="mobile-menu" onClick={() => setMobileNav(true)} aria-label="Open navigation"><Icon name="grid" size={20}/></button><div className="breadcrumb">SHUTTLE CAR AUTOMATION <span>/</span> {language === 'ar' ? (headerPreference?.ar || header?.ar) : (headerPreference?.en || header?.en)}</div><h1>{language === 'ar' ? (headerPreference?.ar || header?.ar) : (headerPreference?.en || header?.en)}</h1></div>
         <div className="topbar-actions">
           <button className="topbar-route-button" type="button" onClick={goBack} disabled={!canGoBack} aria-label={language === 'ar' ? 'رجوع' : 'Go back'} title={language === 'ar' ? 'رجوع' : 'Go back'}><Icon name="chevron" size={17}/></button>
           <button className="topbar-route-button" type="button" onClick={() => go('dashboard')} aria-label={language === 'ar' ? 'الرئيسية' : 'Home'} title={language === 'ar' ? 'الرئيسية' : 'Home'}><Icon name="grid" size={17}/></button>
-          <button className="topbar-route-button" type="button" onClick={() => go('settings')} aria-label={language === 'ar' ? 'الإعدادات' : 'Settings'} title={language === 'ar' ? 'الإعدادات' : 'Settings'}><Icon name="settings" size={17}/></button>
+          {canAccessRoute(currentUser.role, 'settings') && <button className="topbar-route-button" type="button" onClick={() => go('settings')} aria-label={language === 'ar' ? 'الإعدادات' : 'Settings'} title={language === 'ar' ? 'الإعدادات' : 'Settings'}><Icon name="settings" size={17}/></button>}
           <div className="system-chip"><i/> {language === 'ar' ? 'لا يوجد اتصال حي' : 'NO LIVE CONNECTION'}</div>
           <button className="language-toggle" onClick={() => setLanguage(language === 'en' ? 'ar' : 'en')}>{language === 'en' ? 'Arabic' : 'English'}</button>
           <button className="theme-toggle" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}><Icon name="settings" size={16}/><span>{theme === 'dark' ? 'Light mode' : 'Dark mode'}</span></button>
@@ -1215,7 +1339,7 @@ function App() {
           </div>
           </section>}
 
-      {activeTab === 'shifts' && <ShiftOperations language={language} shifts={shifts} shuttles={shuttles} faults={faults} jobs={jobs} onChange={setShifts}/>}
+      {activeTab === 'shifts' && <ShiftOperations language={language} shifts={shifts} shuttles={shuttles} faults={faults} jobs={jobs} onChange={next => { if (!authorize('shifts.manage', 'shift', 'shift-register')) return; const action = next[0]?.endedAt ? 'SHIFT_CLOSED' : 'SHIFT_OPENED'; setShifts(next); recordAudit(action, 'shift', next[0]?.id || 'shift-register'); }} />}
 
       {activeTab === 'engineering' && selected && <section className="page-content">
         <PageIntro eyebrow="MECHANICAL INTELLIGENCE / DIGITAL SCHEMATIC" title={t.engineering} subtitle={t.engineeringSub}/>
@@ -1573,12 +1697,15 @@ function App() {
         <p className="muted-text">{language==='ar'?'هذه تنبيهات محلية محفوظة على هذا الجهاز، وليست إشعارات فورية من وحدات التحكم أو المعدات.':'These notifications are stored locally on this device; they are not push alerts from PLCs or physical equipment.'}</p>
       </section>}
 
-      {activeTab === 'users' && <section className="page-content"><PageIntro eyebrow="IDENTITY / ACCESS PREVIEW" title={language==='ar'?'المستخدمون والأمان':'Users & security'} subtitle={t.roleNotice}/><div className="user-grid">{users.map(u=><button className={'surface-card user-card '+(currentUser.role===u.role?'selected':'')} key={u.id} onClick={()=>setCurrentUser(u)}><div className="avatar large">{u.name.split(' ').map(v=>v[0]).join('').slice(0,2)}</div><h3>{u.name}</h3><p>{u.role}</p><span>{u.email}</span></button>)}</div><div className="notice-inline"><Icon name="alert"/>{t.noUsers}</div></section>}
+      {activeTab === 'users' && <section className="page-content">
+        <PageIntro eyebrow="IDENTITY / LOCAL ACCESS CONTROL" title={language==='ar'?'المستخدمون والأمان':'Users & Security'} subtitle={language==='ar'?'إعداد حساب محلي، إدارة جلسة الجهاز، وفحص سلسلة سجل التدقيق.':'Provision local accounts, manage this device session and verify the audit chain.'}/>
+        <SecurityCenter language={language} currentUser={currentUser} onSessionChange={user => setCurrentUser(user || { id: 'local-guest', name: 'Local guest', role: 'Viewer', email: '', isAuthenticated: false })}/>
+      </section>}
 
       {activeTab === 'settings' && <section className="page-content"><PageIntro eyebrow="APPLICATION / PREFERENCES" title={language==='ar'?'إعدادات النظام':'System settings'} subtitle={language==='ar'?'تخصيص العرض واللغة والتنبيهات المحلية وتصدير البيانات.':'Configure appearance, local alert preferences and local data exports.'}/><div className="settings-grid">
         <div className="surface-card"><h3>{t.language}</h3><div className="choice-row"><button className={language==='en'?'selected':''} onClick={()=>setLanguage('en')}>English</button><button className={language==='ar'?'selected':''} onClick={()=>setLanguage('ar')}>العربية</button></div></div>
         <div className="surface-card"><h3>{t.theme}</h3><div className="choice-row"><button className={theme==='dark'?'selected':''} onClick={()=>setTheme('dark')}>{t.dark}</button><button className={theme==='light'?'selected':''} onClick={()=>setTheme('light')}>{t.light}</button></div></div>
-        <div className="surface-card"><h3>{t.role}</h3><select value={currentUser.role} onChange={e=>setCurrentUser(users.find(u=>u.role===e.target.value as Role)||users[0])}>{users.map(u=><option key={u.id} value={u.role}>{u.role}</option>)}</select><p className="muted-text">{t.roleNotice}</p></div>
+        <div className="surface-card"><h3>{language==='ar'?'هوية المستخدم الحالي':'Current identity'}</h3>{currentUser.isAuthenticated ? <><strong>{currentUser.name}</strong><p className="muted-text">{currentUser.email} · {currentUser.role}</p><p className="muted-text">{language==='ar'?'الدور مثبت من حساب الجهاز المحلي. لإدارة الحسابات افتح المستخدمون والأمان.':'Role is derived from the local device account. Open Users & Security to manage accounts.'}</p></> : <p className="muted-text">{language==='ar'?'سجّل الدخول من مركز المستخدمين والأمان للوصول إلى إعدادات المسؤول.':'Sign in through Users & Security to access administrator settings.'}</p>}</div>
         <div className="surface-card notification-preferences"><h3>{language==='ar'?'تفضيلات التنبيه':'Notification preferences'}</h3>
           {([
             {key:'notificationsEnabled' as const,en:'Enable local notifications',ar:'تفعيل التنبيهات المحلية',descEn:'Master switch for notifications generated by this app.',descAr:'المفتاح الرئيسي للتنبيهات التي ينشئها التطبيق.'},
@@ -1589,7 +1716,7 @@ function App() {
         </div>
         <div className="surface-card"><h3>{language==='ar'?'النسخ الاحتياطي واستعادة البيانات':'Backup and restore'}</h3><p className="muted-text">{language==='ar'?'صدّر كل سجلات الأجهزة والبطاريات والأعطال والصيانة والتقارير. يمكن استيراد ملف JSON صادر من التطبيق.':'Export shuttle, battery, fault, maintenance and daily report data. Restore a JSON backup previously exported by this app.'}</p><div className="settings-action-row"><button className="btn-primary" onClick={exportBackup}>{t.backup}</button><label className="file-import-button">{language==='ar'?'استعادة من ملف JSON':'Restore from JSON'}<input aria-label={language==='ar'?'استعادة نسخة احتياطية':'Restore backup'} type="file" accept="application/json,.json" onChange={importBackup}/></label></div></div>
         <div className="surface-card"><h3>{language==='ar'?'حالة قاعدة البيانات المحلية':'Local data store'}</h3><div className="spec-list"><Detail label={language==='ar'?'أجهزة نشطة':'Active shuttles'} value={activeShuttles.length}/><Detail label={language==='ar'?'أجهزة مؤرشفة':'Archived shuttles'} value={archivedShuttles.length}/><Detail label={language==='ar'?'بطاريات نشطة':'Active batteries'} value={activeBatteries.length}/><Detail label={language==='ar'?'تقارير يومية محفوظة':'Saved daily reports'} value={dailyReports.length}/><Detail label={language==='ar'?'مكان التخزين':'Storage'} value="This device · Local browser storage"/></div><p className="muted-text">{language==='ar'?'لا توجد مزامنة سحابية أو قاعدة بيانات مشتركة حاليًا. احتفظ بنسخة احتياطية على وسيط خارجي.':'There is no cloud sync or shared database yet. Keep a backup on a separate storage location.'}</p></div>
-        <div className="surface-card privacy-policy-card"><h3>{language==='ar'?'الخصوصية والتعامل مع البيانات':'Privacy & data handling'}</h3><p>{language==='ar'?'يعمل الإصدار الحالي محليًا على هذا الجهاز. لا توجد حسابات أو مزامنة سحابية أو خادم للتطبيق، ولا يتم إرسال سجلات المعدات أو أسماء المشغلين أو الملاحظات إلى ناشر التطبيق.':'This release stores records locally on this device. There are no app accounts, cloud sync or app backend, and equipment records, operator names and notes are not sent to the publisher.'}</p><p>{language==='ar'?'قد تتضمن السجلات أسماء العاملين وبيانات تشغيلية. التخزين المحلي ليس تشفيرًا متخصصًا؛ لا تدخل كلمات مرور أو مفاتيح أو أسرارًا حساسة. ملفات النسخ الاحتياطي والتصدير تكون تحت سيطرتك وقد تحتوي على البيانات نفسها.':'Records may include staff names and operational details. Local storage is not application-level encryption; do not enter passwords, keys or sensitive secrets. Exported backups remain under your control and may contain the same information.'}</p><p>{language==='ar'?'لحذف البيانات المحلية استخدم إعدادات Android لمسح بيانات التطبيق. زر إعادة الضبط هنا يعيد بيانات البداية ولا يضمن المسح الآمن.':'To remove local data, clear this app’s storage in Android settings. The reset button restores starter records and does not perform secure erasure.'}</p><p><a href="https://github.com/som3a83/shuttle-car-automation/blob/main/PRIVACY_POLICY.md" target="_blank" rel="noreferrer">{language==='ar'?'قراءة سياسة الخصوصية الكاملة':'Read the full privacy policy'}</a> · <a href="https://github.com/som3a83/shuttle-car-automation/blob/main/TERMS_OF_USE.md" target="_blank" rel="noreferrer">{language==='ar'?'شروط الاستخدام':'Terms of use'}</a></p></div>
+        <div className="surface-card privacy-policy-card"><h3>{language==='ar'?'الخصوصية والتعامل مع البيانات':'Privacy & data handling'}</h3><p>{language==='ar'?'يعمل الإصدار الحالي محليًا على هذا الجهاز. لا توجد حسابات أو مزامنة سحابية أو خادم للتطبيق، ولا يتم إرسال سجلات المعدات أو أسماء المشغلين أو الملاحظات إلى ناشر التطبيق.':'Local accounts and operational records are stored on this device. There is no cloud sync or centralized identity backend, and equipment records, operator names and notes are not sent to the publisher.'}</p><p>{language==='ar'?'قد تتضمن السجلات أسماء العاملين وبيانات تشغيلية. التخزين المحلي ليس تشفيرًا متخصصًا؛ لا تدخل كلمات مرور أو مفاتيح أو أسرارًا حساسة. ملفات النسخ الاحتياطي والتصدير تكون تحت سيطرتك وقد تحتوي على البيانات نفسها.':'Operational records and account metadata are stored locally. Passwords are stored as PBKDF2-SHA-256 derived hashes, but browser storage is not a server security boundary or full-disk encryption. Do not store production credentials or secrets. Exported backups remain under your control and may contain operational information.'}</p><p>{language==='ar'?'لحذف البيانات المحلية استخدم إعدادات Android لمسح بيانات التطبيق. زر إعادة الضبط هنا يعيد بيانات البداية ولا يضمن المسح الآمن.':'To remove local data, clear this app’s storage in Android settings. The reset button restores starter records and does not perform secure erasure.'}</p><p><a href="https://github.com/som3a83/shuttle-car-automation/blob/main/PRIVACY_POLICY.md" target="_blank" rel="noreferrer">{language==='ar'?'قراءة سياسة الخصوصية الكاملة':'Read the full privacy policy'}</a> · <a href="https://github.com/som3a83/shuttle-car-automation/blob/main/TERMS_OF_USE.md" target="_blank" rel="noreferrer">{language==='ar'?'شروط الاستخدام':'Terms of use'}</a></p></div>
         <div className="surface-card danger-settings"><h3>{language==='ar'?'إعادة بيانات التطبيق':'Reset local records'}</h3><p className="muted-text">{language==='ar'?'إعادة السجلات المحلية إلى بيانات البداية. لا يمكن التراجع عن ذلك دون نسخة احتياطية.':'Restore local records to the original seed data. This cannot be undone without a backup.'}</p><button className="btn-danger" onClick={resetLocalData}>{language==='ar'?'إعادة بيانات البداية':'Reset local records'}</button></div>
       </div></section>}
 
