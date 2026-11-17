@@ -64,6 +64,31 @@ describe('operational backup validation', () => {
     expect(validateOperationalBackup(orphanFault)).toMatchObject({ ok: false, error: expect.stringMatching(/unknown shuttle/) });
   });
 
+  it('validates connection register records and rejects a false REAL connection claim', () => {
+    const valid = {
+      ...validBackup(),
+      connections: [{
+        name: 'Cassioli read-only gateway',
+        protocol: 'Modbus TCP',
+        mode: 'UNKNOWN',
+        notes: 'Vendor approval and address map not yet supplied.'
+      }]
+    };
+    expect(validateOperationalBackup(valid).ok).toBe(true);
+
+    const falseLive = {
+      ...valid,
+      connections: [{ ...valid.connections[0], mode: 'REAL' }]
+    };
+    expect(validateOperationalBackup(falseLive)).toMatchObject({ ok: false });
+
+    const duplicateNames = {
+      ...valid,
+      connections: [valid.connections[0], { ...valid.connections[0], protocol: 'OPC UA' }]
+    };
+    expect(validateOperationalBackup(duplicateNames)).toMatchObject({ ok: false, error: expect.stringMatching(/Duplicate connection endpoint names/) });
+  });
+
   it('accepts earlier backups with optional collections omitted', () => {
     const old = validBackup() as Record<string, unknown>;
     delete old.notifications;
