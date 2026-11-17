@@ -32,7 +32,7 @@ The repository is now a functioning web/Capacitor application source tree with a
 - Main post-merge secret scan run `44074458837`: passed.
 - PR #24 validation at `b7ecfd6bf2ab08285c7b8e1b4823e804f92bbd01`: CI, CodeQL, Secret Scan and Dependency Review all passed.
 - Android debug build and emulator smoke run `44073395778`: passed end-to-end, including SDK setup, Capacitor sync, APK assembly, KVM-enabled emulator boot, install, app launch, process check, screenshot and log capture. Evidence and APK artifacts were uploaded.
-- A fresh post-merge Android run on main (`44074458921`) was still in progress at the time of this update.
+- Post-merge Android run on the official `main` SHA `28eeca047863d39b1126a1e3116640ac791f65f2` (`44074458921`): passed every step, including APK build, KVM-enabled emulator boot, install, launch, process check and evidence upload.
 
 ## Explicit constraints
 
@@ -63,4 +63,4 @@ The repository is now a functioning web/Capacitor application source tree with a
 6. Commission physical telemetry only after vendor/controller documents and approved read-only tag maps are supplied.
 7. Configure the four Android signing secrets, produce a signed production AAB and complete Play Store checks only after the above gates pass.
 
-**Current result:** `main` is the valid working baseline at `28eeca047863d39b1126a1e3116640ac791f65f2`. Web CI, CodeQL and secret scan are green. The Android APK successfully installed and launched in the emulator on the exact PR head subsequently merged into `main`; a fresh post-merge Android run remains in progress. Production signing/store release, main ruleset activation, physical-device acceptance and vendor shuttle commissioning remain open.
+**Current result:** `main` is the valid working baseline at `28eeca047863d39b1126a1e3116640ac791f65f2`. Web CI, CodeQL and secret scan are green. The Android APK successfully installed and launched in the emulator on the exact PR head subsequently merged into `main`; the fresh post-merge Android run `44074458921` has also passed. Production signing/store release, main ruleset activation, physical-device acceptance and vendor shuttle commissioning remain open.
