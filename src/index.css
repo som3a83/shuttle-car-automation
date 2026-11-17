@@ -918,8 +918,8 @@ button,select,input,textarea { touch-action:manipulation; }
 
 /* Dashboard widget layout follows the user's saved local order and width. */
 .dashboard-composition { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px; margin-top: 14px; }
-.dashboard-fleet-widget,.dashboard-widget-wide { grid-column: 1 / -1; min-width: 0; }
-.dashboard-custom-widget { min-width: 0; }
+.dashboard-fleet-widget,.dashboard-custom-widget { min-width: 0; }
+.dashboard-widget-wide { grid-column: 1 / -1; }
 .dashboard-record-row { display: grid; grid-template-columns: minmax(90px,.7fr) minmax(0,1.5fr) auto; gap: 8px; align-items: center; padding: 9px 2px; border-top: 1px solid var(--line); color: var(--muted); font-size: 10px; }
 .dashboard-record-row strong { min-width: 0; color: var(--text); overflow-wrap: anywhere; }
 .dashboard-record-row span { min-width: 0; overflow-wrap: anywhere; }
@@ -940,7 +940,7 @@ button,select,input,textarea { touch-action:manipulation; }
   .customization-add { grid-template-columns: minmax(0,1fr); }
   .customization-add small { grid-column: auto; }
   .dashboard-composition { grid-template-columns: minmax(0,1fr); }
-  .dashboard-fleet-widget,.dashboard-widget-wide { grid-column: auto; }
+  .dashboard-widget-wide { grid-column: auto; }
 }
 .app-shell[dir="rtl"] ~ .customization-launcher { right: auto; left: 22px; }
 .app-shell[dir="rtl"] ~ .customization-overlay { direction: rtl; }
