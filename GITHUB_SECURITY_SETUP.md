@@ -90,7 +90,7 @@ The repository contains a bilingual policy at [PRIVACY_POLICY.md](PRIVACY_POLICY
 
 https://raw.githubusercontent.com/som3a83/shuttle-car-automation/copilot/complete-shuttle-automation-v6/PRIVACY_POLICY.md
 
-After PR #2 is merged, change the public policy URL to the stable `main` branch URL:
+The PR has been merged. Use the stable `main` branch URL:
 
 https://github.com/som3a83/shuttle-car-automation/blob/main/PRIVACY_POLICY.md
 
