@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from './App';
 import { initialShuttles } from './data/mockData';
@@ -643,12 +643,18 @@ describe('Shuttle Car Automation V10', () => {
     await user.click(screen.getAllByRole('button', { name: /Archive/i })[0]);
     confirmSpy.mockRestore();
 
-    expect(screen.queryByText('Updated drive inspection')).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByText('Updated drive inspection')).not.toBeInTheDocument();
+      const saved = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:maintenance') || '[]') as Array<{title:string;status:string;archivedAt?:string|null}>;
+      expect(saved.find(item => item.title === 'Updated drive inspection')?.archivedAt).toEqual(expect.any(String));
+    });
     await user.click(screen.getByRole('button', { name: /Show archived work orders/i }));
     expect(screen.getByText(/Updated drive inspection/)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /Restore/i }));
-    const saved = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:maintenance') || '[]') as Array<{title:string;status:string;archivedAt?:string|null}>;
-    expect(saved.find(item => item.title === 'Updated drive inspection')).toMatchObject({ status:'Completed', archivedAt:null });
+    await waitFor(() => {
+      const saved = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:maintenance') || '[]') as Array<{title:string;status:string;archivedAt?:string|null}>;
+      expect(saved.find(item => item.title === 'Updated drive inspection')).toMatchObject({ status:'Completed', archivedAt:null });
+    });
   });
 
   it('manages connection register entries locally without claiming live connectivity', async () => {
@@ -675,12 +681,18 @@ describe('Shuttle Car Automation V10', () => {
     const card = screen.getByText('Approved test gateway').closest('article');
     await user.click(card!.querySelector('button.btn-danger')!);
     confirmSpy.mockRestore();
+    await waitFor(() => {
+      const saved = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:connections') || '[]') as Array<{name:string;protocol:string;mode:string;archivedAt?:string|null}>;
+      expect(saved.find(item => item.name === 'Approved test gateway')?.archivedAt).toEqual(expect.any(String));
+    });
     await user.click(screen.getByRole('button', { name: /Show archived connection records/i }));
     expect(screen.getByText('Approved test gateway')).toBeInTheDocument();
     await user.click(screen.getAllByRole('button', { name: /Restore/i })[0]);
 
-    const saved = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:connections') || '[]') as Array<{name:string;protocol:string;mode:string;archivedAt?:string|null}>;
-    expect(saved.find(item => item.name === 'Approved test gateway')).toMatchObject({ protocol:'OPC UA', mode:'UNKNOWN', archivedAt:null });
+    await waitFor(() => {
+      const saved = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:connections') || '[]') as Array<{name:string;protocol:string;mode:string;archivedAt?:string|null}>;
+      expect(saved.find(item => item.name === 'Approved test gateway')).toMatchObject({ protocol:'OPC UA', mode:'UNKNOWN', archivedAt:null });
+    });
   });
 
 });
