@@ -52,8 +52,8 @@ jobs:
           npm install --no-audit --no-fund
           npx tsc -b
           npm test
-          npm run build
           npm run assets:render
+          npm run build
 
       - name: Generate and sync Android project
         run: |
