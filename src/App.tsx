@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   defaultSettings,
   initialBatteries,
@@ -21,7 +21,8 @@ import type {
   Role,
   Shuttle,
   ShuttleStatus,
-  Theme
+  Theme,
+  DailyReportSnapshot
 } from './types';
 
 type Tab = 'dashboard' | 'fleet' | 'engineering' | 'batteries' | 'faults' | 'maintenance' | 'connections' | 'ai' | 'reports' | 'notifications' | 'users' | 'settings';
@@ -299,33 +300,52 @@ function App() {
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [mobileNav, setMobileNav] = useState(false);
   const [toast, setToast] = useState('');
-  const [newAsset, setNewAsset] = useState({ manufacturer: 'Cassioli', zone: '', notes: '' });
+  const [newAsset, setNewAsset] = useState({ manufacturer: 'Cassioli', zone: '', model: '', serialNumber: '', hardwareVersion: '', firmwareVersion: '', assignedOperator: '', notes: '' });
+  const [newBattery, setNewBattery] = useState({ manufacturer: 'Cassioli', model: '', chemistry: 'Lithium-ion (unverified)', nominalVoltage: '', capacity: '', assignment: '', notes: '' });
+  const [editingShuttle, setEditingShuttle] = useState<Shuttle | null>(null);
+  const [pendingShuttleArchive, setPendingShuttleArchive] = useState<string | null>(null);
+  const [pendingBatteryArchive, setPendingBatteryArchive] = useState<string | null>(null);
+  const [showArchived, setShowArchived] = useState(false);
+  const [dailyReports, setDailyReports] = useState<DailyReportSnapshot[]>(() => readLocal('dailyReports', []));
+  const routeStackRef = useRef<Tab[]>([tabFromLocation()]);
 
   const t = copy[language];
-  const selected = shuttles.find(s => s.id === selectedId) || shuttles[0];
-  const selectedBattery = batteries.find(b => b.id === selectedBatteryId) || batteries[0] || initialBatteries[0];
-  const filteredShuttles = useMemo(() => shuttles.filter(s => {
+  const activeShuttles = shuttles.filter(s => !s.archivedAt);
+  const archivedShuttles = shuttles.filter(s => Boolean(s.archivedAt));
+  const activeBatteries = batteries.filter(b => !b.archivedAt);
+  const archivedBatteries = batteries.filter(b => Boolean(b.archivedAt));
+  const selected = activeShuttles.find(s => s.id === selectedId) || activeShuttles[0] || null;
+  const selectedBattery = activeBatteries.find(b => b.id === selectedBatteryId) || activeBatteries[0] || null;
+  const filteredShuttles = useMemo(() => activeShuttles.filter(s => {
     const q = search.toLowerCase();
     const matchText = [s.id, s.manufacturer, s.warehouseZone].some(v => v.toLowerCase().includes(q));
     return matchText && (statusFilter === 'ALL' || s.status === statusFilter);
-  }), [shuttles, search, statusFilter]);
+  }), [activeShuttles, search, statusFilter]);
 
   useEffect(() => {
-    const values: Record<string, unknown> = { language, theme, shuttles, batteries, faults, maintenance: jobs, notifications, settings };
+    const values: Record<string, unknown> = { language, theme, shuttles, batteries, faults, maintenance: jobs, notifications, settings, dailyReports };
     try { Object.entries(values).forEach(([key, value]) => localStorage.setItem(PREFIX + key, JSON.stringify(value))); } catch { /* local storage is optional */ }
-  }, [language, theme, shuttles, batteries, faults, jobs, notifications, settings]);
+  }, [language, theme, shuttles, batteries, faults, jobs, notifications, settings, dailyReports]);
 
   const metrics = {
-    total: shuttles.length,
-    running: shuttles.filter(s => s.status === 'Running').length,
-    idle: shuttles.filter(s => s.status === 'Idle' || s.status === 'Ready').length,
+    total: activeShuttles.length,
+    running: activeShuttles.filter(s => s.status === 'Running').length,
+    idle: activeShuttles.filter(s => s.status === 'Idle' || s.status === 'Ready').length,
     faulted: faults.filter(f => f.status !== 'Resolved').length,
-    disconnected: shuttles.filter(s => s.connectivity !== 'REAL').length,
-    verifiedSoc: batteries.filter(b => b.connectionMode === 'REAL' && b.soc !== null).length
+    disconnected: activeShuttles.filter(s => s.connectivity !== 'REAL').length,
+    verifiedSoc: activeBatteries.filter(b => b.connectionMode === 'REAL' && b.soc !== null).length
   };
 
   useEffect(() => {
-    const syncFromAddress = () => setActiveTab(tabFromLocation());
+    const syncFromAddress = () => {
+      const next = tabFromLocation();
+      const stack = routeStackRef.current;
+      if (stack[stack.length - 1] !== next) {
+        const previousIndex = stack.lastIndexOf(next);
+        routeStackRef.current = previousIndex >= 0 ? stack.slice(0, previousIndex + 1) : [...stack, next];
+      }
+      setActiveTab(next);
+    };
     if (!window.location.hash) window.history.replaceState({ tab: 'dashboard' }, '', '#/dashboard');
     window.addEventListener('popstate', syncFromAddress);
     window.addEventListener('hashchange', syncFromAddress);
@@ -343,10 +363,21 @@ function App() {
   }, [activeTab]);
 
   const go = (tab: Tab) => {
-    if (tab !== activeTab) window.history.pushState({ tab }, '', `#/${tab}`);
+    if (tab !== activeTab) {
+      window.history.pushState({ tab }, '', `#/${tab}`);
+      routeStackRef.current = [...routeStackRef.current, tab];
+    }
     setActiveTab(tab);
     setMobileNav(false);
   };
+  const goBack = () => {
+    if (routeStackRef.current.length > 1) {
+      window.history.back();
+      return;
+    }
+    if (activeTab !== 'dashboard') go('dashboard');
+  };
+  const canGoBack = routeStackRef.current.length > 1 || activeTab !== 'dashboard';
   const showToast = (message: string) => { setToast(message); window.setTimeout(() => setToast(''), 2400); };
   const pushNotification = (title: string, detail: string, severity: NotificationItem['severity'] = 'info') => {
     if (!settings.notificationsEnabled) return;
@@ -415,21 +446,24 @@ function App() {
     event.preventDefault();
     const id = 'SC-' + String(Math.max(0, ...shuttles.map(s => Number(s.id.replace('SC-', '')) || 0)) + 1).padStart(2, '0');
     const record: Shuttle = {
-      id, manufacturer: newAsset.manufacturer as Shuttle['manufacturer'], model: 'Not recorded',
-      serialNumber: 'Not recorded', hardwareVersion: 'Not recorded', firmwareVersion: 'Not recorded',
+      id, manufacturer: newAsset.manufacturer.trim() || 'Other', model: newAsset.model.trim() || 'Not recorded',
+      serialNumber: newAsset.serialNumber.trim() || 'Not recorded', hardwareVersion: newAsset.hardwareVersion.trim() || 'Not recorded', firmwareVersion: newAsset.firmwareVersion.trim() || 'Not recorded',
       warehouseZone: newAsset.zone.trim() || 'Not recorded', status: 'Unknown', connectivity: 'UNKNOWN',
       installedBattery: 'Not recorded', operatingHours: null, operatingCycles: null, faultHistory: [],
-      maintenanceHistory: [], assignedOperator: 'Not assigned', lastCommunication: 'Not connected',
+      maintenanceHistory: [], assignedOperator: newAsset.assignedOperator.trim() || 'Not assigned', lastCommunication: 'Not connected',
       notes: newAsset.notes.trim() || 'New local asset record. Equipment identity and telemetry are not verified.'
     };
-    setShuttles(prev => [...prev, record]); setSelectedId(id); setNewAsset({ manufacturer: 'Cassioli', zone: '', notes: '' }); showToast(t.done);
+    setShuttles(prev => [...prev, record]); setSelectedId(id);
+    setNewAsset({ manufacturer: 'Cassioli', zone: '', model: '', serialNumber: '', hardwareVersion: '', firmwareVersion: '', assignedOperator: '', notes: '' });
+    pushNotification(language === 'ar' ? 'تم تسجيل جهاز جديد' : 'New shuttle registered', `${id} · ${record.manufacturer}`);
+    showToast(t.done);
   };
 
   const addFault = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const record: Fault = {
-      id: 'FLT-' + Date.now(), shuttleId: String(form.get('shuttleId') || selected.id),
+      id: 'FLT-' + Date.now(), shuttleId: String(form.get('shuttleId') || selected?.id || 'Unassigned'),
       title: String(form.get('title') || 'Reported fault'), severity: String(form.get('severity') || 'Moderate') as Fault['severity'],
       status: 'Open', timestamp: new Date().toISOString(), description: String(form.get('description') || ''),
       probableCauses: [String(form.get('cause') || 'Not established')], diagnosticProcedure: String(form.get('procedure') || 'Field verification required'),
@@ -448,7 +482,7 @@ function App() {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const job: MaintenanceJob = {
-      id: 'MNT-' + Date.now(), shuttleId: String(form.get('shuttleId') || selected.id),
+      id: 'MNT-' + Date.now(), shuttleId: String(form.get('shuttleId') || selected?.id || 'Unassigned'),
       title: String(form.get('title') || 'Inspection'), type: String(form.get('type') || 'Preventive') as MaintenanceJob['type'],
       status: 'Scheduled', scheduledDate: String(form.get('date') || ''), technician: String(form.get('technician') || 'Not assigned'),
       notes: String(form.get('notes') || '')
@@ -492,7 +526,7 @@ function App() {
     const link = document.createElement('a'); link.href = url; link.download = 'shuttle-register.csv'; link.click(); URL.revokeObjectURL(url);
   };
   const exportBackup = () => {
-    const data = { schemaVersion: 7, exportedAt: new Date().toISOString(), warning: 'Local demo/record data only. Not a live PLC telemetry export.', shuttles, batteries, faults, jobs, notifications, settings };
+    const data = { schemaVersion: 9, exportedAt: new Date().toISOString(), warning: 'Local demo/record data only. Not a live PLC telemetry export.', shuttles, batteries, faults, jobs, notifications, settings, dailyReports };
     const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
     const link = document.createElement('a'); link.href = url; link.download = 'shuttle-local-backup.json'; link.click(); URL.revokeObjectURL(url);
   };
