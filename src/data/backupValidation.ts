@@ -117,7 +117,8 @@ function isMaintenance(value: unknown): value is MaintenanceJob {
     isString(value.shuttleId) && isString(value.title) &&
     MAINTENANCE_TYPES.includes(value.type as MaintenanceJob['type']) &&
     MAINTENANCE_STATUSES.includes(value.status as MaintenanceJob['status']) &&
-    isString(value.scheduledDate) && isString(value.technician) && isString(value.notes);
+    isString(value.scheduledDate) && isString(value.technician) && isString(value.notes) &&
+    (value.completionNotes === undefined || isString(value.completionNotes));
 }
 
 function isNotification(value: unknown): value is NotificationItem {
