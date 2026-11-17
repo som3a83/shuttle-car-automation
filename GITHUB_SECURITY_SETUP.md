@@ -32,7 +32,7 @@ Select these exact status checks after they appear on a pull request:
 2. `Android Debug APK & Emulator Smoke Test`
 3. `CodeQL JavaScript/TypeScript`
 4. `Secret Leak Scan`
-5. `Dependency Review`
+5. `Dependency Review` (currently runs with a fallback audit until Dependency Graph is enabled)
 
 Do not configure an approval requirement while the repository has only one active maintainer: a pull request author cannot approve their own pull request. Add one independent approval requirement when a second trusted reviewer is available.
 
@@ -52,6 +52,8 @@ For this public repository, enable:
 - Code scanning / CodeQL (the workflow in this repository supplies advanced setup).
 
 The free public-repository availability of these features is documented by GitHub. If GitHub displays an eligibility or plan message, record the unavailable feature and retain the repository workflows as supplementary controls.
+
+**Dependency Review note:** the official review action currently reports that this repository's Dependency Graph is unavailable. Its step is temporarily configured as non-blocking, but its fallback runs a full `npm audit --audit-level=high`; the primary CI also runs this audit as a blocking check. After enabling Dependency Graph in Settings, remove `continue-on-error: true` from the Dependency Review step so delta review becomes a blocking check too.
 
 ## 3. Actions security
 
