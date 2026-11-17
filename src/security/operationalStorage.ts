@@ -1,5 +1,5 @@
 import { defaultSettings } from '../data/mockData.ts';
-import { VersionedStorageEngine, type StorageLike, type StorageEnvelopeInspection } from './storageEngine';
+import { VersionedStorageEngine, type StorageLike, type StorageEnvelopeInspection } from './storageEngine.ts';
 
 export const OPERATIONAL_PREFIX = 'shuttle-car-automation-v7:';
 export const OPERATIONAL_STORAGE_SCHEMA = 1;
