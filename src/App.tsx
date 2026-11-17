@@ -1300,8 +1300,56 @@ function App() {
 
       {activeTab === 'faults' && <section className="page-content">
         <PageIntro eyebrow="RELIABILITY / FAILURE ANALYSIS" title={t.faults} subtitle={t.faultSub}/>
-        <div className="two-column-page"><div className="surface-card"><div className="card-head"><div><span className="eyebrow">FAULT LOG</span><h3>{t.newFaults}</h3></div><span className="counter">{faults.filter(f=>f.status!=='Resolved').length}</span></div><div className="record-stack">{faults.map(f=><div className="fault-record" key={f.id}><div className="record-top"><div><span className="eyebrow">{f.id} · {f.shuttleId}</span><h3>{f.title}</h3></div><div className="record-badges"><span className={'severity severity-'+f.severity.toLowerCase()}>{f.severity}</span><StatusPill status={f.status} language={language}/></div></div><p>{f.description}</p><div className="record-meta"><span>Cause: {f.probableCauses.join(', ')}</span><span>Assigned: {f.assignedTechnician}</span></div><div className="record-meta">Procedure: {f.diagnosticProcedure}</div>{!f.correctiveAction?.trim()?<form className="action-form" onSubmit={e=>recordCorrectiveAction(e,f.id)}><textarea name="action" placeholder={t.corrective} required/><button className="btn-secondary" type="submit">{t.saveAction}</button></form>:<div className="corrective-saved"><Icon name="check" size={15}/>{f.correctiveAction}</div>}<div className="record-actions"><button className="btn-secondary" disabled={f.status!=='Open'} onClick={()=>changeFaultStatus(f.id,'Investigating')}>{t.investigate}</button><button className="btn-primary" disabled={!f.correctiveAction?.trim()||f.status==='Resolved'} onClick={()=>changeFaultStatus(f.id,'Resolved')}>{t.resolve}</button></div></div>)}{faults.length===0&&<div className="empty-state">{t.noFaults}</div>}</div></div>
-          <div className="surface-card"><div className="card-head"><div><span className="eyebrow">NEW FIELD REPORT</span><h3>{t.registerFault}</h3></div></div><form className="stack-form" onSubmit={addFault}><label>Shuttle<select name="shuttleId">{activeShuttles.map(s=><option key={s.id} value={s.id}>{s.id} · {s.manufacturer}</option>)}</select></label><label>{t.faultTitle}<input name="title" required/></label><label>{t.severity}<select name="severity"><option>Critical</option><option>Major</option><option>Moderate</option><option>Minor</option></select></label><label>{t.description}<textarea name="description" required/></label><label>{t.probableCause}<input name="cause"/></label><label>{t.procedure}<textarea name="procedure"/></label><label>{t.technician}<input name="technician"/></label><button className="btn-primary" type="submit">{t.registerFault}</button></form></div></div>
+        <div className="two-column-page">
+          <div className="surface-card">
+            <div className="card-head"><div><span className="eyebrow">FAULT LOG / ACTIVE RECORDS</span><h3>{t.newFaults}</h3></div><span className="counter">{activeFaults.filter(f=>f.status!=='Resolved').length}</span></div>
+            <div className="record-stack">
+              {activeFaults.map(f=><article className="fault-record" key={f.id}>
+                <div className="record-top"><div><span className="eyebrow">{f.id} · {f.shuttleId}</span><h3>{f.title}</h3></div><div className="record-badges"><span className={'severity severity-'+f.severity.toLowerCase()}>{f.severity}</span><StatusPill status={f.status} language={language}/></div></div>
+                {editingFaultId===f.id ? <form className="stack-form record-edit-form" onSubmit={event=>saveFaultEdit(event,f.id)}>
+                  <label>{t.faultTitle}<input name="title" defaultValue={f.title} required/></label>
+                  <label>{t.severity}<select name="severity" defaultValue={f.severity}><option>Critical</option><option>Major</option><option>Moderate</option><option>Minor</option></select></label>
+                  <label>{t.description}<textarea name="description" defaultValue={f.description} required/></label>
+                  <label>{t.probableCause}<textarea name="cause" defaultValue={f.probableCauses.join(', ')}/></label>
+                  <label>{t.procedure}<textarea name="procedure" defaultValue={f.diagnosticProcedure}/></label>
+                  <label>{t.technician}<input name="technician" defaultValue={f.assignedTechnician}/></label>
+                  <div className="record-actions"><button className="btn-primary" type="submit">{language==='ar'?'حفظ التعديل':'Save changes'}</button><button className="btn-secondary" type="button" onClick={()=>setEditingFaultId(null)}>{t.cancel}</button></div>
+                </form> : <>
+                  <p>{f.description}</p>
+                  <div className="record-meta"><span>{language==='ar'?'السبب المحتمل: ':'Probable cause: '}{f.probableCauses.join('، ')}</span><span>{language==='ar'?'المسؤول: ':'Assigned: '}{f.assignedTechnician}</span></div>
+                  <div className="record-meta">{language==='ar'?'إجراء الفحص: ':'Diagnostic procedure: '}{f.diagnosticProcedure}</div>
+                  {!f.correctiveAction?.trim()
+                    ? <form className="action-form" onSubmit={event=>recordCorrectiveAction(event,f.id)}><textarea name="action" placeholder={t.corrective} required/><button className="btn-secondary" type="submit">{t.saveAction}</button></form>
+                    : <div className="corrective-saved"><Icon name="check" size={15}/>{f.correctiveAction}</div>}
+                  <div className="record-actions">
+                    <button className="btn-secondary" type="button" onClick={()=>setEditingFaultId(f.id)}>{language==='ar'?'تعديل البلاغ':'Edit report'}</button>
+                    <button className="btn-secondary" disabled={f.status!=='Open'} onClick={()=>changeFaultStatus(f.id,'Investigating')}>{t.investigate}</button>
+                    <button className="btn-primary" disabled={!f.correctiveAction?.trim()||f.status==='Resolved'} onClick={()=>changeFaultStatus(f.id,'Resolved')}>{t.resolve}</button>
+                    <button className="btn-danger" disabled={f.status!=='Resolved'} title={f.status!=='Resolved'?(language==='ar'?'أغلق البلاغ قبل الأرشفة':'Resolve the report before archiving'):''} onClick={()=>{if(window.confirm(language==='ar'?'أرشفة البلاغ المغلق مع الاحتفاظ بسجله؟':'Archive this resolved fault record and retain its history?')) archiveFault(f.id);}}>{language==='ar'?'أرشفة':'Archive'}</button>
+                  </div>
+                </>}
+              </article>)}
+              {activeFaults.length===0&&<div className="empty-state">{t.noFaults}</div>}
+            </div>
+          </div>
+          <div className="surface-card">
+            <div className="card-head"><div><span className="eyebrow">NEW FIELD REPORT</span><h3>{t.registerFault}</h3></div></div>
+            <form className="stack-form" onSubmit={addFault}>
+              <label>Shuttle<select name="shuttleId">{activeShuttles.map(s=><option key={s.id} value={s.id}>{s.id} · {s.manufacturer}</option>)}</select></label>
+              <label>{t.faultTitle}<input name="title" required/></label>
+              <label>{t.severity}<select name="severity"><option>Critical</option><option>Major</option><option>Moderate</option><option>Minor</option></select></label>
+              <label>{t.description}<textarea name="description" required/></label>
+              <label>{t.probableCause}<input name="cause"/></label>
+              <label>{t.procedure}<textarea name="procedure"/></label>
+              <label>{t.technician}<input name="technician"/></label>
+              <button className="btn-primary" type="submit">{t.registerFault}</button>
+            </form>
+          </div>
+        </div>
+        <div className="surface-card archive-panel">
+          <button className="text-button" type="button" onClick={()=>setShowArchivedFaults(value=>!value)}>{showArchivedFaults?(language==='ar'?'إخفاء أرشيف الأعطال':'Hide fault archive'):(language==='ar'?'عرض الأعطال المؤرشفة':'Show archived faults')} · {archivedFaults.length}</button>
+          {showArchivedFaults && archivedFaults.map(item=><div className="archive-row" key={item.id}><div><strong>{item.id} · {item.title}</strong><small>{item.shuttleId} · {item.status} · {item.archivedAt}</small></div><button className="btn-secondary" onClick={()=>restoreFault(item.id)}>{language==='ar'?'استعادة':'Restore'}</button></div>)}
+        </div>
       </section>}
 
       {activeTab === 'maintenance' && <section className="page-content">
