@@ -1,8 +1,8 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import App, { type AppInitialData } from './App';
+import App, { flushApplicationPersistence, type AppInitialData } from './App';
 import { defaultSettings, initialBatteries, initialConnections, initialFaults, initialMaintenance, initialNotifications, initialShuttles } from './data/mockData';
-import { beforeEach, describe, it, expect, vi } from 'vitest';
+import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 import '@testing-library/jest-dom/vitest';
 import { DEFAULT_CUSTOMIZATION, loadCustomization } from './data/applicationCustomization';
 import { webcrypto } from 'node:crypto';
@@ -64,7 +64,14 @@ function renderApp() {
 }
 
 describe('Shuttle Car Automation V10', () => {
-  beforeEach(async () => {
+  afterEach(async () => {
+  await flushApplicationPersistence();
+  window.localStorage.clear();
+  window.sessionStorage.clear();
+  vi.restoreAllMocks();
+});
+
+beforeEach(async () => {
     window.localStorage.clear();
     window.sessionStorage.clear();
     vi.stubGlobal('crypto', webcrypto);
@@ -117,6 +124,7 @@ describe('Shuttle Car Automation V10', () => {
     const firstRender = renderApp();
     await user.click(screen.getByRole('button', { name: /Light mode/i }));
     expect(firstRender.container.querySelector('.app-shell')).toHaveClass('light');
+    await waitFor(() => expect(window.localStorage.getItem('shuttle-car-automation-v7:theme')).toBe('"light"'));
     firstRender.unmount();
 
     const secondRender = renderApp();
@@ -316,16 +324,38 @@ describe('Shuttle Car Automation V10', () => {
     expect(screen.getByText(/No new local notifications/i)).toBeInTheDocument();
   });
 
+  it('surfaces a verified snapshot failure after the storage-layer write', async () => {
+    const originalSetItem = Storage.prototype.setItem;
+    const setItemSpy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, key: string, value: string) {
+      if (key === 'shuttle-car-automation-v7:verified:language') {
+        throw new Error('Simulated verified snapshot failure.');
+      }
+      return originalSetItem.call(this, key, value);
+    });
+
+    try {
+      renderApp();
+
+      expect(await screen.findByText(/Could not confirm persistence for language/i)).toBeInTheDocument();
+      expect(window.localStorage.getItem('shuttle-car-automation-v7:language')).toBe('"en"');
+    } finally {
+      setItemSpy.mockRestore();
+    }
+  });
+
   it('persists notification records across an application remount', async () => {
     const user = userEvent.setup();
     const first = renderApp();
     await user.click(screen.getAllByRole('button', { name: /Battery Management/i })[0]);
     await user.click(screen.getByRole('button', { name: /Set available/i }));
+    await waitFor(() => {
+      expect(window.localStorage.getItem('shuttle-car-automation-v7:notifications')).toContain('Battery status changed');
+    });
     first.unmount();
 
     renderApp();
     await user.click(screen.getAllByRole('button', { name: /Notifications/i })[0]);
-    expect(screen.getByText('Battery status changed')).toBeInTheDocument();
+    expect(await screen.findByText('Battery status changed')).toBeInTheDocument();
     expect(screen.getByText(/BAT-ACME-01: Fault → Available/)).toBeInTheDocument();
   });
 
@@ -336,7 +366,7 @@ describe('Shuttle Car Automation V10', () => {
     await user.click(screen.getByRole('button', { name: /Set available/i }));
     await user.click(screen.getAllByRole('button', { name: /Notifications/i })[0]);
     await user.click(screen.getByRole('button', { name: /Clear all notifications/i }));
-    expect(screen.getByText(/No new local notifications/i)).toBeInTheDocument();
+    expect(await screen.findByText(/No new local notifications/i)).toBeInTheDocument();
   });
 
   it('creates and advances a maintenance work order with matching local event records', async () => {
@@ -377,7 +407,7 @@ describe('Shuttle Car Automation V10', () => {
     expect(screen.getAllByText('Not recorded').length).toBeGreaterThan(0);
   });
 
-  it('migrates legacy placeholder zero counters without changing verified zero readings', () => {
+  it('migrates legacy placeholder zero counters without changing verified zero readings', async () => {
     const legacyShuttles = [
       ...initialShuttles.map((shuttle) => ({ ...shuttle, operatingHours: 0, operatingCycles: 0 })),
       {
@@ -398,6 +428,14 @@ describe('Shuttle Car Automation V10', () => {
 
     renderApp();
 
+    await waitFor(() => {
+      const persisted = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:shuttles') || '[]') as Array<{
+        id: string;
+        operatingHours: number | null;
+        operatingCycles: number | null;
+      }>;
+      expect(persisted.slice(0, 5).every((shuttle) => shuttle.operatingHours === null && shuttle.operatingCycles === null)).toBe(true);
+    });
     const saved = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:shuttles') || '[]') as Array<{
       id: string;
       operatingHours: number | null;
@@ -525,6 +563,10 @@ describe('Shuttle Car Automation V10', () => {
     await user.type(screen.getByLabelText(/SOC %/i), '12.5');
     await user.click(screen.getByRole('button', { name: /Save battery data/i }));
     await waitFor(() => expect(screen.getByText('12.5% (manual / reported)')).toBeInTheDocument());
+    await waitFor(() => {
+      const persisted = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:batteries') || '[]') as Array<{id:string;soc:number|null;connectionMode:string}>;
+      expect(persisted.find(item => item.id === 'BAT-ACME-01')?.soc).toBe(12.5);
+    });
     const saved = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:batteries') || '[]') as Array<{id:string;soc:number|null;connectionMode:string}>;
     expect(saved.find(item => item.id === 'BAT-ACME-01')).toMatchObject({soc:12.5,connectionMode:'UNKNOWN'});
   });
@@ -537,6 +579,9 @@ describe('Shuttle Car Automation V10', () => {
     await waitFor(() => expect(screen.getByText(/LATEST SAVED DAILY REPORT/i)).toBeInTheDocument());
     expect(screen.getByRole('button', { name: /Download daily report CSV/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Download daily report Excel/i })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(window.localStorage.getItem('shuttle-car-automation-v7:dailyReports')).toContain('shuttleCount');
+    });
     first.unmount();
     renderApp();
     await user.click(screen.getAllByRole('button', { name: /Reports Center/i })[0]);
@@ -552,8 +597,12 @@ describe('Shuttle Car Automation V10', () => {
     await user.click(screen.getByRole('button', { name: /Generate today.s report/i }));
     await waitFor(() => expect(screen.getByText(/LATEST SAVED DAILY REPORT/i)).toBeInTheDocument());
 
+    await waitFor(() => {
+      const persisted = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:dailyReports') || '[]') as Array<{id:string}>;
+      expect(persisted).toHaveLength(1);
+    });
     const cancelSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
-    await user.click(screen.getByRole('button', { name: /^Delete$/i }));
+    await user.click(screen.getAllByRole('button', { name: /^Delete$/i })[0]);
     cancelSpy.mockRestore();
     let saved = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:dailyReports') || '[]') as Array<{id:string}>;
     expect(saved).toHaveLength(1);
@@ -561,8 +610,10 @@ describe('Shuttle Car Automation V10', () => {
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
     await user.click(screen.getByRole('button', { name: /^Delete$/i }));
     confirmSpy.mockRestore();
-    saved = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:dailyReports') || '[]') as Array<{id:string}>;
-    expect(saved).toHaveLength(0);
+    await waitFor(() => {
+      saved = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:dailyReports') || '[]') as Array<{id:string}>;
+      expect(saved).toHaveLength(0);
+    });
     await waitFor(() => expect(screen.queryByText(/LATEST SAVED DAILY REPORT/i)).not.toBeInTheDocument());
   });
 
@@ -586,11 +637,11 @@ describe('Shuttle Car Automation V10', () => {
     await user.click(screen.getByRole('button', { name: /Collapse sidebar/i }));
     expect(shell).toHaveClass('sidebar-collapsed');
     expect(screen.getByRole('button', { name: /Expand sidebar/i })).toBeInTheDocument();
-    expect(window.localStorage.getItem('shuttle-car-automation-v7:sidebarCollapsed')).toBe('true');
+    await waitFor(() => expect(window.localStorage.getItem('shuttle-car-automation-v7:sidebarCollapsed')).toBe('true'));
 
     await user.click(screen.getByRole('button', { name: /Expand sidebar/i }));
     expect(shell).not.toHaveClass('sidebar-collapsed');
-    expect(window.localStorage.getItem('shuttle-car-automation-v7:sidebarCollapsed')).toBe('false');
+    await waitFor(() => expect(window.localStorage.getItem('shuttle-car-automation-v7:sidebarCollapsed')).toBe('false'));
   });
 
   it('opens system settings directly from the fixed workspace controls', async () => {
@@ -631,7 +682,7 @@ describe('Shuttle Car Automation V10', () => {
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Service reports');
   });
 
-  it('removes disabled modules from navigation without deleting application records', () => {
+  it('removes disabled modules from navigation without deleting application records', async () => {
     renderApp();
     const customization = JSON.parse(JSON.stringify(DEFAULT_CUSTOMIZATION)) as typeof DEFAULT_CUSTOMIZATION;
     const aiModule = customization.modules.find((item) => item.id === 'ai');
@@ -643,7 +694,9 @@ describe('Shuttle Car Automation V10', () => {
     });
 
     expect(screen.queryByRole('button', { name: 'AI Technical Assistant' })).not.toBeInTheDocument();
-    expect(window.localStorage.getItem('shuttle-car-automation-v7:shuttles')).toBeTruthy();
+    await waitFor(() => {
+      expect(window.localStorage.getItem('shuttle-car-automation-v7:shuttles')).toBeTruthy();
+    });
   });
 
   it('applies compact sizing to the fleet dashboard widget', () => {

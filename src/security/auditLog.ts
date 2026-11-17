@@ -123,16 +123,21 @@ function readJsonArray<T>(storage: AuditStorage, key: string, label: string): T[
   return parsed as T[];
 }
 
-export function readAuditRecords(storage: AuditStorage = localStorage): AuditRecord[] {
+function assertNoPendingAuditArchive(storage: AuditStorage): void {
   if (storage.getItem(AUDIT_ARCHIVE_PENDING_KEY) !== null) {
-    throw new Error('An audit archive transaction is pending. Complete recovery before reading or appending new events.');
+    throw new Error('An audit archive transaction is pending. Complete recovery before reading audit records or archives.');
   }
+}
+
+export function readAuditRecords(storage: AuditStorage = localStorage): AuditRecord[] {
+  assertNoPendingAuditArchive(storage);
   // Keep malformed entries so verification fails visibly instead of silently
   // filtering evidence and incorrectly reporting a clean chain.
   return readJsonArray<AuditRecord>(storage, AUDIT_STORAGE_KEY, 'Audit log');
 }
 
 export function readAuditArchives(storage: AuditStorage = localStorage): AuditArchiveEntry[] {
+  assertNoPendingAuditArchive(storage);
   return readJsonArray<AuditArchiveEntry>(storage, AUDIT_ARCHIVE_STORAGE_KEY, 'Audit archive');
 }
 
@@ -221,6 +226,7 @@ export async function getAuditAnchor(
   storage: AuditStorage = localStorage,
   cryptoApi: Crypto = globalThis.crypto
 ): Promise<AuditAnchor> {
+  assertNoPendingAuditArchive(storage);
   const archives = readAuditArchives(storage);
   const verification = await verifyArchiveEntries(archives, cryptoApi);
   if (!verification.valid) throw new Error(`Audit archive integrity failed at archive ${verification.brokenIndex}: ${verification.reason}`);

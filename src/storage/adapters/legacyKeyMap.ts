@@ -3,9 +3,10 @@ import { StorageError, getWithRevision, set, type StorageKey } from '../index';
 export type AdapterFamily = 'operational' | 'auth' | 'audit' | 'customization';
 export interface LegacyKeyDefinition { legacyKey: string; adapter: AdapterFamily | 'audit-marker'; targetKey: StorageKey | null; importable: boolean; }
 export type AdapterResult<T = unknown> =
-  | { status: 'imported'; key: string; value: T; recordsCount: number }
+  | { status: 'imported'; key: string; value: T; recordsCount: number; note?: string }
   | { status: 'already-synced'; key: string; recordsCount: number }
   | { status: 'conflict'; key: string; legacyValue: unknown; existingValue: unknown; message: string }
+  | { status: 'missing-source'; key: string }
   | { status: 'invalid-source'; key: string; message: string }
   | { status: 'failed'; key: string; message: string; errorCode?: string };
 export interface LegacyReadStorage { getItem(key: string): string | null; }
@@ -97,7 +98,7 @@ export async function importMappedLegacyKey<T>(
   let raw: string | null;
   try { raw = legacyStorage.getItem(legacyKey); }
   catch (error) { return { status: 'failed', key, message: safeErrorMessage(error, 'Legacy source could not be read.') }; }
-  if (raw === null) return { status: 'invalid-source', key, message: 'Legacy source key is missing.' };
+  if (raw === null) return { status: 'missing-source', key };
 
   let parsed: unknown;
   try { parsed = JSON.parse(raw) as unknown; }
@@ -136,6 +137,44 @@ export async function importMappedLegacyKey<T>(
       return { status: 'conflict', key, legacyValue: value, existingValue: latest?.value, message: 'A concurrent write created a different value. No automatic merge was attempted.' };
     }
     return { status: 'failed', key, message: safeErrorMessage(error, 'Legacy import could not be committed.'), ...(error instanceof StorageError ? { errorCode: error.code } : {}) };
+  }
+}
+
+/**
+ * Applies an approved default only when the legacy source key is absent.
+ * Existing destination values are never overwritten.
+ */
+export async function importDefaultForMissing<T>(
+  result: AdapterResult<T>,
+  defaultValue: T
+): Promise<AdapterResult<T>> {
+  if (result.status !== 'missing-source') return result;
+  const key = result.key as StorageKey;
+  const recordsCount = countRecords(defaultValue);
+
+  try {
+    const current = await getWithRevision(key);
+    if (current) {
+      if (valuesEqual(current.value, defaultValue)) {
+        return { status: 'already-synced', key, recordsCount };
+      }
+      return {
+        status: 'conflict',
+        key,
+        legacyValue: defaultValue,
+        existingValue: current.value,
+        message: 'The legacy source is missing and a different destination value already exists. No value was overwritten.'
+      };
+    }
+    await set(key, defaultValue as never, 0);
+    return { status: 'imported', key, value: defaultValue, recordsCount, note: 'default value used' };
+  } catch (error) {
+    return {
+      status: 'failed',
+      key,
+      message: safeErrorMessage(error, 'The default value could not be committed.'),
+      ...(error instanceof StorageError ? { errorCode: error.code } : {})
+    };
   }
 }
 
