@@ -90,8 +90,7 @@ describe('operational backup validation', () => {
   });
 
   it('migrates schema 10 backups without a connection register to an empty register', () => {
-    const legacy = validBackup();
-    legacy.schemaVersion = 10;
+    const legacy = { ...validBackup(), schemaVersion: 10 };
     const result = validateOperationalBackup(legacy);
     expect(result.ok).toBe(true);
     if (result.ok) expect(result.data.connections).toEqual([]);
