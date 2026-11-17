@@ -10,14 +10,14 @@ permissions:
   contents: read
 
 concurrency:
-  group: shuttle-android-debug
-  cancel-in-progress: false
+  group: shuttle-android-smoke-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build-android:
     name: Build, install, and smoke-test Android APK
     runs-on: ubuntu-26.04
-    timeout-minutes: 60
+    timeout-minutes: 35
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
@@ -60,50 +60,56 @@ jobs:
 
       - name: Install and launch APK in Android phone emulator
         uses: reactivecircus/android-emulator-runner@v2
+        timeout-minutes: 12
         with:
           api-level: 35
+          system-image-api-level: 35
           arch: x86_64
           target: google_apis
           profile: pixel_2
+          emulator-boot-timeout: 300
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
           disable-animations: true
           script: |
             set -euo pipefail
             APK="android/app/build/outputs/apk/debug/app-debug.apk"
             test -s "$APK"
             mkdir -p artifacts/android-smoke
-            adb shell wm size | tee artifacts/android-smoke/display-size.txt
-            adb shell wm density | tee artifacts/android-smoke/display-density.txt
-            adb install -r "$APK"
-            adb logcat -c
-            adb shell am force-stop com.shuttlecar.automation
-            adb shell am start -n com.shuttlecar.automation/.MainActivity
 
-            APP_PID=""
-            for attempt in $(seq 1 30); do
-              APP_PID="$(adb shell pidof com.shuttlecar.automation | tr -d '\r' || true)"
-              if [ -n "$APP_PID" ]; then
+            timeout 30s adb wait-for-device
+            BOOTED=""
+            for attempt in $(seq 1 90); do
+              BOOTED="$(adb shell getprop sys.boot_completed | tr -d '\r' || true)"
+              if [ "$BOOTED" = "1" ]; then
                 break
               fi
-              sleep 1
+              sleep 2
             done
-            test -n "$APP_PID"
-            sleep 10
+            test "$BOOTED" = "1"
 
-            adb shell dumpsys activity activities > artifacts/android-smoke/activities.txt
-            grep -F "com.shuttlecar.automation/.MainActivity" artifacts/android-smoke/activities.txt
+            adb shell wm size | tee artifacts/android-smoke/display-size.txt
+            adb shell wm density | tee artifacts/android-smoke/display-density.txt
+            timeout 90s adb install -r "$APK"
+            adb logcat -c
+            timeout 30s adb shell am force-stop com.shuttlecar.automation
+            timeout 45s adb shell am start -W -n com.shuttlecar.automation/.MainActivity | tee artifacts/android-smoke/launch-result.txt
+            grep -F "Status: ok" artifacts/android-smoke/launch-result.txt
 
-            adb exec-out screencap -p > artifacts/android-smoke/android-app-screen.png
+            sleep 8
+            APP_PID="$(adb shell pidof com.shuttlecar.automation | tr -d '\r' || true)"
+            timeout 30s adb exec-out screencap -p > artifacts/android-smoke/android-app-screen.png
             test -s artifacts/android-smoke/android-app-screen.png
+            timeout 30s adb shell dumpsys activity activities > artifacts/android-smoke/activities.txt
+            timeout 30s adb logcat -d -t 3000 > artifacts/android-smoke/device-logcat.txt
 
-            adb shell uiautomator dump /sdcard/window.xml
-            adb pull /sdcard/window.xml artifacts/android-smoke/window.xml
-            grep -F 'package="com.shuttlecar.automation"' artifacts/android-smoke/window.xml
-
-            adb logcat -d --pid="$APP_PID" > artifacts/android-smoke/app-logcat.txt
-            if grep -F "FATAL EXCEPTION" artifacts/android-smoke/app-logcat.txt; then
-              echo "Android app process reported a fatal exception."
+            if grep -E "FATAL EXCEPTION|Process: com\.shuttlecar\.automation" artifacts/android-smoke/device-logcat.txt; then
+              echo "Android app crash signature found in device log."
               exit 1
             fi
+
+            test -n "$APP_PID"
+            grep -F "com.shuttlecar.automation/.MainActivity" artifacts/android-smoke/activities.txt
+            echo "Android emulator install, launch, foreground-process, screenshot, and crash-log checks passed."
 
       - name: Upload Android emulator evidence
         if: always()
