@@ -501,7 +501,7 @@ function App() {
   const addBattery = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    const seq = Math.max(0, ...batteries.map(b => Number(b.id.match(/(\d+)$/)?.[1]) || 0)) + 1;
+    const seq = Math.max(0, ...batteries.map(b => Number(b.id.match(/^BAT-(\d+)$/)?.[1]) || 0)) + 1;
     const id = 'BAT-' + String(seq).padStart(3, '0');
     const assignment = String(form.get('assignment') || '').trim() || 'Unassigned';
     const record: Battery = {
