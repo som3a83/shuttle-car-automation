@@ -214,13 +214,13 @@ export async function bootstrapOperationalStorage(storage: StorageLike = globalT
     else if (snapshot.previous.status === 'valid' && snapshot.previous.envelope.schemaVersion !== OPERATIONAL_STORAGE_SCHEMA) reason = `Previous snapshot uses schema ${snapshot.previous.envelope.schemaVersion}; migration review is required.`;
     else if (snapshot.previous.status === 'invalid') reason = snapshot.previous.reason;
 
-    if (snapshot.primary.status === 'missing' && snapshot.previous.status === 'missing' && legacy.status === 'valid') {
+    if (snapshot.primary.status === 'missing' && snapshot.previous.status === 'missing' && legacy.summary.status === 'valid') {
       reason = 'A valid legacy copy is available; review and explicitly migrate it before continuing.';
     } else if (snapshot.primary.status === 'missing' && snapshot.previous.status === 'valid') {
       reason = 'Primary snapshot is missing; a verified previous snapshot is available for preview and explicit restoration.';
     } else if (snapshot.primary.status === 'invalid' && previousData !== undefined) {
       reason = 'Primary snapshot failed validation; a verified previous snapshot is available for preview and explicit restoration.';
-    } else if (snapshot.primary.status === 'missing' && snapshot.previous.status === 'missing' && legacy.status === 'missing') {
+    } else if (snapshot.primary.status === 'missing' && snapshot.previous.status === 'missing' && legacy.summary.status === 'missing') {
       reason = 'This collection is missing from a non-empty operational store. Choose an empty register explicitly; demo seed records will not be inserted.';
     }
 
@@ -265,7 +265,7 @@ export async function resolveOperationalRecovery(
     }
     data = snapshot.previous.envelope.payload;
   } else if (source === 'legacy') {
-    if (legacy.status !== 'valid' || legacy.data === undefined) throw new Error('The legacy copy is missing or invalid.');
+    if (legacy.summary.status !== 'valid' || legacy.data === undefined) throw new Error('The legacy copy is missing or invalid.');
     data = legacy.data;
   } else {
     data = legacyDefault(collection);
