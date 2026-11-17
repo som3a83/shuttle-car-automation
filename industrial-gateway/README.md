@@ -6,7 +6,7 @@ A small Python-standard-library edge service for the Shuttle Car Automation appl
 
 The example asset register contains the known fleet identities only: three Cassioli, one Craftsman and one ACME. Exact model, controller, firmware, radio/gateway, adapter and approved tags are blank. All five assets are disabled and uncommissioned by default. This is intentional.
 
-The gateway cannot produce real telemetry until a qualified integrator obtains the manufacturers' documentation, implements and verifies each exact vendor adapter, fills in the asset register and commissions the read-only path against the physical HMI.
+The gateway cannot produce real telemetry until a qualified integrator obtains the manufacturers' documentation, implements and verifies each exact vendor adapter, fills in the asset register and commissions the read-only path against the physical HMI. The repository includes a strict adapter contract and runner, but it does not include any manufacturer's driver.
 
 ## Run locally
 
@@ -32,9 +32,11 @@ The ingest body requires assetId, manufacturer, model, firmware, adapterId, adap
 
 The gateway uses SQLite with WAL mode and retains the newest 500,000 samples by default. Set SHUTTLE_GATEWAY_MAX_SAMPLES to change the cap. No control, command, reset, motion, charging or PLC-write route exists.
 
-## Vendor adapter boundary
+## Vendor adapter contract and runner
 
-A vendor adapter is a separate, trusted process on the OT gateway. It must:
+The repository includes `adapter_contract.py` and `adapter_runner.py`. After an approved adapter module has been implemented for the exact controller and signed off by the OT team, configure these environment values on the gateway host: SHUTTLE_ADAPTER_ASSET_ID, SHUTTLE_ADAPTER_FACTORY (module_name:factory_name), SHUTTLE_ADAPTER_SETTINGS (optional protected JSON path), SHUTTLE_ADAPTER_POLL_SECONDS, SHUTTLE_GATEWAY_INGEST_TOKEN and SHUTTLE_GATEWAY_INGEST_URL. Run `python adapter_runner.py` from this directory. The factory receives the commissioned asset identity and approved tag list plus the protected adapter settings. It must return an object with an identity record (adapter_id, manufacturer, model, firmware, version), a synchronous `read(tags)` method and an optional `close()` method. The runner validates the identity and every sample against the commissioned configuration before sending it to the local gateway. Do not commit vendor modules or adapter settings.
+
+A vendor adapter is a separately reviewed, trusted process on the OT gateway. It must:
 - Use the exact interface and tag/register map supplied or approved by the manufacturer.
 - Use a read-only account/certificate and enforce bounded polling, timeouts and reconnect backoff.
 - Publish only approved tags to POST /v1/telemetry with the ingest token.
