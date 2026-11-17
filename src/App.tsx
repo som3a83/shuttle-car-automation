@@ -512,6 +512,15 @@ function App() {
   };
 
   const archiveShuttle = (id: string) => {
+    const unit = shuttles.find(item => item.id === id);
+    const hasLinkedBattery = batteries.some(item => !item.archivedAt && item.assignment === id) ||
+      Boolean(unit?.installedBattery && unit.installedBattery !== 'Not recorded');
+    if (hasLinkedBattery) {
+      showToast(language === 'ar'
+        ? 'افصل البطارية من سجل الجهاز أولًا قبل أرشفة الشاتل'
+        : 'Remove or reassign the registered battery before archiving this shuttle.');
+      return;
+    }
     const archivedAt = new Date().toISOString();
     setShuttles(prev => prev.map(item => item.id === id ? { ...item, archivedAt } : item));
     const next = activeShuttles.find(item => item.id !== id);
