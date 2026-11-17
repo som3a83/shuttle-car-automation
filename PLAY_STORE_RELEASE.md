@@ -4,7 +4,7 @@
 **Application ID:** `com.shuttlecar.automation`
 
 ## 1. Google Play technical gate
-As of 31 August 2026, new mobile apps and app updates submitted to Google Play must target Android 16 / API level 36 or higher. The release workflow explicitly sets and checks `compileSdkVersion` and `targetSdkVersion` to 36. Confirm current policy before every future release:  
+As of 31 August 2026, new mobile apps and app updates submitted to Google Play must target Android 16 / API level 36 or higher. The release workflow explicitly sets and checks `compileSdkVersion` and `targetSdkVersion` to 36. This API 36 target is the current requirement for new mobile apps and updates from 31 August 2026. Recheck the official policy before every future release:  
 https://support.google.com/googleplay/android-developer/answer/11926878
 
 New Play apps must be uploaded as a signed Android App Bundle (AAB) and enrolled in Play App Signing. A debug APK is only for installation/testing; it is not the Play upload artifact. Official references:
@@ -49,7 +49,7 @@ The workflow does not upload to Google Play automatically. Review the artifact a
 
 ## 5. Store listing and policy
 Before submission:
-1. Use this publicly accessible policy URL in Play Console for the current public feature branch: https://github.com/som3a83/shuttle-car-automation/blob/main/PRIVACY_POLICY.md. After PR #2 is merged, update the Play Console URL to https://github.com/som3a83/shuttle-car-automation/blob/main/PRIVACY_POLICY.md.
+1. Use this publicly accessible policy URL in Play Console for the current public feature branch: https://github.com/som3a83/shuttle-car-automation/blob/main/PRIVACY_POLICY.md. Use this public privacy-policy URL in Play Console: https://github.com/som3a83/shuttle-car-automation/blob/main/PRIVACY_POLICY.md.
 2. Review the privacy summary shown inside the application.
 3. Prepare store listing text from `STORE_LISTING.md`.
 4. Provide a 512 × 512 PNG icon, 1024 × 500 feature graphic and genuine screenshots of the final application.
