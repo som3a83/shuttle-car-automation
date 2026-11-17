@@ -66,10 +66,10 @@ const copy = {
     demo: 'DEMO MODE · LOCAL RECORDS', demoText: 'No live equipment connection: no shuttle is connected to live PLC or manufacturer telemetry. Values marked unverified are not machine readings.',
     total: 'Total shuttle cars', running: 'Running shuttles', idle: 'Idle / Ready', faulted: 'Fault records', disconnected: 'Offline / unknown', battery: 'Verified battery SOC',
     fleet: 'Fleet overview', fleetSub: 'Manage equipment identity, operating condition, assignment and service history.',
-    engineering: 'Engineering visualization', engineeringSub: 'Interactive mechanical schematic with selectable views and component callouts.',
+    engineering: 'Engineering visualization', engineeringSub: 'Interactive orthographic 3D reference assembly with selectable views, exploded components and engineering callouts.',
     selectAsset: 'Select shuttle', status: 'Operating state', manufacturer: 'Manufacturer', model: 'Model', serial: 'Serial number', zone: 'Operating zone', batteryPack: 'Installed battery', communication: 'Communication', lastSeen: 'Last communication',
     noData: 'Not recorded', unknown: 'Unknown / not verified', openFleet: 'Open fleet register', openEngineering: 'Open engineering view',
-    modelDisclaimer: 'Conceptual engineering illustration — not manufacturer CAD or a scale-accurate machine model.',
+    modelDisclaimer: 'Parametric 3D reference assembly with orthographic views and internal model-unit callouts — not manufacturer CAD or certified physical dimensions.',
     iso: 'Isometric', side: 'Side', front: 'Front', top: 'Top', exploded: 'Exploded view', animate: 'Animate mechanism', stop: 'Stop animation',
     componentLegend: 'Mechanical assemblies', chassis: 'Main chassis', drive: 'Drive motor & gearbox', wheel: 'Traction wheels', batteryComp: 'Removable battery tray', sensors: 'Sensors & safety zone',
     localChanges: 'Local simulation only. This action does not send commands to a shuttle.',
@@ -100,10 +100,10 @@ const copy = {
     demo: 'وضع تجريبي / بيانات محلية', demoText: 'لا يوجد اتصال حي بوحدات التحكم أو بيانات الشركة المصنعة. أي قيمة غير مؤكدة ليست قراءة مباشرة من المعدة.',
     total: 'إجمالي عربات النقل', running: 'قيد التشغيل', idle: 'جاهز / متوقف', faulted: 'سجلات الأعطال', disconnected: 'غير متصل / غير معروف', battery: 'شحن بطارية مؤكد',
     fleet: 'ملخص الأسطول', fleetSub: 'إدارة بيانات المعدات وحالتها وتخصيصها وسجل الخدمة والصيانة.',
-    engineering: 'التصور الهندسي', engineeringSub: 'رسم ميكانيكي تفاعلي مع أوضاع عرض متعددة وإظهار المكونات.',
+    engineering: 'التصور الهندسي', engineeringSub: 'تجميعة مرجعية ثلاثية الأبعاد بإسقاطات متعامدة وتفكيك للمكونات وبيانات هندسية توضيحية.',
     selectAsset: 'اختر العربة', status: 'حالة التشغيل', manufacturer: 'الشركة المصنعة', model: 'الموديل', serial: 'الرقم المسلسل', zone: 'منطقة التشغيل', batteryPack: 'البطارية المركبة', communication: 'الاتصال', lastSeen: 'آخر اتصال',
     noData: 'غير مسجل', unknown: 'غير معروف / لم يتم التحقق', openFleet: 'فتح سجل الأسطول', openEngineering: 'فتح التصور الهندسي',
-    modelDisclaimer: 'رسم هندسي تصوري — ليس ملف CAD معتمدًا من الشركة المصنعة ولا نموذجًا مطابقًا للأبعاد.',
+    modelDisclaimer: 'تجميعة ثلاثية الأبعاد بارامترية بإسقاطات متعامدة ووحدات قياس داخلية — ليست ملف CAD أصليًا من المصنع ولا أبعادًا فعلية معتمدة.',
     iso: 'منظور مجسم', side: 'جانبي', front: 'أمامي', top: 'علوي', exploded: 'عرض تفكيكي', animate: 'تحريك الآلية', stop: 'إيقاف الحركة',
     componentLegend: 'المجموعات الميكانيكية', chassis: 'الشاسيه الرئيسي', drive: 'المحرك وعلبة التروس', wheel: 'عجلات الحركة', batteryComp: 'درج البطارية القابل للفك', sensors: 'الحساسات ومنطقة الأمان',
     localChanges: 'تغيير محلي تجريبي فقط. لا يتم إرسال أوامر إلى عربة الشاتل.',
@@ -1390,13 +1390,13 @@ function App() {
             <div className="model-toolbar"><div className="asset-select"><label>{t.selectAsset}</label><select value={selectedId} onChange={e=>setSelectedId(e.target.value)}>{activeShuttles.map(s=><option key={s.id} value={s.id}>{s.id} — {s.manufacturer}</option>)}</select></div><div className="model-tools"><button className={exploded?'tool-active':''} onClick={()=>setExploded(!exploded)}><Icon name="settings" size={15}/>{t.exploded}</button><button className={animated?'tool-active':''} onClick={()=>setAnimated(!animated)}><Icon name="grid" size={15}/>{animated?t.stop:t.animate}</button><button onClick={()=>{setModelView('iso');setModelZoom(1);setViewResetKey(value=>value+1);}}>{language==='ar'?'إعادة ضبط المنظور':'Reset view'}</button></div></div>
             <div className="view-tabs">{(['iso','side','front','top'] as ModelView[]).map(v=><button key={v} className={modelView===v?'active':''} onClick={()=>setModelView(v)}>{t[v]}</button>)}</div>
             <div className="model-canvas three-model-canvas">
-               <div className="canvas-topline"><span>3D ENGINEERING MODEL: {selected.manufacturer.toUpperCase()} / {selected.id}</span><span>CONCEPTUAL · NOT VENDOR CAD</span></div>
+               <div className="canvas-topline"><span>ORTHOGRAPHIC 3D REFERENCE: {selected.manufacturer.toUpperCase()} / {selected.id}</span><span>REFERENCE GEOMETRY · NOT OEM CAD</span></div>
                <Suspense fallback={<div className="viewer-loading" role="status">{language==='ar'?'جارٍ تحميل النموذج الهندسي ثلاثي الأبعاد…':'Loading 3D engineering model…'}</div>}>
                  <Shuttle3DViewer manufacturer={selected.manufacturer} shuttleId={selected.id} status={selected.status} view={modelView} exploded={exploded} animated={animated} selectedPart={selectedPart} zoom={modelZoom} resetKey={viewResetKey} onSelectPart={setSelectedPart} fallback={<ShuttleModel shuttle={selected} view={modelView} exploded={exploded} animated={animated}/>}/>
                </Suspense>
                <div className="canvas-bottomline"><span><i className="legend-dot" style={{background:selected.manufacturer==='Cassioli'?'#d28b4b':selected.manufacturer==='Craftsman'?'#45b8d2':'#a58af5'}}/>{selected.manufacturer}</span><span><i className="legend-dot" style={{background:'#75d6ff'}}/>Sensors</span><span><i className="legend-dot" style={{background:'#7bd9a9'}}/>Battery module</span></div>
              </div>
-             <div className="model-zoom-control"><label htmlFor="model-zoom">{language==='ar'?'تكبير الرسم':'Drawing zoom'}</label><input id="model-zoom" type="range" min="0.75" max="1.25" step="0.05" value={modelZoom} onChange={event=>setModelZoom(Number(event.target.value))}/><output>{Math.round(modelZoom*100)}%</output></div>
+             <div className="model-zoom-control"><label htmlFor="model-zoom">{language==='ar'?'تكبير الرسم':'Orthographic zoom'}</label><input id="model-zoom" type="range" min="0.75" max="1.25" step="0.05" value={modelZoom} onChange={event=>setModelZoom(Number(event.target.value))}/><output>{Math.round(modelZoom*100)}%</output></div>
             <p className="disclaimer">{t.modelDisclaimer}</p>
           </div>
           <div className="engineering-side">
