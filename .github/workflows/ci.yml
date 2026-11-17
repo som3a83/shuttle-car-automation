@@ -42,11 +42,11 @@ jobs:
       - name: Run automated tests
         run: npm test
 
-      - name: Build production bundle
-        run: npm run build
-
       - name: Render store listing artwork and PWA icons
         run: npm run assets:render
+
+      - name: Build production bundle
+        run: npm run build
 
       - name: Upload Google Play listing artwork
         uses: actions/upload-artifact@v4
