@@ -8,11 +8,11 @@
 $fn = 48;
 
 // Editable reference parameters in mm. None are manufacturer-verified.
-pack_length = 204;
-pack_width = 174;
-pack_height = 112;
+pack_length = 680;
+pack_width = 370;
+pack_height = 118;
 wall = 4;
-cell_columns = 4;
+cell_columns = 6;
 cell_rows = 2;
 exploded_view = false;
 show_cover = true;
