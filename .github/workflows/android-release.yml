@@ -101,7 +101,12 @@ jobs:
           jarsigner -verify -verbose -certs "$AAB" > /tmp/aab-signature-check.txt
           grep -qi "jar verified" /tmp/aab-signature-check.txt
           mkdir -p artifacts/play-release
-          cp "$AAB" "artifacts/play-release/shuttle-car-automation-\${APP_VERSION_INPUT:-1.0.0}.aab"
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            RELEASE_VERSION="${GITHUB_REF_NAME#v}"
+          else
+            RELEASE_VERSION="$APP_VERSION_INPUT"
+          fi
+          cp "$AAB" "artifacts/play-release/shuttle-car-automation-${RELEASE_VERSION}.aab"
           sha256sum artifacts/play-release/*.aab > artifacts/play-release/SHA256SUMS.txt
           ls -lh artifacts/play-release
         env:
