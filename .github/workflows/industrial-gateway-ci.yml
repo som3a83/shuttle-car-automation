@@ -1,0 +1,43 @@
+name: Industrial read-only gateway validation
+
+on:
+  push:
+    branches:
+      - main
+      - "industrial/**"
+    paths:
+      - "industrial-gateway/**"
+      - "src/industrial/**"
+      - "src/components/LiveGatewayPanel*"
+      - "src/App.tsx"
+      - ".github/workflows/industrial-gateway-ci.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "industrial-gateway/**"
+      - "src/industrial/**"
+      - "src/components/LiveGatewayPanel*"
+      - "src/App.tsx"
+      - ".github/workflows/industrial-gateway-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gateway-tests:
+    name: Python gateway security and validation tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile gateway source
+        working-directory: industrial-gateway
+        run: python -m py_compile gateway.py test_gateway.py
+      - name: Run gateway validation tests
+        working-directory: industrial-gateway
+        run: python -m unittest -v
