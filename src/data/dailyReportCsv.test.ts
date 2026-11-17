@@ -63,4 +63,19 @@ describe('daily report CSV formatting', () => {
 
     expect(csv).toContain('"","BAT-001","2026-11-17T09:30:00.000Z","Removed","SC-01","Unassigned","Inspection said ""replace wheel"""');
   });
+
+  it('prefixes formula-like user data before CSV quoting', () => {
+    const csv = buildDailyReportCsv({
+      ...report,
+      batteries: [{
+        ...report.batteries[0],
+        movementHistory: [{
+          ...report.batteries[0].movementHistory![0],
+          note: '=HYPERLINK("https://example.invalid","open")'
+        }]
+      }]
+    });
+
+    expect(csv).toContain(`"'=HYPERLINK(`);
+  });
 });

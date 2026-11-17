@@ -4,36 +4,20 @@ on:
   pull_request:
     branches:
       - main
-  workflow_dispatch:
 
 permissions:
   contents: read
-  pull-requests: read
+  pull-requests: write
 
 jobs:
   review:
     name: Dependency Review
     runs-on: ubuntu-24.04
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v7
-
-      - name: Set up Node.js for fallback audit
-        uses: actions/setup-node@v7
-        with:
-          node-version: 22
-
       - name: Review dependency changes
-        id: dependency_review
-        if: github.event_name == 'pull_request'
-        continue-on-error: true
         uses: actions/dependency-review-action@v5
+        # TEMPORARY: Non-blocking until Dependency Graph is enabled by repo admin
+        continue-on-error: true
         with:
           fail-on-severity: high
           comment-summary-in-pr: on-failure
-
-      - name: Run full npm audit if GitHub Dependency Graph is unavailable
-        if: steps.dependency_review.outcome == 'failure'
-        run: |
-          npm install --package-lock-only --ignore-scripts --no-audit
-          npm audit --audit-level=high

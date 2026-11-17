@@ -121,6 +121,17 @@ test('audit archive and active records support search, filter and CSV export', a
   assert.match(csv, /fault-resolved/);
 });
 
+
+test('audit CSV prefixes formula-like user text before export', async () => {
+  const storage = new MemoryStorage();
+  await appendAuditRecord({
+    ...event('fault-note', 'SC-01'),
+    detail: '=HYPERLINK("https://example.invalid","open")'
+  }, storage);
+  const csv = auditRecordsToCsv(await readAllAuditRecords(storage));
+  assert.match(csv, /"'=HYPERLINK\(/);
+});
+
 function expectFilter(records, actions) {
   assert.deepEqual(records.map(record => record.action), actions);
 }

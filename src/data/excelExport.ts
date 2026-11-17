@@ -1,6 +1,7 @@
 import type {
   Battery, CommunicationEndpoint, DailyReportSnapshot, Fault, Language, MaintenanceJob, NotificationItem, ShiftRecord, Shuttle
 } from '../types';
+import { sanitizeSpreadsheetCell } from './csvSafety';
 
 export type ExcelCell = string | number | boolean | null | undefined;
 
@@ -140,11 +141,12 @@ export async function createXlsxBuffer(sheets: WorkbookSheetData[]): Promise<Arr
     const safeName = sheet.name.slice(0, 31);
     if (!safeName || names.has(safeName)) throw new Error('Worksheet names must be unique and non-empty.');
     names.add(safeName);
-    const worksheet = XLSX.utils.aoa_to_sheet(sheet.rows);
+    const safeRows = sheet.rows.map(row => row.map(sanitizeSpreadsheetCell));
+    const worksheet = XLSX.utils.aoa_to_sheet(safeRows);
     if (sheet.widths) worksheet['!cols'] = sheet.widths.map(width => ({ wch: width }));
-    if (sheet.rows.length) {
-      const lastColumn = Math.max(0, ...sheet.rows.map(row => row.length)) - 1;
-      if (lastColumn >= 0) worksheet['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: sheet.rows.length - 1, c: lastColumn } }) };
+    if (safeRows.length) {
+      const lastColumn = Math.max(0, ...safeRows.map(row => row.length)) - 1;
+      if (lastColumn >= 0) worksheet['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: safeRows.length - 1, c: lastColumn } }) };
     }
     XLSX.utils.book_append_sheet(workbook, worksheet, safeName);
   }

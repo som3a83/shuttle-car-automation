@@ -21,6 +21,7 @@ import { validateOperationalBackup } from './data/backupValidation';
 import { archiveCompletedWorkOrder, archiveFaultRecord, restoreFaultRecord, restoreWorkOrder } from './data/recordLifecycle';
 import { buildDailyReportSheets, buildRegisterSheets, downloadXlsx } from './data/excelExport';
 import { buildDailyReportCsv } from './data/dailyReportCsv';
+import { sanitizeSpreadsheetCell } from './data/csvSafety';
 import { appendAuditRecord } from './security/auditLog';
 import { canAccessRoute, canPerformAction, type Permission } from './security/permissions';
 import { listLocalAccounts, readLocalSession } from './security/localAuth';
@@ -1129,7 +1130,10 @@ function App() {
       ...faults.map(f => ['Fault',f.id,f.shuttleId,f.status,f.severity,f.description]),
       ...jobs.map(j => ['Maintenance',j.id,j.shuttleId,j.status,j.type,j.notes]),
       ...connections.map(endpoint => ['Connection',endpoint.name,endpoint.protocol,endpoint.mode,'Local register only',endpoint.notes])];
-    const csv = rows.map(row => row.map(value => '"' + String(value ?? '').replace(/"/g,'""') + '"').join(',')).join('\r\n');
+    const csv = rows.map(row => row.map(value => {
+      const safeValue = sanitizeSpreadsheetCell(value);
+      return '"' + String(safeValue ?? '').replace(/"/g,'""') + '"';
+    }).join(',')).join('\r\n');
     const url = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }));
     const link = document.createElement('a'); link.href = url; link.download = 'shuttle-register.csv'; link.click(); URL.revokeObjectURL(url);
   };

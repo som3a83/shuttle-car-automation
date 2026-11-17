@@ -1,3 +1,5 @@
+import { sanitizeSpreadsheetCell } from '../data/csvSafety.ts';
+
 export interface AuditRecordInput {
   actorId: string;
   actorRole: string;
@@ -359,7 +361,10 @@ export function auditRecordsToCsv(records: readonly AuditRecord[]): string {
   const columns: Array<keyof AuditRecord> = [
     'id', 'timestamp', 'actorId', 'actorRole', 'action', 'entityType', 'entityId', 'detail', 'previousHash', 'hash'
   ];
-  const quote = (value: unknown) => `"${String(value ?? '').replace(/"/g, '""')}"`;
+  const quote = (value: string | number | boolean | null | undefined) => {
+    const safeValue = sanitizeSpreadsheetCell(value);
+    return `"${String(safeValue ?? '').replace(/"/g, '""')}"`;
+  };
   return [
     columns.map(quote).join(','),
     ...records.map((record) => columns.map((column) => quote(record[column])).join(','))
