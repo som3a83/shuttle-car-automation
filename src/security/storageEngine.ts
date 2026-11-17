@@ -4,13 +4,23 @@ export interface StorageLike {
   removeItem?(key: string): void;
 }
 
-interface StorageEnvelope<T> {
+export interface StorageEnvelope<T> {
   format: 'shuttle-storage-envelope';
   schemaVersion: number;
   revision: number;
   savedAt: string;
   payload: T;
   checksum: string;
+}
+
+export type StorageEnvelopeInspection<T> =
+  | { status: 'missing'; raw: null }
+  | { status: 'invalid'; raw: string; reason: string }
+  | { status: 'valid'; raw: string; envelope: StorageEnvelope<T> };
+
+export interface StorageInspection<T> {
+  primary: StorageEnvelopeInspection<T>;
+  previous: StorageEnvelopeInspection<T>;
 }
 
 export type StorageReadResult<T> =
@@ -56,60 +66,142 @@ export class VersionedStorageEngine<T> {
     this.cryptoApi = options.cryptoApi ?? globalThis.crypto;
   }
 
+  async inspect(): Promise<StorageInspection<T>> {
+    return {
+      primary: await this.readEnvelope(this.primaryKey),
+      previous: await this.readEnvelope(this.backupKey)
+    };
+  }
+
   async save(payload: T, now = new Date()): Promise<{ revision: number; checksum: string }> {
-    const primary = await this.readEnvelope(this.primaryKey);
-    const backup = await this.readEnvelope(this.backupKey);
-    const valid = [primary, backup]
-      .filter((entry): entry is { status: 'valid'; envelope: StorageEnvelope<T> } => entry.status === 'valid');
-    if (valid.some(({ envelope }) => envelope.schemaVersion !== this.schemaVersion)) {
+    const inspection = await this.inspect();
+    const { primary, previous } = inspection;
+
+    if (primary.status === 'invalid' || previous.status === 'invalid') {
+      throw new Error('Stored data is damaged. Enter Recovery Mode before saving; existing bytes were not changed.');
+    }
+    if (primary.status === 'valid' && primary.envelope.schemaVersion !== this.schemaVersion) {
       throw new Error('Stored data uses a different schema version. Migrate or export it before saving.');
     }
-    const latest = valid.sort((a, b) => b.envelope.revision - a.envelope.revision)[0]?.envelope;
-    if (latest) this.storage.setItem(this.backupKey, JSON.stringify(latest));
-    const revision = (latest?.revision ?? 0) + 1;
+    if (previous.status === 'valid' && previous.envelope.schemaVersion !== this.schemaVersion) {
+      throw new Error('Recovery snapshot uses a different schema version. Migrate or export it before saving.');
+    }
+    if (primary.status === 'missing' && previous.status === 'valid') {
+      throw new Error('The primary snapshot is missing while a previous snapshot exists. Explicit recovery is required before saving.');
+    }
+    if (primary.status === 'valid' && previous.status === 'valid' &&
+        previous.envelope.revision > primary.envelope.revision) {
+      throw new Error('The recovery snapshot is newer than the primary snapshot. Explicit recovery is required before saving.');
+    }
+
+    const latestRevision = Math.max(
+      primary.status === 'valid' ? primary.envelope.revision : 0,
+      previous.status === 'valid' ? previous.envelope.revision : 0
+    );
+    if (primary.status === 'valid') {
+      // The current verified primary becomes the previous snapshot before the new primary is written.
+      this.storage.setItem(this.backupKey, primary.raw);
+    }
+
     const unsigned = {
       format: 'shuttle-storage-envelope' as const,
       schemaVersion: this.schemaVersion,
-      revision,
+      revision: latestRevision + 1,
+      savedAt: now.toISOString(),
+      payload
+    };
+    const envelope: StorageEnvelope<T> = { ...unsigned, checksum: await digest(unsigned, this.cryptoApi) };
+    const serialized = JSON.stringify(envelope);
+    this.storage.setItem(this.primaryKey, serialized);
+    return { revision: envelope.revision, checksum: envelope.checksum };
+  }
+
+  /**
+   * Restores the previous snapshot only when explicitly requested by the
+   * Recovery UI after the user has inspected the candidate.
+   */
+  async restorePrevious(): Promise<StorageReadResult<T>> {
+    const { primary, previous } = await this.inspect();
+    if (primary.status === 'valid' && primary.envelope.schemaVersion === this.schemaVersion) {
+      throw new Error('The primary snapshot is already valid; recovery is no longer required.');
+    }
+    if (previous.status !== 'valid' || previous.envelope.schemaVersion !== this.schemaVersion) {
+      throw new Error('No compatible verified previous snapshot is available.');
+    }
+    this.storage.setItem(this.primaryKey, previous.raw);
+    return {
+      status: 'recovered',
+      data: previous.envelope.payload,
+      revision: previous.envelope.revision,
+      savedAt: previous.envelope.savedAt
+    };
+  }
+
+  /**
+   * Creates a new verified primary from a user-approved legacy or empty
+   * recovery candidate. Existing raw envelopes are deliberately left in place
+   * for the caller to quarantine before invoking this method.
+   */
+  async replaceAfterRecovery(payload: T, now = new Date()): Promise<{ revision: number; checksum: string }> {
+    const { primary, previous } = await this.inspect();
+    if (primary.status === 'valid' && primary.envelope.schemaVersion === this.schemaVersion) {
+      throw new Error('A valid primary snapshot now exists; refusing to replace it.');
+    }
+    const latestRevision = Math.max(
+      primary.status === 'valid' ? primary.envelope.revision : 0,
+      previous.status === 'valid' && previous.envelope.schemaVersion === this.schemaVersion ? previous.envelope.revision : 0
+    );
+    const unsigned = {
+      format: 'shuttle-storage-envelope' as const,
+      schemaVersion: this.schemaVersion,
+      revision: latestRevision + 1,
       savedAt: now.toISOString(),
       payload
     };
     const envelope: StorageEnvelope<T> = { ...unsigned, checksum: await digest(unsigned, this.cryptoApi) };
     this.storage.setItem(this.primaryKey, JSON.stringify(envelope));
-    return { revision, checksum: envelope.checksum };
+    return { revision: envelope.revision, checksum: envelope.checksum };
   }
 
   async load(): Promise<StorageReadResult<T>> {
-    const current = await this.readEnvelope(this.primaryKey);
-    if (current.status === 'valid') {
-      if (current.envelope.schemaVersion !== this.schemaVersion) {
-        return { status: 'corrupt', data: null, revision: 0, reason: `Unsupported schema version ${current.envelope.schemaVersion}.` };
+    const { primary, previous } = await this.inspect();
+    if (primary.status === 'valid') {
+      if (primary.envelope.schemaVersion !== this.schemaVersion) {
+        return { status: 'corrupt', data: null, revision: 0, reason: `Unsupported schema version ${primary.envelope.schemaVersion}.` };
       }
-      return { status: 'loaded', data: current.envelope.payload, revision: current.envelope.revision, savedAt: current.envelope.savedAt };
+      return { status: 'loaded', data: primary.envelope.payload, revision: primary.envelope.revision, savedAt: primary.envelope.savedAt };
     }
-    const backup = await this.readEnvelope(this.backupKey);
-    if (backup.status === 'valid' && backup.envelope.schemaVersion === this.schemaVersion) {
-      this.storage.setItem(this.primaryKey, JSON.stringify(backup.envelope));
-      return { status: 'recovered', data: backup.envelope.payload, revision: backup.envelope.revision, savedAt: backup.envelope.savedAt };
+    if (previous.status === 'valid' && previous.envelope.schemaVersion === this.schemaVersion) {
+      return { status: 'corrupt', data: null, revision: 0, reason: 'A compatible previous snapshot exists. Use Recovery Mode to preview and restore it.' };
     }
-    if (current.status === 'missing' && backup.status === 'missing') return { status: 'missing', data: null, revision: 0 };
+    if (primary.status === 'missing' && previous.status === 'missing') return { status: 'missing', data: null, revision: 0 };
     return { status: 'corrupt', data: null, revision: 0, reason: 'Primary and recovery snapshots could not be validated.' };
   }
 
-  private async readEnvelope(key: string): Promise<{ status: 'missing' } | { status: 'invalid' } | { status: 'valid'; envelope: StorageEnvelope<T> }> {
+  private async readEnvelope(key: string): Promise<StorageEnvelopeInspection<T>> {
     const raw = this.storage.getItem(key);
-    if (!raw) return { status: 'missing' };
+    if (raw === null) return { status: 'missing', raw: null };
     try {
       const parsed = JSON.parse(raw) as Partial<StorageEnvelope<T>>;
       if (parsed.format !== 'shuttle-storage-envelope' ||
-        !Number.isInteger(parsed.schemaVersion) || !Number.isInteger(parsed.revision) ||
-        (parsed.revision as number) < 1 || typeof parsed.savedAt !== 'string' ||
-        typeof parsed.checksum !== 'string' || !('payload' in parsed)) return { status: 'invalid' };
+        !Number.isInteger(parsed.schemaVersion) || (parsed.schemaVersion as number) < 1 ||
+        !Number.isInteger(parsed.revision) || (parsed.revision as number) < 1 ||
+        typeof parsed.savedAt !== 'string' || !Number.isFinite(Date.parse(parsed.savedAt)) ||
+        typeof parsed.checksum !== 'string' || !/^[a-f0-9]{64}$/i.test(parsed.checksum) ||
+        !Object.prototype.hasOwnProperty.call(parsed, 'payload')) {
+        return { status: 'invalid', raw, reason: 'Snapshot envelope structure is invalid.' };
+      }
       const { checksum, ...unsigned } = parsed as StorageEnvelope<T>;
-      if (await digest(unsigned, this.cryptoApi) !== checksum) return { status: 'invalid' };
-      return { status: 'valid', envelope: parsed as StorageEnvelope<T> };
-    } catch {
-      return { status: 'invalid' };
+      if (await digest(unsigned, this.cryptoApi) !== checksum) {
+        return { status: 'invalid', raw, reason: 'Snapshot checksum does not match its content.' };
+      }
+      return { status: 'valid', raw, envelope: parsed as StorageEnvelope<T> };
+    } catch (reason) {
+      return {
+        status: 'invalid',
+        raw,
+        reason: reason instanceof Error ? reason.message : 'Snapshot could not be parsed or verified.'
+      };
     }
   }
 }
