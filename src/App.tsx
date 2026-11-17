@@ -479,11 +479,28 @@ function App() {
       showToast(language === 'ar' ? 'تعذر تحديث سجل التدقيق؛ راجع سلامة السجل' : 'Audit log write failed; review audit integrity.');
     });
   };
-  const authorize = (permission: Permission, entityType = 'application', entityId: string = activeTab) => {
-    if (canPerformAction(currentUser, permission)) return true;
-    recordAudit('ACCESS_DENIED', entityType, entityId, `Missing permission: ${permission}`);
-    showToast(language === 'ar' ? 'ليس لديك صلاحية لتنفيذ هذا الإجراء' : 'You do not have permission to perform this action.');
-    return false;
+  const authorize = async (permission: Permission, entityType = 'application', entityId: string = activeTab): Promise<boolean> => {
+    const allowed = canPerformAction(currentUser, permission);
+    try {
+      await appendAuditRecord({
+        actorId: currentUser.id,
+        actorRole: currentUser.role,
+        action: allowed ? 'ACTION_AUTHORIZATION_GRANTED' : 'ACCESS_DENIED',
+        entityType,
+        entityId,
+        detail: `Permission: ${permission}`
+      });
+    } catch {
+      showToast(language === 'ar'
+        ? 'تم منع العملية: تعذر التحقق من سجل التدقيق أو حفظ حدث التفويض.'
+        : 'Action blocked: audit integrity could not be verified or the authorization event could not be saved.');
+      return false;
+    }
+    if (!allowed) {
+      showToast(language === 'ar' ? 'ليس لديك صلاحية لتنفيذ هذا الإجراء' : 'You do not have permission to perform this action.');
+      return false;
+    }
+    return true;
   };
 
   useEffect(() => {
@@ -505,15 +522,15 @@ function App() {
     };
     setNotifications(prev => [item, ...prev].slice(0, 100));
   };
-  const dismissNotification = (id: string) => { if (!authorize('notifications.manage', 'notification', id)) return; setNotifications(prev => prev.filter(item => item.id !== id)); recordAudit('NOTIFICATION_DISMISSED', 'notification', id); };
-  const clearNotifications = () => { if (!authorize('notifications.manage', 'notification', 'all')) return; setNotifications([]); recordAudit('NOTIFICATIONS_CLEARED', 'notification', 'all'); };
+  const dismissNotification = async (id: string) => { if (!await authorize('notifications.manage', 'notification', id)) return; setNotifications(prev => prev.filter(item => item.id !== id)); recordAudit('NOTIFICATION_DISMISSED', 'notification', id); };
+  const clearNotifications = async () => { if (!await authorize('notifications.manage', 'notification', 'all')) return; setNotifications([]); recordAudit('NOTIFICATIONS_CLEARED', 'notification', 'all'); };
   const formatNotificationTime = (value: string) => {
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return t.noData;
     return new Intl.DateTimeFormat(language === 'ar' ? 'ar-EG' : 'en-GB', { dateStyle: 'medium', timeStyle: 'short' }).format(date);
   };
-  const updateShuttle = (id: string, patch: Partial<Shuttle>) => {
-    if (!authorize('fleet.manage', 'shuttle', id)) return;
+  const updateShuttle = async (id: string, patch: Partial<Shuttle>) => {
+    if (!await authorize('fleet.manage', 'shuttle', id)) return;
     const current = shuttles.find(item => item.id === id);
     setShuttles(prev => prev.map(item => item.id === id ? { ...item, ...patch } : item));
     recordAudit('SHUTTLE_UPDATED', 'shuttle', id, `Changed fields: ${Object.keys(patch).join(', ')}`);
@@ -525,8 +542,8 @@ function App() {
       );
     }
   };
-  const updateBattery = (id: string, patch: Partial<Battery>) => {
-    if (!authorize('batteries.manage', 'battery', id)) return;
+  const updateBattery = async (id: string, patch: Partial<Battery>) => {
+    if (!await authorize('batteries.manage', 'battery', id)) return;
     const current = batteries.find(item => item.id === id);
     setBatteries(prev => prev.map(item => item.id === id ? { ...item, ...patch } : item));
     recordAudit('BATTERY_UPDATED', 'battery', id, `Changed fields: ${Object.keys(patch).join(', ')}`);
@@ -538,8 +555,8 @@ function App() {
       );
     }
   };
-  const changeFaultStatus = (id: string, status: Fault['status']) => {
-    if (!authorize(status === 'Resolved' ? 'faults.resolve' : 'faults.update', 'fault', id)) return;
+  const changeFaultStatus = async (id: string, status: Fault['status']) => {
+    if (!await authorize(status === 'Resolved' ? 'faults.resolve' : 'faults.update', 'fault', id)) return;
     const current = faults.find(item => item.id === id);
     if (!current) return;
     if (status === 'Resolved' && !current.correctiveAction?.trim()) {
@@ -556,8 +573,8 @@ function App() {
       );
     }
   };
-  const changeJobStatus = (id: string, status: MaintenanceJob['status']) => {
-    if (!authorize(status === 'Completed' ? 'maintenance.complete' : 'maintenance.update', 'maintenance', id)) return;
+  const changeJobStatus = async (id: string, status: MaintenanceJob['status']) => {
+    if (!await authorize(status === 'Completed' ? 'maintenance.complete' : 'maintenance.update', 'maintenance', id)) return;
     const current = jobs.find(item => item.id === id);
     setJobs(prev => prev.map(item => item.id === id ? { ...item, status } : item));
     if (current && current.status !== status) recordAudit('MAINTENANCE_STATUS_CHANGED', 'maintenance', id, `${current.status} -> ${status}`);
@@ -570,9 +587,9 @@ function App() {
     }
   };
 
-  const addShuttle = (event: React.FormEvent<HTMLFormElement>) => {
+  const addShuttle = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!authorize('fleet.manage', 'shuttle', 'new')) return;
+    if (!await authorize('fleet.manage', 'shuttle', 'new')) return;
     const requestedSerial = newAsset.serialNumber.trim().toLocaleLowerCase();
     const duplicateSerial = requestedSerial && requestedSerial !== 'not recorded' &&
       shuttles.some((item) => !item.archivedAt && item.serialNumber.trim().toLocaleLowerCase() === requestedSerial);
@@ -596,8 +613,8 @@ function App() {
     showToast(t.done);
   };
 
-  const archiveShuttle = (id: string) => {
-    if (!authorize('fleet.manage', 'shuttle', id)) return;
+  const archiveShuttle = async (id: string) => {
+    if (!await authorize('fleet.manage', 'shuttle', id)) return;
     const unit = shuttles.find(item => item.id === id);
     const hasLinkedBattery = batteries.some(item => !item.archivedAt && item.assignment === id) ||
       Boolean(unit?.installedBattery && unit.installedBattery !== 'Not recorded');
@@ -625,8 +642,8 @@ function App() {
     showToast(language === 'ar' ? 'تمت الأرشفة مع الاحتفاظ بالسجل' : 'Archived; history retained');
   };
 
-  const restoreShuttle = (id: string) => {
-    if (!authorize('fleet.manage', 'shuttle', id)) return;
+  const restoreShuttle = async (id: string) => {
+    if (!await authorize('fleet.manage', 'shuttle', id)) return;
     const archived = shuttles.find(item => item.id === id && item.archivedAt);
     if (!archived) return;
     const serial = archived.serialNumber.trim().toLocaleLowerCase();
@@ -642,9 +659,9 @@ function App() {
     pushNotification(language === 'ar' ? 'تم استعادة جهاز' : 'Shuttle restored', id);
   };
 
-  const saveShuttleEdit = (event: React.FormEvent<HTMLFormElement>, id: string) => {
+  const saveShuttleEdit = async (event: React.FormEvent<HTMLFormElement>, id: string) => {
     event.preventDefault();
-    if (!authorize('fleet.manage', 'shuttle', id)) return;
+    if (!await authorize('fleet.manage', 'shuttle', id)) return;
     const form = new FormData(event.currentTarget);
     const nextSerial = String(form.get('serialNumber') || 'Not recorded').trim() || 'Not recorded';
     const duplicateSerial = nextSerial.toLocaleLowerCase() !== 'not recorded' &&
@@ -664,14 +681,14 @@ function App() {
       notes: String(form.get('notes') || '').trim(),
       status: String(form.get('status') || 'Unknown') as ShuttleStatus
     };
-    updateShuttle(id, patch);
+    await updateShuttle(id, patch);
     setEditingShuttle(null);
     showToast(language === 'ar' ? 'تم حفظ تعديلات الجهاز' : 'Equipment details saved');
   };
 
-  const addBattery = (event: React.FormEvent<HTMLFormElement>) => {
+  const addBattery = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!authorize('batteries.manage', 'battery', 'new')) return;
+    if (!await authorize('batteries.manage', 'battery', 'new')) return;
     const form = new FormData(event.currentTarget);
     const seq = Math.max(0, ...batteries.map(b => Number(b.id.match(/^BAT-(\\d+)$/)?.[1]) || 0)) + 1;
     const id = 'BAT-' + String(seq).padStart(3, '0');
@@ -713,9 +730,9 @@ function App() {
     showToast(language === 'ar' ? 'تم تسجيل البطارية' : 'Battery registered');
   };
 
-  const saveBatteryDetails = (event: React.FormEvent<HTMLFormElement>) => {
+  const saveBatteryDetails = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!authorize('batteries.manage', 'battery', selectedBattery?.id || 'selected')) return;
+    if (!await authorize('batteries.manage', 'battery', selectedBattery?.id || 'selected')) return;
     if (!selectedBattery) return;
     const form = new FormData(event.currentTarget);
     const numberOrNull = (key: string) => {
@@ -724,7 +741,7 @@ function App() {
       const value = Number(raw);
       return Number.isFinite(value) ? value : null;
     };
-    updateBattery(selectedBattery.id, {
+    await updateBattery(selectedBattery.id, {
       manufacturer: String(form.get('manufacturer') || 'Not recorded').trim(),
       model: String(form.get('model') || 'Not recorded').trim() || 'Not recorded',
       chemistry: String(form.get('chemistry') || 'Not verified').trim() || 'Not verified',
@@ -742,8 +759,8 @@ function App() {
     showToast(language === 'ar' ? 'تم حفظ بيانات البطارية' : 'Battery details saved');
   };
 
-  const archiveBattery = (id: string) => {
-    if (!authorize('batteries.manage', 'battery', id)) return;
+  const archiveBattery = async (id: string) => {
+    if (!await authorize('batteries.manage', 'battery', id)) return;
     const result = archiveBatteryAndDetach(batteries, shuttles, id);
     if (!result.changed) return;
     setBatteries(result.batteries);
@@ -755,16 +772,16 @@ function App() {
     showToast(language === 'ar' ? 'تمت أرشفة البطارية مع الاحتفاظ بسجل الحركة' : 'Battery archived; movement history retained');
   };
 
-  const restoreBattery = (id: string) => {
-    if (!authorize('batteries.manage', 'battery', id)) return;
+  const restoreBattery = async (id: string) => {
+    if (!await authorize('batteries.manage', 'battery', id)) return;
     setBatteries(prev => restoreBatteryRecord(prev, id));
     recordAudit('BATTERY_RESTORED', 'battery', id);
     setSelectedBatteryId(id);
     pushNotification(language === 'ar' ? 'تمت استعادة بطارية' : 'Battery restored', id);
   };
 
-  const generateDailyReport = () => {
-    if (!authorize('reports.export', 'report', 'daily')) return;
+  const generateDailyReport = async () => {
+    if (!await authorize('reports.export', 'report', 'daily')) return;
     const now = new Date();
     const reportDate = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
     const report: DailyReportSnapshot = {
@@ -790,8 +807,8 @@ function App() {
     showToast(language === 'ar' ? 'تم حفظ التقرير اليومي' : 'Daily report saved locally');
   };
 
-  const deleteDailyReport = (id: string) => {
-    if (!authorize('reports.export', 'report', id)) return;
+  const deleteDailyReport = async (id: string) => {
+    if (!await authorize('reports.export', 'report', id)) return;
     const report = dailyReports.find(item => item.id === id);
     if (!report) return;
     const confirmed = window.confirm(language === 'ar'
@@ -804,8 +821,8 @@ function App() {
     showToast(language === 'ar' ? 'تم حذف التقرير المحلي' : 'Local report snapshot deleted');
   };
 
-  const downloadDailyReport = (report: DailyReportSnapshot) => {
-    if (!authorize('reports.export', 'report', report.id)) return;
+  const downloadDailyReport = async (report: DailyReportSnapshot) => {
+    if (!await authorize('reports.export', 'report', report.id)) return;
     const rows: Array<Array<string | number>> = [
       ['SHUTTLE CAR AUTOMATION · DAILY DEVICE STATUS', report.reportDate],
       ['Generated at', report.generatedAt],
@@ -840,8 +857,8 @@ function App() {
     URL.revokeObjectURL(url);
   };
 
-  const assignSelectedBattery = (shuttleId: string) => {
-    if (!authorize('batteries.manage', 'battery', selectedBattery?.id || 'selected')) return;
+  const assignSelectedBattery = async (shuttleId: string) => {
+    if (!await authorize('batteries.manage', 'battery', selectedBattery?.id || 'selected')) return;
     if (!selectedBattery) return;
     const result = assignBatteryToShuttle(batteries, shuttles, selectedBattery.id, shuttleId);
     if (!result.changed) {
@@ -855,9 +872,9 @@ function App() {
     showToast(language === 'ar' ? 'تم حفظ حركة البطارية' : 'Battery movement saved');
   };
 
-  const addFault = (event: React.FormEvent<HTMLFormElement>) => {
+  const addFault = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!authorize('faults.create', 'fault', 'new')) return;
+    if (!await authorize('faults.create', 'fault', 'new')) return;
     const form = new FormData(event.currentTarget);
     const record: Fault = {
       id: 'FLT-' + Date.now(), shuttleId: String(form.get('shuttleId') || selected?.id || 'Unassigned'),
@@ -876,9 +893,9 @@ function App() {
     event.currentTarget.reset(); showToast(t.done);
   };
 
-  const addJob = (event: React.FormEvent<HTMLFormElement>) => {
+  const addJob = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!authorize('maintenance.create', 'maintenance', 'new')) return;
+    if (!await authorize('maintenance.create', 'maintenance', 'new')) return;
     const form = new FormData(event.currentTarget);
     const job: MaintenanceJob = {
       id: 'MNT-' + Date.now(), shuttleId: String(form.get('shuttleId') || selected?.id || 'Unassigned'),
@@ -898,9 +915,9 @@ function App() {
     event.currentTarget.reset(); showToast(t.done);
   };
 
-  const recordCorrectiveAction = (event: React.FormEvent<HTMLFormElement>, id: string) => {
+  const recordCorrectiveAction = async (event: React.FormEvent<HTMLFormElement>, id: string) => {
     event.preventDefault();
-    if (!authorize('faults.update', 'fault', id)) return;
+    if (!await authorize('faults.update', 'fault', id)) return;
     const form = new FormData(event.currentTarget);
     const action = String(form.get('action') || '').trim(); if (!action) return;
     setFaults(prev => prev.map(f => f.id === id ? { ...f, correctiveAction: action } : f));
@@ -913,9 +930,9 @@ function App() {
     event.currentTarget.reset(); showToast(t.done);
   };
 
-  const saveFaultEdit = (event: React.FormEvent<HTMLFormElement>, id: string) => {
+  const saveFaultEdit = async (event: React.FormEvent<HTMLFormElement>, id: string) => {
     event.preventDefault();
-    if (!authorize('faults.update', 'fault', id)) return;
+    if (!await authorize('faults.update', 'fault', id)) return;
     const form = new FormData(event.currentTarget);
     const title = String(form.get('title') || '').trim();
     const description = String(form.get('description') || '').trim();
@@ -938,8 +955,8 @@ function App() {
     showToast(language === 'ar' ? 'تم حفظ التعديلات' : 'Fault report changes saved');
   };
 
-  const archiveFault = (id: string) => {
-    if (!authorize('faults.update', 'fault', id)) return;
+  const archiveFault = async (id: string) => {
+    if (!await authorize('faults.update', 'fault', id)) return;
     const result = archiveFaultRecord(faults, id);
     if (!result.changed) {
       showToast(language === 'ar' ? 'لا يمكن أرشفة البلاغ قبل إغلاقه' : (result.message || 'Fault record cannot be archived.'));
@@ -952,8 +969,8 @@ function App() {
     showToast(language === 'ar' ? 'تمت الأرشفة مع الاحتفاظ بسجل البلاغ' : 'Fault archived; report history retained');
   };
 
-  const restoreFault = (id: string) => {
-    if (!authorize('faults.update', 'fault', id)) return;
+  const restoreFault = async (id: string) => {
+    if (!await authorize('faults.update', 'fault', id)) return;
     const result = restoreFaultRecord(faults, id);
     if (!result.changed) return;
     setFaults(result.records);
@@ -961,9 +978,9 @@ function App() {
     pushNotification(language === 'ar' ? 'تمت استعادة بلاغ عطل' : 'Fault report restored', id);
   };
 
-  const completeJob = (event: React.FormEvent<HTMLFormElement>, id: string) => {
+  const completeJob = async (event: React.FormEvent<HTMLFormElement>, id: string) => {
     event.preventDefault();
-    if (!authorize('maintenance.complete', 'maintenance', id)) return;
+    if (!await authorize('maintenance.complete', 'maintenance', id)) return;
     const form = new FormData(event.currentTarget);
     const completionNotes = String(form.get('completionNotes') || '').trim();
     if (!completionNotes) {
@@ -989,9 +1006,9 @@ function App() {
     showToast(language === 'ar' ? 'تم إتمام أمر الصيانة وحفظ النتيجة' : 'Work order completed; result saved');
   };
 
-  const saveJobEdit = (event: React.FormEvent<HTMLFormElement>, id: string) => {
+  const saveJobEdit = async (event: React.FormEvent<HTMLFormElement>, id: string) => {
     event.preventDefault();
-    if (!authorize('maintenance.update', 'maintenance', id)) return;
+    if (!await authorize('maintenance.update', 'maintenance', id)) return;
     const form = new FormData(event.currentTarget);
     const title = String(form.get('title') || '').trim();
     const scheduledDate = String(form.get('date') || '').trim();
@@ -1013,8 +1030,8 @@ function App() {
     showToast(language === 'ar' ? 'تم حفظ أمر الصيانة' : 'Work order changes saved');
   };
 
-  const archiveJob = (id: string) => {
-    if (!authorize('maintenance.update', 'maintenance', id)) return;
+  const archiveJob = async (id: string) => {
+    if (!await authorize('maintenance.update', 'maintenance', id)) return;
     const result = archiveCompletedWorkOrder(jobs, id);
     if (!result.changed) {
       showToast(language === 'ar' ? 'لا يمكن أرشفة أمر صيانة غير مكتمل' : (result.message || 'Only completed work orders can be archived.'));
@@ -1026,8 +1043,8 @@ function App() {
     pushNotification(language === 'ar' ? 'تمت أرشفة أمر صيانة مكتمل' : 'Completed work order archived', id);
   };
 
-  const restoreJob = (id: string) => {
-    if (!authorize('maintenance.update', 'maintenance', id)) return;
+  const restoreJob = async (id: string) => {
+    if (!await authorize('maintenance.update', 'maintenance', id)) return;
     const result = restoreWorkOrder(jobs, id);
     if (!result.changed) return;
     setJobs(result.records);
@@ -1035,9 +1052,9 @@ function App() {
     pushNotification(language === 'ar' ? 'تمت استعادة أمر صيانة' : 'Work order restored', id);
   };
 
-  const addConnection = (event: React.FormEvent<HTMLFormElement>) => {
+  const addConnection = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!authorize('connections.manage', 'connection', 'new')) return;
+    if (!await authorize('connections.manage', 'connection', 'new')) return;
     const form = new FormData(event.currentTarget);
     const name = String(form.get('name') || '').trim();
     if (!name) return;
@@ -1058,9 +1075,9 @@ function App() {
     showToast(language === 'ar' ? 'تم حفظ سجل الاتصال المحلي' : 'Local connection record saved');
   };
 
-  const saveConnectionEdit = (event: React.FormEvent<HTMLFormElement>, previousName: string) => {
+  const saveConnectionEdit = async (event: React.FormEvent<HTMLFormElement>, previousName: string) => {
     event.preventDefault();
-    if (!authorize('connections.manage', 'connection', previousName)) return;
+    if (!await authorize('connections.manage', 'connection', previousName)) return;
     const form = new FormData(event.currentTarget);
     const name = String(form.get('name') || '').trim();
     if (!name) {
@@ -1086,15 +1103,15 @@ function App() {
     showToast(language === 'ar' ? 'تم حفظ بيانات نقطة الاتصال' : 'Connection record updated');
   };
 
-  const archiveConnection = (name: string) => {
-    if (!authorize('connections.manage', 'connection', name)) return;
+  const archiveConnection = async (name: string) => {
+    if (!await authorize('connections.manage', 'connection', name)) return;
     setConnections(prev => prev.map(item => item.name === name ? { ...item, archivedAt: new Date().toISOString() } : item));
     recordAudit('CONNECTION_REGISTER_ARCHIVED', 'connection', name);
     setEditingConnectionName(null);
   };
 
-  const restoreConnection = (name: string) => {
-    if (!authorize('connections.manage', 'connection', name)) return;
+  const restoreConnection = async (name: string) => {
+    if (!await authorize('connections.manage', 'connection', name)) return;
     setConnections(prev => prev.map(item => item.name === name ? { ...item, archivedAt: null } : item));
     recordAudit('CONNECTION_REGISTER_RESTORED', 'connection', name);
   };
@@ -1104,8 +1121,8 @@ function App() {
     return t[key[status] as keyof typeof copy.en];
   };
 
-  const exportCsv = () => {
-    if (!authorize('reports.export', 'report', 'register-csv')) return;
+  const exportCsv = async () => {
+    if (!await authorize('reports.export', 'report', 'register-csv')) return;
     const rows = [['Type','ID','Manufacturer','State','Connectivity','Notes'],
       ...shuttles.map(s => ['Shuttle',s.id,s.manufacturer,s.status,s.connectivity,s.notes]),
       ...batteries.map(b => ['Battery',b.id,b.manufacturer,b.status,b.connectionMode,b.notes]),
@@ -1117,7 +1134,7 @@ function App() {
     const link = document.createElement('a'); link.href = url; link.download = 'shuttle-register.csv'; link.click(); URL.revokeObjectURL(url);
   };
   const exportFullRegisterXlsx = async () => {
-    if (!authorize('reports.export', 'report', 'register-xlsx')) return;
+    if (!await authorize('reports.export', 'report', 'register-xlsx')) return;
     try {
       const sheets = buildRegisterSheets({ shuttles, batteries, faults, jobs, connections, shifts, dailyReports, notifications }, language);
       await downloadXlsx(sheets, 'shuttle-operations-register.xlsx');
@@ -1127,7 +1144,7 @@ function App() {
     }
   };
   const exportDailyReportXlsx = async (report: DailyReportSnapshot) => {
-    if (!authorize('reports.export', 'report', report.id)) return;
+    if (!await authorize('reports.export', 'report', report.id)) return;
     try {
       await downloadXlsx(buildDailyReportSheets(report, language), `shuttle-daily-report-${report.reportDate}.xlsx`);
       showToast(language === 'ar' ? 'تم تصدير التقرير اليومي بصيغة Excel' : 'Daily report exported as Excel');
@@ -1136,15 +1153,15 @@ function App() {
     }
   };
 
-  const exportBackup = () => {
-    if (!authorize('data.backup', 'backup', 'operational-data')) return;
+  const exportBackup = async () => {
+    if (!await authorize('data.backup', 'backup', 'operational-data')) return;
     const data = { schemaVersion: 11, exportedAt: new Date().toISOString(), warning: 'Local demo/record data only. Not a live PLC telemetry export.', shuttles, batteries, faults, jobs, connections, notifications, settings, dailyReports, shifts };
     const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
     const link = document.createElement('a'); link.href = url; link.download = 'shuttle-local-backup.json'; link.click(); URL.revokeObjectURL(url);
   };
 
-  const importBackup = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (!authorize('data.restore', 'backup', 'operational-data')) { event.target.value = ''; return; }
+  const importBackup = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!await authorize('data.restore', 'backup', 'operational-data')) { event.target.value = ''; return; }
     const file = event.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
@@ -1179,8 +1196,8 @@ function App() {
     reader.readAsText(file);
   };
 
-  const resetLocalData = () => {
-    if (!authorize('data.reset', 'data', 'local-reset')) return;
+  const resetLocalData = async () => {
+    if (!await authorize('data.reset', 'data', 'local-reset')) return;
     if (!window.confirm(language === 'ar' ? 'سيتم حذف السجلات المحلية وإعادة بيانات البداية. هل تريد المتابعة؟' : 'Delete local records and restore seed data?')) return;
     setShuttles(initialShuttles);
     setBatteries(initialBatteries);
@@ -1339,7 +1356,7 @@ function App() {
           </div>
           </section>}
 
-      {activeTab === 'shifts' && <ShiftOperations language={language} shifts={shifts} shuttles={shuttles} faults={faults} jobs={jobs} onChange={next => { if (!authorize('shifts.manage', 'shift', 'shift-register')) return; const action = next[0]?.endedAt ? 'SHIFT_CLOSED' : 'SHIFT_OPENED'; setShifts(next); recordAudit(action, 'shift', next[0]?.id || 'shift-register'); }} />}
+      {activeTab === 'shifts' && <ShiftOperations language={language} shifts={shifts} shuttles={shuttles} faults={faults} jobs={jobs} onChange={async next => { if (!await authorize('shifts.manage', 'shift', 'shift-register')) return; const action = next[0]?.endedAt ? 'SHIFT_CLOSED' : 'SHIFT_OPENED'; setShifts(next); recordAudit(action, 'shift', next[0]?.id || 'shift-register'); }} />}
 
       {activeTab === 'engineering' && selected && <section className="page-content">
         <PageIntro eyebrow="MECHANICAL INTELLIGENCE / DIGITAL SCHEMATIC" title={t.engineering} subtitle={t.engineeringSub}/>
