@@ -64,7 +64,16 @@ describe('Phase 2B-1 storage public API', () => {
   it('API-012 does not mutate data after a conflict', async () => { await set(KEY, 'ar'); await expect(set(KEY, 'en', 4)).rejects.toBeInstanceOf(StorageError); expect(await get(KEY)).toBe('ar'); });
   it('API-013 accepts expectedRevision 0 for a missing key', async () => { expect(await set(KEY, 'ar', 0)).toEqual({ revision: 1 }); });
   it('API-014 reports actual revision 0 for a missing-key conflict', async () => { await expect(set(KEY, 'ar', 2)).rejects.toMatchObject({ code: 'STORAGE_CONFLICT', expectedRevision: 2, actualRevision: 0 }); });
-  it('API-015 does not include stored payload in conflict messages', async () => { const secret = 'PRIVATE-RECORD-DO-NOT-LEAK'; await set(KEY, secret as never); try { await set(KEY, 'en', 9); } catch (e) { expect((e as Error).message).not.toContain(secret); } });
+  it('API-015 does not include stored payload in conflict messages', async () => {
+    const secret = 'PRIVATE-RECORD-DO-NOT-LEAK';
+    await set(KEY, secret as never);
+    const error = await set(KEY, 'en', 9).then(
+      () => { throw new Error('Expected revision conflict was not raised.'); },
+      (reason: unknown) => reason as Error,
+    );
+    expect(error).toBeInstanceOf(StorageError);
+    expect(error.message).not.toContain(secret);
+  });
   it('API-016 backup returns a versioned envelope', async () => { await set(KEY, 'ar'); const result = await backup(); expect(result).toMatchObject({ format: 'shuttle-storage-backup', schemaVersion: 1 }); });
   it('API-017 restore replaces the logical dataset', async () => { await set(KEY, 'ar'); const saved = await backup(); await set(KEY, 'en'); await restore(saved); expect(await get(KEY)).toBe('ar'); });
   it('API-018 rejects a modified backup checksum', async () => { const saved = await backup(); const invalid = { ...saved, createdAt: 'tampered' }; await expect(restore(invalid)).rejects.toMatchObject({ code: 'BACKUP_INVALID' }); });
