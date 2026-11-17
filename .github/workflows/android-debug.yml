@@ -21,7 +21,7 @@ concurrency:
 
 jobs:
   build-android:
-    name: Build, install, and smoke-test Android APK
+    name: Android Debug APK & Emulator Smoke Test
     runs-on: macos-15
     timeout-minutes: 45
     steps:
