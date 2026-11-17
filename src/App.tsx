@@ -944,7 +944,7 @@ function App() {
   };
   const exportFullRegisterXlsx = async () => {
     try {
-      const sheets = buildRegisterSheets({ shuttles, batteries, faults, jobs, shifts, dailyReports, notifications }, language);
+      const sheets = buildRegisterSheets({ shuttles, batteries, faults, jobs, connections, shifts, dailyReports, notifications }, language);
       await downloadXlsx(sheets, 'shuttle-operations-register.xlsx');
       showToast(language === 'ar' ? 'تم تصدير سجل التشغيل بصيغة Excel' : 'Operational register exported as Excel');
     } catch {
@@ -1096,7 +1096,7 @@ function App() {
             </>}
             {widget.id === 'maintenance' && <>
               <div className="card-head"><div><span className="eyebrow">SERVICE</span><h3>{language === 'ar' ? 'قائمة الصيانة' : 'Maintenance queue'}</h3></div><button className="icon-button" onClick={() => go('maintenance')}><Icon name="arrow"/></button></div>
-              {jobs.filter((job) => job.status !== 'Completed').length === 0 ? <p className="muted-text">{t.noWork}</p> : jobs.filter((job) => job.status !== 'Completed').slice(0, 4).map((job) => <div className="dashboard-record-row" key={job.id}><strong>{job.id}</strong><span>{job.shuttleId} · {job.title}</span><StatusPill status={job.status} language={language}/><small>{job.scheduledDate}</small></div>)}
+              {activeJobs.filter((job) => job.status !== 'Completed').length === 0 ? <p className="muted-text">{t.noWork}</p> : activeJobs.filter((job) => job.status !== 'Completed').slice(0, 4).map((job) => <div className="dashboard-record-row" key={job.id}><strong>{job.id}</strong><span>{job.shuttleId} · {job.title}</span><StatusPill status={job.status} language={language}/><small>{job.scheduledDate}</small></div>)}
             </>}
             {widget.id === 'activity' && <>
               <div className="card-head"><div><span className="eyebrow">LOCAL EVENT LOG</span><h3>{language === 'ar' ? 'أحدث النشاطات' : 'Recent local activity'}</h3></div><button className="icon-button" onClick={() => go('notifications')}><Icon name="arrow"/></button></div>
