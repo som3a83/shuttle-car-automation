@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import CustomizationCenter from './CustomizationCenter';
@@ -53,7 +53,9 @@ describe('local application customization center', () => {
     expect(alias.id).not.toBe('reports');
     expect(saved.navigation.some((item: { id: string; labelAr: string }) => item.id === alias.id && item.labelAr === 'تقارير الخدمة')).toBe(true);
 
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
     fireEvent.click(screen.getByRole('button', { name: new RegExp(`Remove alias ${alias.id}`) }));
+    confirmSpy.mockRestore();
     const afterRemoval = JSON.parse(localStorage.getItem(CUSTOMIZATION_STORAGE_KEY) || '{}');
     expect(afterRemoval.navigation.some((item: { id: string }) => item.id === alias.id)).toBe(false);
   });
