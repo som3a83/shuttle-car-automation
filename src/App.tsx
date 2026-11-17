@@ -319,6 +319,7 @@ function App() {
   const [editingFaultId, setEditingFaultId] = useState<string | null>(null);
   const [showArchivedFaults, setShowArchivedFaults] = useState(false);
   const [editingJobId, setEditingJobId] = useState<string | null>(null);
+  const [completingJobId, setCompletingJobId] = useState<string | null>(null);
   const [showArchivedJobs, setShowArchivedJobs] = useState(false);
   const [editingConnectionName, setEditingConnectionName] = useState<string | null>(null);
   const [showArchivedConnections, setShowArchivedConnections] = useState(false);
@@ -857,6 +858,32 @@ function App() {
     if (!result.changed) return;
     setFaults(result.records);
     pushNotification(language === 'ar' ? 'تمت استعادة بلاغ عطل' : 'Fault report restored', id);
+  };
+
+  const completeJob = (event: React.FormEvent<HTMLFormElement>, id: string) => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const completionNotes = String(form.get('completionNotes') || '').trim();
+    if (!completionNotes) {
+      showToast(language === 'ar' ? 'سجل نتيجة التنفيذ قبل إتمام أمر الصيانة' : 'Record the work performed and result before completing this work order.');
+      return;
+    }
+    const current = jobs.find(item => item.id === id && !item.archivedAt);
+    if (!current || current.status === 'Completed') return;
+    setJobs(prev => prev.map(item => item.id === id ? {
+      ...item,
+      status: 'Completed',
+      completionNotes
+    } : item));
+    setCompletingJobId(null);
+    if (settings.maintenanceReminders) {
+      pushNotification(
+        language === 'ar' ? 'تم إكمال أمر الصيانة وتوثيق النتيجة' : 'Work order completed with recorded result',
+        id + ' · ' + current.title,
+        'info'
+      );
+    }
+    showToast(language === 'ar' ? 'تم إتمام أمر الصيانة وحفظ النتيجة' : 'Work order completed; result saved');
   };
 
   const saveJobEdit = (event: React.FormEvent<HTMLFormElement>, id: string) => {
@@ -1400,10 +1427,15 @@ function App() {
                 </form> : <>
                   <div className="record-meta"><span>Type: {j.type}</span><span>Date: {j.scheduledDate}</span><span>Technician: {j.technician}</span></div>
                   <p>{j.notes}</p>
+                  {j.completionNotes && <div className="corrective-saved"><Icon name="check" size={15}/>{language==='ar'?'نتيجة التنفيذ: ':'Completion result: '}{j.completionNotes}</div>}
+                  {completingJobId===j.id && <form className="stack-form record-edit-form" onSubmit={event=>completeJob(event,j.id)}>
+                    <label>{language==='ar'?'نتيجة التنفيذ والعمل المنفذ':'Completion result / work performed'}<textarea name="completionNotes" required minLength={4} autoFocus/></label>
+                    <div className="record-actions"><button className="btn-primary" type="submit">{language==='ar'?'حفظ النتيجة وإتمام المهمة':'Save result & complete'}</button><button className="btn-secondary" type="button" onClick={()=>setCompletingJobId(null)}>{t.cancel}</button></div>
+                  </form>}
                   <div className="record-actions">
                     <button className="btn-secondary" onClick={()=>setEditingJobId(j.id)}>{language==='ar'?'تعديل الأمر':'Edit order'}</button>
                     <button className="btn-secondary" disabled={j.status!=='Scheduled'} onClick={()=>changeJobStatus(j.id,'In Progress')}>{t.startWork}</button>
-                    <button className="btn-primary" disabled={j.status==='Completed'} onClick={()=>changeJobStatus(j.id,'Completed')}>{t.completeWork}</button>
+                    <button className="btn-primary" disabled={j.status==='Completed'} onClick={()=>setCompletingJobId(j.id)}>{t.completeWork}</button>
                     <button className="btn-danger" disabled={j.status!=='Completed'} onClick={()=>{if(window.confirm(language==='ar'?'أرشفة أمر الصيانة المكتمل؟':'Archive this completed work order?')) archiveJob(j.id);}}>{language==='ar'?'أرشفة':'Archive'}</button>
                   </div>
                 </>}
