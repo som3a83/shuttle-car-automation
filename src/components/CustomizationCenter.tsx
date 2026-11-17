@@ -168,8 +168,7 @@ export default function CustomizationCenter({
                     const enabled = event.target.checked;
                     commit({
                       ...config,
-                      modules: config.modules.map((item) => item.id === module.id ? { ...item, enabled } : item),
-                      navigation: config.navigation.map((item) => item.route === module.id ? { ...item, visible: enabled } : item)
+                      modules: config.modules.map((item) => item.id === module.id ? { ...item, enabled } : item)
                     }, enabled ? 'ENABLE_MODULE' : 'DISABLE_MODULE', module.id, `Module ${enabled ? 'enabled' : 'disabled'} locally.`);
                   }}
                 />
