@@ -80,9 +80,12 @@ jobs:
         run: |
           set -euo pipefail
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
-            export APP_VERSION="\${GITHUB_REF_NAME#v}"
+            export APP_VERSION="${GITHUB_REF_NAME#v}"
+            IFS=. read -r MAJOR MINOR PATCH <<< "$APP_VERSION"
+            export APP_VERSION_CODE=$((MAJOR * 1000000 + MINOR * 1000 + PATCH))
           else
             export APP_VERSION="$APP_VERSION_INPUT"
+            export APP_VERSION_CODE="$APP_VERSION_CODE_INPUT"
           fi
           node scripts/prepare-android-release.mjs
 
