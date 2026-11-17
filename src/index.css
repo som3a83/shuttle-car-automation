@@ -794,3 +794,61 @@ button,select,input,textarea { touch-action:manipulation; }
   .vendor-reference-description { font-size:12px; }
   .vendor-reference-facts,.cold-store-reference-note p { font-size:11px; }
 }
+
+
+/* Shift control, handover history and battery lifecycle records. */
+.shift-live-indicator {
+  display:inline-flex; align-items:center; gap:8px; padding:8px 11px;
+  border:1px solid var(--line); border-radius:999px; color:var(--muted);
+  font-size:9px; font-weight:850; letter-spacing:.09em; white-space:nowrap;
+}
+.shift-live-indicator i { width:7px; height:7px; border-radius:50%; background:#8996a2; }
+.shift-live-indicator i.live { background:#54c88a; box-shadow:0 0 0 4px rgba(84,200,138,.12),0 0 12px rgba(84,200,138,.45); }
+.shift-metric-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:11px; margin-bottom:14px; }
+.shift-metric-grid .metric-card { min-height:76px; display:flex; flex-direction:column; justify-content:center; gap:7px; padding:13px 15px; border:1px solid var(--line); border-radius:11px; background:var(--surface); }
+.shift-metric-grid .metric-card span { color:var(--muted); font-size:9px; font-weight:750; }
+.shift-metric-grid .metric-card strong { color:var(--text); font-size:23px; font-variant-numeric:tabular-nums; }
+.shift-open-card,.shift-start-card,.shift-history-card { margin-bottom:14px; padding:17px; }
+.shift-open-card .card-head h3,.shift-start-card .card-head h3,.shift-history-card .card-head h3 { font-size:15px; }
+.shift-details-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; margin:14px 0; }
+.shift-details-grid > div { display:flex; flex-direction:column; gap:5px; min-width:0; padding:11px; border:1px solid var(--line); border-radius:8px; background:var(--surface-2); }
+.shift-details-grid small { color:var(--muted); font-size:9px; }
+.shift-details-grid strong { font-size:11px; overflow-wrap:anywhere; }
+.shift-start-form { margin-top:12px; }
+.shift-start-form .wide-field { grid-column:1/-1; }
+.shift-start-summary { display:flex; flex-direction:column; gap:5px; grid-column:1/-1; padding:11px 13px; border:1px solid rgba(210,139,75,.24); border-radius:8px; background:rgba(210,139,75,.055); }
+.shift-start-summary strong { font-size:10px; color:var(--copper-2); }
+.shift-start-summary span { font-size:10px; color:var(--muted); }
+.shift-close-form { max-width:720px; margin-top:13px; padding-top:13px; border-top:1px solid var(--line); }
+.shift-close-form textarea,.shift-start-form textarea { min-height:92px; resize:vertical; }
+.shift-notes { margin:12px 0 0; padding:11px 13px; border-inline-start:3px solid var(--copper); border-radius:7px; background:var(--surface-2); color:var(--text); font-size:10px; line-height:1.7; white-space:pre-wrap; }
+.shift-history-card .card-head { align-items:center; }
+.shift-history-list { display:grid; gap:10px; margin-top:12px; }
+.shift-history-item { padding:14px; border:1px solid var(--line); border-radius:10px; background:var(--surface-2); }
+.shift-history-item h3 { margin:5px 0; font-size:13px; }
+.shift-snapshot-line { margin-top:9px; color:var(--muted); font-size:9px; }
+.shift-footnote { color:var(--muted); font-size:9px; line-height:1.7; }
+.battery-movement-history { margin:14px 0; padding:13px; border:1px solid var(--line); border-radius:10px; background:var(--surface-2); }
+.battery-movement-history .card-head { margin-bottom:8px; }
+.battery-movement-history .card-head h4 { margin:4px 0 0; color:var(--text); font-size:11px; }
+.battery-movement-list { display:grid; gap:0; margin-bottom:10px; }
+.battery-movement-row { display:grid; grid-template-columns:9px minmax(0,1fr); gap:9px; padding:9px 0; border-bottom:1px solid var(--line); }
+.battery-movement-row:last-child { border-bottom:0; }
+.battery-movement-row > i { width:7px; height:7px; margin-top:4px; border-radius:50%; background:var(--copper-2); box-shadow:0 0 8px rgba(210,139,75,.35); }
+.battery-movement-row > div { min-width:0; }
+.battery-movement-row strong { display:block; color:var(--text); font-size:10px; }
+.battery-movement-row small { display:block; margin-top:3px; color:var(--muted); font-size:9px; }
+.battery-movement-row p { margin:4px 0 0; color:var(--muted); font-size:9px; line-height:1.6; }
+@media (max-width:760px) {
+  .shift-metric-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .shift-details-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .shift-operations-page .page-intro { align-items:flex-start; flex-direction:column; }
+  .shift-history-card .card-head { align-items:flex-start; flex-direction:column; }
+}
+@media (max-width:540px) {
+  .shift-open-card,.shift-start-card,.shift-history-card { padding:12px; }
+  .shift-metric-grid .metric-card { min-height:68px; padding:10px; }
+  .shift-metric-grid .metric-card strong { font-size:20px; }
+  .shift-details-grid > div { padding:9px; }
+  .shift-live-indicator { font-size:8px; }
+}
