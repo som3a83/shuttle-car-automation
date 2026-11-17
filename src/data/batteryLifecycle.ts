@@ -38,6 +38,9 @@ export function assignBatteryToShuttle(
 ): BatteryAssignmentResult {
   const selected = batteries.find(item => item.id === batteryId && !item.archivedAt);
   if (!selected) return { batteries, shuttles, changed: false, message: 'Battery was not found or is archived.' };
+  if (['Fault', 'Maintenance', 'Charging', 'Discharging'].includes(selected.status)) {
+    return { batteries, shuttles, changed: false, message: `Battery in ${selected.status} state cannot be assigned to a shuttle.` };
+  }
 
   const target = targetShuttleId
     ? shuttles.find(item => item.id === targetShuttleId && !item.archivedAt)
@@ -90,7 +93,7 @@ export function assignBatteryToShuttle(
         ...(displaced.movementHistory || [])
       ];
       displaced.assignment = 'Unassigned';
-      displaced.status = 'Available';
+      if (displaced.status === 'Installed' || displaced.status === 'Spare') displaced.status = 'Available';
     }
   }
 
@@ -121,7 +124,7 @@ export function archiveBatteryAndDetach(
         ...item,
         archivedAt: timestamp,
         assignment: 'Unassigned',
-        status: 'Available' as const,
+        status: item.status === 'Installed' ? 'Available' as const : item.status,
         movementHistory: [
           movement(item, 'Archived', fromShuttleId, '', 'Battery record archived locally; history retained.', timestamp),
           ...(item.movementHistory || [])
@@ -143,7 +146,7 @@ export function restoreBatteryRecord(
     ? {
         ...item,
         archivedAt: null,
-        status: item.assignment === 'Unassigned' ? 'Available' : 'Installed',
+        status: item.status,
         movementHistory: [
           movement(item, 'Restored', '', item.assignment === 'Unassigned' ? '' : item.assignment, 'Battery record restored locally; assignment was not automatically reconnected.', timestamp),
           ...(item.movementHistory || [])
