@@ -57,9 +57,20 @@ export default function Battery3DViewer({ battery, fallback }: Battery3DViewerPr
     const board = new THREE.MeshStandardMaterial({ color: 0x275c50, metalness: 0.25, roughness: 0.62 });
     const connector = new THREE.MeshStandardMaterial({ color: 0x171d22, metalness: 0.6, roughness: 0.35 });
     const glow = new THREE.MeshStandardMaterial({ color: 0x79d5b0, emissive: 0x174c39, emissiveIntensity: 0.6 });
+    const fastener = new THREE.MeshStandardMaterial({ color: 0xb7c4ca, metalness: 0.92, roughness: 0.2 });
+    const insulator = new THREE.MeshStandardMaterial({ color: 0x171d25, metalness: 0.18, roughness: 0.68 });
+    const warning = new THREE.MeshStandardMaterial({ color: 0xe5aa48, emissive: 0x6b3f0a, emissiveIntensity: 0.32, metalness: 0.3 });
 
     const box = (parent: THREE.Object3D, size: [number, number, number], position: [number, number, number], material: THREE.Material) => {
       const mesh = new THREE.Mesh(new THREE.BoxGeometry(...size), material.clone());
+      mesh.position.set(...position);
+      mesh.castShadow = true;
+      parent.add(mesh);
+      return mesh;
+    };
+
+    const cylinder = (parent: THREE.Object3D, radius: number, height: number, position: [number, number, number], material: THREE.Material) => {
+      const mesh = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, height, 20), material.clone());
       mesh.position.set(...position);
       mesh.castShadow = true;
       parent.add(mesh);
@@ -73,6 +84,12 @@ export default function Battery3DViewer({ battery, fallback }: Battery3DViewerPr
     box(root, [0.18, 1.18, 3.5], [-3.31, -0.08, 0], shell);
     box(root, [0.18, 1.18, 3.5], [3.31, -0.08, 0], shell);
     box(root, [6.25, 0.06, 3.15], [0, -0.48, 0], inner);
+    // Reinforced enclosure lips, insulated cell rails and removable service cover rails.
+    box(root, [6.45, 0.09, 0.12], [0, 0.52, -1.55], fastener);
+    box(root, [6.45, 0.09, 0.12], [0, 0.52, 1.55], fastener);
+    box(root, [0.12, 0.09, 3.0], [-3.05, 0.52, 0], fastener);
+    box(root, [0.12, 0.09, 3.0], [3.05, 0.52, 0], fastener);
+    [-0.82, 0.82].forEach(z => box(root, [5.9, 0.12, 0.12], [0, -0.32, z], insulator));
 
     // Twelve prismatic lithium cells arranged in two banks.
     for (let row = 0; row < 2; row += 1) {
@@ -81,6 +98,8 @@ export default function Battery3DViewer({ battery, fallback }: Battery3DViewerPr
         const z = row === 0 ? -0.82 : 0.82;
         box(root, [0.82, 0.88, 1.32], [x, 0.02, z], cell);
         box(root, [0.3, 0.035, 0.22], [x, 0.49, z], bus);
+        cylinder(root, 0.075, 0.055, [x, 0.56, z], fastener);
+        box(root, [0.58, 0.025, 0.055], [x, 0.61, z + (row === 0 ? 0.26 : -0.26)], insulator);
       }
     }
 
@@ -88,7 +107,14 @@ export default function Battery3DViewer({ battery, fallback }: Battery3DViewerPr
     box(root, [5.85, 0.09, 0.16], [0, 0.57, -0.82], bus);
     box(root, [5.85, 0.09, 0.16], [0, 0.57, 0.82], bus);
     box(root, [1.4, 0.16, 1.0], [2.18, 0.62, 0.05], board);
+    // BMS controller, balancing components, fuse block and service harness.
+    box(root, [0.5, 0.12, 0.38], [2.18, 0.76, 0.05], shell);
+    box(root, [0.18, 0.08, 0.18], [1.8, 0.76, -0.2], insulator);
+    box(root, [0.18, 0.08, 0.18], [2.52, 0.76, 0.22], insulator);
     for (let i = 0; i < 5; i += 1) box(root, [0.12, 0.04, 0.12], [1.72 + i * 0.22, 0.73, -0.18], glow);
+    for (let i = 0; i < 4; i += 1) cylinder(root, 0.07, 0.14, [1.82 + i * 0.2, 0.78, 0.25], warning);
+    box(root, [0.52, 0.18, 0.32], [2.78, 0.64, -0.64], connector);
+    box(root, [0.08, 0.08, 0.78], [2.78, 0.78, -0.64], fastener);
     box(root, [0.62, 0.36, 0.5], [-2.65, 0.58, 0], connector);
     const terminal = (x: number, color: number) => {
       const post = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.28, 20), new THREE.MeshStandardMaterial({ color, metalness: 0.8, roughness: 0.22 }));
@@ -100,6 +126,13 @@ export default function Battery3DViewer({ battery, fallback }: Battery3DViewerPr
     };
     terminal(-2.7, 0xc94d4d);
     terminal(-2.0, 0x4d83c9);
+    // Terminal collars, insulating boots and a protected main fuse.
+    cylinder(root, 0.24, 0.12, [-2.7, 0.94, 1.28], warning);
+    cylinder(root, 0.24, 0.12, [-2.0, 0.94, 1.28], insulator);
+    box(root, [0.62, 0.26, 0.44], [-1.15, 0.67, 1.25], shell);
+    box(root, [0.42, 0.12, 0.2], [-1.15, 0.84, 1.25], warning);
+    // Perimeter fasteners are visible service points, not dimensional callouts.
+    [-2.95, -1.45, 0, 1.45, 2.95].forEach(x => [-1.58, 1.58].forEach(z => cylinder(root, 0.055, 0.055, [x, 0.58, z], fastener)));
     [-2.6, 2.6].forEach((x) => {
       const handle = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.055, 10, 28, Math.PI), shell.clone());
       handle.rotation.z = Math.PI / 2;
@@ -182,6 +215,10 @@ export default function Battery3DViewer({ battery, fallback }: Battery3DViewerPr
       {available === false && <div className="battery-3d-fallback">{fallback}</div>}
       <div className="battery-3d-caption">LITHIUM PACK · CONCEPTUAL INTERNAL ASSEMBLY</div>
       <div className="battery-3d-id">{battery.id}</div>
+      <div className="battery-cad-overlay" aria-hidden="true">
+        <span><i/>PRISMATIC CELL BANKS</span><span><i/>BMS / BALANCING</span><span><i/>BUS BAR NETWORK</span><span><i/>SERVICE TERMINALS</span>
+      </div>
+      <div className="battery-cad-crosshair" aria-hidden="true">+</div>
     </div>
   );
 }
