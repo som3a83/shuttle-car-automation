@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "tsc -b && vite build",
-    "test": "vitest run",
+    "test": "vitest run && npm run test:security",
+    "test:security": "node --experimental-strip-types --test src/security/*.test.mjs",
     "preview": "vite preview --host 0.0.0.0",
     "check": "tsc -b",
     "validate": "npm audit --audit-level=high && npm run check && npm test && npm run check:release && npm run assets:render && npm run build",
