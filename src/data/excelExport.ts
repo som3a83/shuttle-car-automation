@@ -1,6 +1,7 @@
 import type {
   Battery, CommunicationEndpoint, DailyReportSnapshot, Fault, Language, MaintenanceJob, NotificationItem, ShiftRecord, Shuttle
 } from '../types';
+import { sanitizeSpreadsheetCell } from './csvSafety';
 
 export type ExcelCell = string | number | boolean | null | undefined;
 
@@ -84,7 +85,7 @@ export function buildRegisterSheets(data: {
     { name: 'Faults', rows: faults, widths: [18,16,28,14,16,24,48,42,42,42,22,22] },
     { name: 'Maintenance', rows: maintenance, widths: [18,16,28,16,16,18,22,42,48,22] },
     { name: 'Connections', rows: connections, widths: [32,20,18,60,22] },
-    { name: 'Shift handovers', rows: shifts, widths: [24,14,24,24,24,32,18,18,20,20,42,52] },
+    { name: 'Shift handovers', rows: shifts, widths: [24,14,24,24,24,32,18,18,42,42,42,52] },
     { name: 'Daily report history', rows: reportHistory, widths: [20,16,24,12,12,12,24,16,18,14,20,20,24] },
     { name: 'Notifications', rows: notifications, widths: [24,28,55,14,24] }
   ];
@@ -140,11 +141,12 @@ export async function createXlsxBuffer(sheets: WorkbookSheetData[]): Promise<Arr
     const safeName = sheet.name.slice(0, 31);
     if (!safeName || names.has(safeName)) throw new Error('Worksheet names must be unique and non-empty.');
     names.add(safeName);
-    const worksheet = XLSX.utils.aoa_to_sheet(sheet.rows);
+    const safeRows = sheet.rows.map(row => row.map(sanitizeSpreadsheetCell));
+    const worksheet = XLSX.utils.aoa_to_sheet(safeRows);
     if (sheet.widths) worksheet['!cols'] = sheet.widths.map(width => ({ wch: width }));
-    if (sheet.rows.length) {
-      const lastColumn = Math.max(0, ...sheet.rows.map(row => row.length)) - 1;
-      if (lastColumn >= 0) worksheet['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: sheet.rows.length - 1, c: lastColumn } }) };
+    if (safeRows.length) {
+      const lastColumn = Math.max(0, ...safeRows.map(row => row.length)) - 1;
+      if (lastColumn >= 0) worksheet['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: safeRows.length - 1, c: lastColumn } }) };
     }
     XLSX.utils.book_append_sheet(workbook, worksheet, safeName);
   }
