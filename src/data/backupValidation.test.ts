@@ -43,6 +43,26 @@ describe('operational backup validation', () => {
     expect(validateOperationalBackup({ ...validBackup(), settings: { theme: 'ultraviolet' } })).toMatchObject({ ok: false });
   });
 
+  it('rejects battery assignments to missing or archived shuttles', () => {
+    const orphan = validBackup();
+    orphan.batteries[0].assignment = 'SC-99';
+    expect(validateOperationalBackup(orphan)).toMatchObject({ ok: false, error: expect.stringMatching(/missing or archived shuttle/) });
+
+    const archivedTarget = validBackup();
+    archivedTarget.shuttles.find((item) => item.id === 'SC-05')!.archivedAt = '2026-11-17T08:00:00.000Z';
+    expect(validateOperationalBackup(archivedTarget)).toMatchObject({ ok: false, error: expect.stringMatching(/missing or archived shuttle/) });
+  });
+
+  it('rejects multiple batteries assigned to one shuttle and unknown fault references', () => {
+    const duplicate = validBackup();
+    duplicate.batteries.push({ ...duplicate.batteries[0], id: 'BAT-SECOND' });
+    expect(validateOperationalBackup(duplicate)).toMatchObject({ ok: false, error: expect.stringMatching(/More than one battery/) });
+
+    const orphanFault = validBackup();
+    orphanFault.faults[0].shuttleId = 'SC-99';
+    expect(validateOperationalBackup(orphanFault)).toMatchObject({ ok: false, error: expect.stringMatching(/unknown shuttle/) });
+  });
+
   it('accepts earlier backups with optional collections omitted', () => {
     const old = validBackup() as Record<string, unknown>;
     delete old.notifications;
