@@ -312,6 +312,7 @@ function App() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [mobileNav, setMobileNav] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => readLocal('sidebarCollapsed', false));
   const [toast, setToast] = useState('');
   const [newAsset, setNewAsset] = useState({ manufacturer: 'Cassioli', zone: '', model: '', serialNumber: '', hardwareVersion: '', firmwareVersion: '', assignedOperator: '', notes: '' });
   const [editingShuttle, setEditingShuttle] = useState<Shuttle | null>(null);
@@ -375,9 +376,9 @@ function App() {
   }), [activeShuttles, search, statusFilter]);
 
   useEffect(() => {
-    const values: Record<string, unknown> = { language, theme, shuttles, batteries, faults, maintenance: jobs, connections, notifications, settings, dailyReports, shifts };
+    const values: Record<string, unknown> = { language, theme, sidebarCollapsed, shuttles, batteries, faults, maintenance: jobs, connections, notifications, settings, dailyReports, shifts };
     try { Object.entries(values).forEach(([key, value]) => localStorage.setItem(PREFIX + key, JSON.stringify(value))); } catch { /* local storage is optional */ }
-  }, [language, theme, shuttles, batteries, faults, jobs, connections, notifications, settings, dailyReports, shifts]);
+  }, [language, theme, sidebarCollapsed, shuttles, batteries, faults, jobs, connections, notifications, settings, dailyReports, shifts]);
 
   const metrics = {
     total: activeShuttles.length,
@@ -1075,11 +1076,12 @@ function App() {
   const headerPreference = visibleNavigation.find(item => item.id === activeTab);
   const statusOptions: ShuttleStatus[] = ['Ready','Running','Idle','Charging','Maintenance','Fault','Disconnected','Unknown'];
 
-  return <div className={'app-shell ' + theme} dir={language === 'ar' ? 'rtl' : 'ltr'}>
+  return <div className={'app-shell ' + theme + (sidebarCollapsed ? ' sidebar-collapsed' : '')} dir={language === 'ar' ? 'rtl' : 'ltr'}>
     <aside className={'sidebar ' + (mobileNav ? 'mobile-open' : '')}>
       <div className="brand-block">
         <div className="brand-symbol"><span/><span/><span/></div>
         <div className="brand-copy"><strong>SHUTTLE CAR</strong><small>AUTOMATION · ENGINEERING PLATFORM</small></div>
+        <button className="sidebar-collapse" type="button" aria-label={sidebarCollapsed ? (language === 'ar' ? 'توسيع القائمة الجانبية' : 'Expand sidebar') : (language === 'ar' ? 'طي القائمة الجانبية' : 'Collapse sidebar')} title={sidebarCollapsed ? (language === 'ar' ? 'توسيع القائمة الجانبية' : 'Expand sidebar') : (language === 'ar' ? 'طي القائمة الجانبية' : 'Collapse sidebar')} aria-pressed={sidebarCollapsed} onClick={() => setSidebarCollapsed(value => !value)}><Icon name="chevron" size={15}/></button>
         <button className="mobile-close" onClick={() => setMobileNav(false)} aria-label="Close navigation">×</button>
       </div>
       <div className="sidebar-caption">{t.appName}</div>
