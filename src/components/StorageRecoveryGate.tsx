@@ -87,6 +87,12 @@ export default function StorageRecoveryGate({
 
   const resolve = async (item: OperationalRecoveryItem, source: RecoverySource) => {
     setError('');
+    if (source !== 'empty' && (preview?.collection !== item.collection || preview.source !== source)) {
+      setError(ar
+        ? 'عاين النسخة نفسها أولاً قبل اعتمادها أو ترحيلها.'
+        : 'Preview the exact recovery candidate before applying this choice.');
+      return;
+    }
     if (source === 'empty') {
       const accepted = window.confirm(ar
         ? `هل تؤكد بدء سجل فارغ لـ ${collectionLabel(item.collection, true)}؟ سيتم حفظ النسخ الأصلية المعطوبة في العزل قبل التغيير.`
@@ -150,7 +156,7 @@ export default function StorageRecoveryGate({
             <span>{item.primary.status}{item.primary.revision ? ` · rev ${item.primary.revision}` : ''}</span>
             {item.primary.reason && <small>{item.primary.reason}</small>}
             {item.primaryData !== undefined && <button type="button" className="btn-secondary" onClick={() => inspect(item, 'primary')}>{ar ? 'معاينة واستخدامها' : 'Preview and use'}</button>}
-            {item.primaryData !== undefined && <button type="button" className="btn-primary" disabled={busy !== null} onClick={() => void resolve(item, 'primary')}>{ar ? 'اعتماد الأساسية الموثقة' : 'Use verified primary'}</button>}
+            {item.primaryData !== undefined && <button type="button" className="btn-primary" disabled={busy !== null || preview?.collection !== item.collection || preview.source !== 'primary'} onClick={() => void resolve(item, 'primary')}>{ar ? 'اعتماد الأساسية الموثقة' : 'Use verified primary'}</button>}
           </div>
           <div className="storage-recovery-candidate">
             <strong>{ar ? 'النسخة السابقة' : 'Previous verified snapshot'}</strong>
@@ -159,7 +165,7 @@ export default function StorageRecoveryGate({
             {item.previousData !== undefined && <>
               <small>{candidateCount(item.previousData)}</small>
               <button type="button" className="btn-secondary" onClick={() => inspect(item, 'previous')}>{ar ? 'معاينة' : 'Preview'}</button>
-              <button type="button" className="btn-primary" disabled={busy !== null} onClick={() => void resolve(item, 'previous')}>{ar ? 'استعادة هذه النسخة' : 'Restore this snapshot'}</button>
+              <button type="button" className="btn-primary" disabled={busy !== null || preview?.collection !== item.collection || preview.source !== 'previous'} onClick={() => void resolve(item, 'previous')}>{ar ? 'استعادة هذه النسخة' : 'Restore this snapshot'}</button>
             </>}
           </div>
           <div className="storage-recovery-candidate">
@@ -169,7 +175,7 @@ export default function StorageRecoveryGate({
             {item.legacyData !== undefined && <>
               <small>{candidateCount(item.legacyData)}</small>
               <button type="button" className="btn-secondary" onClick={() => inspect(item, 'legacy')}>{ar ? 'معاينة' : 'Preview'}</button>
-              <button type="button" className="btn-primary" disabled={busy !== null} onClick={() => void resolve(item, 'legacy')}>{ar ? 'ترحيل هذه النسخة' : 'Migrate this copy'}</button>
+              <button type="button" className="btn-primary" disabled={busy !== null || preview?.collection !== item.collection || preview.source !== 'legacy'} onClick={() => void resolve(item, 'legacy')}>{ar ? 'ترحيل هذه النسخة' : 'Migrate this copy'}</button>
             </>}
           </div>
         </div>
