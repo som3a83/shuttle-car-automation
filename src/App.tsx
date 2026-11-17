@@ -609,8 +609,9 @@ function App() {
       batteryCount: activeBatteries.length,
       faultedBatteryCount: activeBatteries.filter(item => item.status === 'Fault').length,
       verifiedTelemetryCount: activeShuttles.filter(item => item.connectivity === 'REAL').length + activeBatteries.filter(item => item.connectionMode === 'REAL').length,
+      activeShift: (() => { const current = shifts.find(item => !item.endedAt); return current ? { id: current.id, shiftType: current.shiftType, supervisor: current.supervisor, startedAt: current.startedAt } : null; })(),
       shuttles: activeShuttles.map(item => ({ id: item.id, manufacturer: item.manufacturer, status: item.status, connectivity: item.connectivity, warehouseZone: item.warehouseZone })),
-      batteries: activeBatteries.map(item => ({ id: item.id, manufacturer: item.manufacturer, status: item.status, assignment: item.assignment, soc: item.soc, connectionMode: item.connectionMode }))
+      batteries: activeBatteries.map(item => ({ id: item.id, manufacturer: item.manufacturer, status: item.status, assignment: item.assignment, soc: item.soc, connectionMode: item.connectionMode, movementHistory: (item.movementHistory || []).map(move => ({ ...move })) }))
     };
     setDailyReports(prev => [report, ...prev].slice(0, 90));
     pushNotification(language === 'ar' ? 'تم إصدار التقرير اليومي' : 'Daily report generated', `${report.id} · ${report.reportDate}`);
@@ -630,12 +631,18 @@ function App() {
       ['Active batteries', report.batteryCount],
       ['Faulted batteries', report.faultedBatteryCount],
       ['Verified telemetry sources', report.verifiedTelemetryCount],
+      ['Active shift', report.activeShift ? report.activeShift.id : 'No active shift'],
+      ['Shift supervisor', report.activeShift?.supervisor || 'Not recorded'],
+      ['Shift type', report.activeShift?.shiftType || 'Not recorded'],
       [],
       ['SHUTTLES', 'Manufacturer', 'Status', 'Connectivity', 'Zone'],
       ...report.shuttles.map(item => [item.id, item.manufacturer, item.status, item.connectivity, item.warehouseZone]),
       [],
       ['BATTERIES', 'Manufacturer', 'Status', 'Assignment', 'SOC', 'Connection'],
-      ...report.batteries.map(item => [item.id, item.manufacturer, item.status, item.assignment, item.soc === null ? 'Not verified' : item.soc + '%', item.connectionMode])
+      ...report.batteries.map(item => [item.id, item.manufacturer, item.status, item.assignment, item.soc === null ? 'Not verified' : item.soc + '%', item.connectionMode]),
+      [],
+      ['BATTERY MOVEMENT JOURNAL', 'Battery ID', 'Timestamp', 'Action', 'From shuttle', 'To shuttle', 'Note'],
+      ...report.batteries.flatMap(item => (item.movementHistory || []).map(move => [item.id, move.timestamp, move.action, move.fromShuttleId, move.toShuttleId, move.note]))
     ];
     const csv = rows.map(row => row.map(value => '"' + String(value ?? '').replace(/"/g,'""') + '"').join(',')).join('\r\n');
     const url = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }));
