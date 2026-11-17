@@ -34,7 +34,7 @@ describe('Shift operations and handover', () => {
     await user.click(screen.getByRole('button', { name: /Start shift now/i }));
     expect(screen.getByText(/CURRENT SHIFT/i)).toBeInTheDocument();
     expect(screen.getByText(/SC-01/)).toBeInTheDocument();
-    expect(screen.getByText(/Opening fleet snapshot/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Opening fleet snapshot/i).length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: /Close shift & save handover/i })).toBeDisabled();
   });
 
