@@ -1,0 +1,7 @@
+config.json
+telemetry.sqlite3
+telemetry.sqlite3-shm
+telemetry.sqlite3-wal
+.env
+__pycache__/
+*.py[cod]
