@@ -230,7 +230,7 @@ class IndexedDbEngine implements StorageEngine {
     await transactionDone(tx);
   }
 }
-class LegacyFallbackEngine implements StorageEngine {
+export class LegacyFallbackEngine implements StorageEngine {
   async getMode(): Promise<StorageMode> { return 'legacy-fallback'; }
   private storage(): Storage {
     try { if (typeof localStorage === 'undefined') throw new Error(); return localStorage; }
