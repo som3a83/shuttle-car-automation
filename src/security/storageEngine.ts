@@ -142,10 +142,14 @@ export class VersionedStorageEngine<T> {
    * recovery candidate. Existing raw envelopes are deliberately left in place
    * for the caller to quarantine before invoking this method.
    */
-  async replaceAfterRecovery(payload: T, now = new Date()): Promise<{ revision: number; checksum: string }> {
+  async replaceAfterRecovery(
+    payload: T,
+    now = new Date(),
+    allowReplacingVerifiedPrimary = false
+  ): Promise<{ revision: number; checksum: string }> {
     const { primary, previous } = await this.inspect();
-    if (primary.status === 'valid' && primary.envelope.schemaVersion === this.schemaVersion) {
-      throw new Error('A valid primary snapshot now exists; refusing to replace it.');
+    if (primary.status === 'valid' && primary.envelope.schemaVersion === this.schemaVersion && !allowReplacingVerifiedPrimary) {
+      throw new Error('A valid primary snapshot now exists; refusing to replace it without an explicit Recovery Mode choice.');
     }
     const latestRevision = Math.max(
       primary.status === 'valid' ? primary.envelope.revision : 0,
