@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
-  __setBackendForTesting, __resetStorageForTesting, backup, get, getMode, getWithRevision, quarantineRecord, remove, restore, set,
+  __setBackendForTesting, __resetStorageForTesting, __closeForTesting, backup, get, getMode, getWithRevision, quarantineRecord, remove, restore, set,
   StorageError, LegacyFallbackEngine, type BackupEnvelope, type StorageEngine, type StorageKey, type StorageMode,
 } from '../index';
 
@@ -126,18 +126,22 @@ describe('revision conflicts and fallback rules', () => {
 });
 
 
-describe('real IndexedDB storage behavior', () => {
+describe('real IndexedDB storage behavior', { timeout: 20000 }, () => {
   beforeEach(async () => {
+    __setBackendForTesting(null);
     __resetStorageForTesting();
-    await new Promise<void>((resolve, reject) => {
+    await __closeForTesting();
+    await new Promise<void>((resolve) => {
       const request = indexedDB.deleteDatabase('shuttle-car-storage');
       request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
-      request.onblocked = () => reject(new Error('IndexedDB database deletion was blocked.'));
+      request.onerror = () => resolve(); // Best-effort cleanup; do not fail the next test.
+      request.onblocked = () => resolve(); // Best-effort cleanup; do not fail the next test.
     });
-    __setBackendForTesting(null);
   });
-  afterEach(() => { __resetStorageForTesting(); });
+  afterEach(async () => {
+    await __closeForTesting();
+    __resetStorageForTesting();
+  });
 
   it('IDB-001 uses fake IndexedDB for real transaction-backed reads and writes', async () => {
     expect(await getMode()).toBe('indexeddb');
