@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { appendAuditRecord, archiveAuditRecords, AUDIT_ARCHIVE_PENDING_KEY, AUDIT_ARCHIVE_STORAGE_KEY, AUDIT_STORAGE_KEY, auditRecordsToCsv, filterAuditRecords, readAllAuditRecords, readAuditRecords, recoverPendingAuditArchive, verifyAuditChain, verifyAuditLedger } from './auditLog.ts';
+import { appendAuditRecord, appendAuditRecordAsync, archiveAuditRecords, archiveAuditRecordsAsync, AUDIT_ARCHIVE_PENDING_KEY, AUDIT_ARCHIVE_STORAGE_KEY, AUDIT_STORAGE_KEY, auditRecordsToCsv, filterAuditRecords, readAllAuditRecords, readAllAuditRecordsAsync, readAuditRecords, readAuditRecordsAsync, recoverPendingAuditArchive, recoverPendingAuditArchiveAsync, verifyAuditChain, verifyAuditLedger, verifyAuditLedgerAsync } from './auditLog.ts';
+import { LegacyFallbackEngine, StorageError } from '../storage';
 
 class MemoryStorage {
   values = new Map();
@@ -135,3 +136,78 @@ test('audit CSV prefixes formula-like user text before export', async () => {
 function expectFilter(records, actions) {
   assert.deepEqual(records.map(record => record.action), actions);
 }
+
+
+test('async audit appends serialize same-tab work and preserve the SHA-256 chain', async () => {
+  const storage = new MemoryStorage();
+  const original = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+  Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: storage });
+  try {
+    const results = await Promise.all([
+      appendAuditRecordAsync(event('async-created', 'SC-ASYNC-01')),
+      appendAuditRecordAsync(event('async-updated', 'SC-ASYNC-01')),
+      appendAuditRecordAsync(event('async-checked', 'SC-ASYNC-01'))
+    ]);
+    assert.equal(results.length, 3);
+    const records = await readAuditRecordsAsync();
+    assert.deepEqual(records.map((record) => record.action), ['async-created', 'async-updated', 'async-checked']);
+    assert.equal(records[1].previousHash, records[0].hash);
+    assert.equal((await verifyAuditLedgerAsync()).valid, true);
+    assert.deepEqual((await readAllAuditRecordsAsync()).map((record) => record.action),
+      ['async-created', 'async-updated', 'async-checked']);
+  } finally {
+    if (original) Object.defineProperty(globalThis, 'localStorage', original);
+    else delete globalThis.localStorage;
+  }
+});
+
+test('async audit append retries a revision conflict and rebuilds from the latest active chain', async () => {
+  const storage = new MemoryStorage();
+  const originalStorage = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+  const originalWrite = LegacyFallbackEngine.prototype.write;
+  let conflicts = 0;
+  Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: storage });
+  LegacyFallbackEngine.prototype.write = async function(key, value, revision) {
+    if (key === 'audit.active' && conflicts === 0) {
+      conflicts += 1;
+      throw new StorageError({
+        code: 'STORAGE_CONFLICT', message: 'Simulated concurrent audit append.',
+        key, expectedRevision: revision, actualRevision: (revision ?? 0) + 1
+      });
+    }
+    return originalWrite.call(this, key, value, revision);
+  };
+  try {
+    const record = await appendAuditRecordAsync(event('retried-event', 'SC-ASYNC-02'));
+    assert.equal(conflicts, 1);
+    assert.equal(record.action, 'retried-event');
+    assert.equal((await readAuditRecordsAsync()).length, 1);
+    assert.equal((await verifyAuditLedgerAsync()).valid, true);
+  } finally {
+    LegacyFallbackEngine.prototype.write = originalWrite;
+    if (originalStorage) Object.defineProperty(globalThis, 'localStorage', originalStorage);
+    else delete globalThis.localStorage;
+  }
+});
+
+test('async audit archive retains pending recovery data and resumes without loss', async () => {
+  const storage = new MemoryStorage();
+  const original = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+  Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: storage });
+  try {
+    await appendAuditRecordAsync(event('async-archive-one', 'SC-ASYNC-03'));
+    await appendAuditRecordAsync(event('async-archive-two', 'SC-ASYNC-03'));
+    storage.failNextKey = AUDIT_ARCHIVE_STORAGE_KEY;
+
+    await assert.rejects(() => archiveAuditRecordsAsync(), /Quota exceeded/);
+    assert.ok(storage.getItem(AUDIT_ARCHIVE_PENDING_KEY));
+    assert.equal((await readAuditRecordsAsync()).length, 0);
+    assert.equal(await recoverPendingAuditArchiveAsync(), true);
+    assert.equal(storage.getItem(AUDIT_ARCHIVE_PENDING_KEY), null);
+    assert.equal((await readAllAuditRecordsAsync()).length, 2);
+    assert.equal((await verifyAuditLedgerAsync()).valid, true);
+  } finally {
+    if (original) Object.defineProperty(globalThis, 'localStorage', original);
+    else delete globalThis.localStorage;
+  }
+});
