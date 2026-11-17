@@ -170,6 +170,12 @@ describe('real IndexedDB storage behavior', () => {
     db.close();
   });
 
+  it('IDB-004 maps IndexedDB DataCloneError to STORAGE_TRANSACTION_FAILED', async () => {
+    await expect(set(KEY, (() => 'not cloneable') as never, 0)).rejects.toMatchObject({
+      code: 'STORAGE_TRANSACTION_FAILED',
+    });
+  });
+
   it('IDB-003 stores explicitly quarantined raw values with a reason', async () => {
     await quarantineRecord(KEY, '{"broken":', 'JSON decode failure');
     const dbRequest = indexedDB.open('shuttle-car-storage', 1);
