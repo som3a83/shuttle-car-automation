@@ -12,7 +12,7 @@ A bilingual, offline-first operational workspace for recording and reviewing ind
 - **Shift operations:** day/night shift opening, fleet snapshot, supervisor/operator names, handover notes and saved local history.
 - **Engineering:** interactive Three.js conceptual shuttle and lithium-battery assemblies with selectable components and camera views.
 - **Faults and diagnostics:** manually reported observations, editable records, corrective-action documentation, investigation/resolution workflow, and resolved-only archive/restore.
-- **Maintenance:** local work-order creation, editing, scheduled/in-progress/completed tracking, and completed-only archive/restore. Unfinished work cannot be hidden by archiving.
+- **Maintenance:** local work-order creation and editing, scheduled/in-progress/completed tracking, mandatory recorded completion results for new completions, completed-only archive/restore, and completion-result Excel export. Unfinished work cannot be hidden by archiving.
 - **Connections:** editable local interface register for Modbus TCP, OPC UA, MQTT, REST, WebSocket and BLE, with archive/restore and backup/export support. Entries remain UNKNOWN; no endpoint is probed or configured by the app.
 - **Application customization:** locally saved module visibility, navigation labels/groups/order, aliases to existing routes, dashboard widget visibility/order/size, and restoration of default preferences. This is device-local customization, not authentication or secure authorization.
 - **Technical assistant:** static inspection checklist, not a connected AI service or certified diagnosis.
