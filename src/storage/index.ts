@@ -106,7 +106,14 @@ function checksumOf(value: string): string {
   return (hash >>> 0).toString(16).padStart(8, '0');
 }
 function stableJson(value: unknown): string {
-  try { return JSON.stringify(value); } catch { fail('STORAGE_CORRUPT', 'Stored data could not be serialized.'); }
+  try {
+    const serialized = JSON.stringify(value);
+    if (typeof serialized !== 'string') fail('STORAGE_CORRUPT', 'Stored data could not be serialized.');
+    return serialized;
+  } catch (error) {
+    if (error instanceof StorageError) throw error;
+    fail('STORAGE_CORRUPT', 'Stored data could not be serialized.');
+  }
 }
 function validateStoredShape(key: StorageKey, value: unknown): boolean {
   const arrayKeys: StorageKey[] = [
