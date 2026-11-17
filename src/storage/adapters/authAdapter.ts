@@ -1,4 +1,4 @@
-import { importMappedLegacyKey, AUTH_LEGACY_KEY_MAP, type AdapterResult, type LegacyReadStorage } from './legacyKeyMap';
+import { importDefaultForMissing, importMappedLegacyKey, AUTH_LEGACY_KEY_MAP, type AdapterResult, type LegacyReadStorage } from './legacyKeyMap';
 import type { Role } from '../../types';
 import { LOCAL_AUTH_ITERATIONS, type LocalAccount } from '../../security/localAuth';
 
@@ -50,7 +50,7 @@ function isLocalAccountRegistry(value: unknown): value is LocalAccount[] {
  * Imports persistent account records only. The sessionStorage session key is
  * deliberately not in the allow-list and is never read by this adapter.
  */
-export function importAuthData(
+export async function importAuthData(
   legacyStorage: LegacyReadStorage = globalThis.localStorage
 ): Promise<AdapterResult<LocalAccount[]>> {
   /**
@@ -77,11 +77,12 @@ export function importAuthData(
    * This adapter's single-key write does not provide a transaction with the
    * other adapter families; 2B-4 must provide migration-level atomicity.
    */
-  return importMappedLegacyKey(
+  const result = await importMappedLegacyKey(
     AUTH_LEGACY_KEY_MAP.accounts.legacyKey,
     isLocalAccountRegistry,
     legacyStorage,
     undefined,
     'auth'
   );
+  return importDefaultForMissing(result, []);
 }
