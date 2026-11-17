@@ -65,10 +65,11 @@ test('stored session cannot elevate role through sessionStorage tampering', asyn
   const accountStorage = new MemoryStorage();
   const sessions = new MemoryStorage();
   await createLocalAccount(account, accountStorage);
-  await createLocalAccount({ ...account, name: 'Read Only User', email: 'viewer@example.local', username: 'viewer', role: 'Viewer' }, accountStorage, globalThis.crypto, new Date(), { id: 'LOCAL-ADMIN', role: 'Super Admin' }).catch(async () => {
-    const admin = listLocalAccounts(accountStorage)[0];
-    return createLocalAccount({ ...account, name: 'Read Only User', email: 'viewer@example.local', username: 'viewer', role: 'Viewer' }, accountStorage, globalThis.crypto, new Date(), { id: admin.id, role: admin.role });
-  });
+  const admin = listLocalAccounts(accountStorage)[0];
+  await createLocalAccount(
+    { ...account, name: 'Read Only User', email: 'viewer@example.local', username: 'viewer', role: 'Viewer' },
+    accountStorage, globalThis.crypto, new Date(), { id: admin.id, role: admin.role }
+  );
   const result = await authenticateLocalAccount('viewer', account.password, accountStorage, sessions);
   assert.equal(result.ok, true);
   if (!result.ok) return;
@@ -105,7 +106,7 @@ test('disabling an account blocks sign-in and revokes an existing device session
   const operator = await createLocalAccount({
     name: 'Local Operator', email: 'operator@example.local', username: 'operator',
     role: 'Operator', password: 'A-different-long-passphrase-2026'
-  }, accountStorage);
+  }, accountStorage, globalThis.crypto, new Date(), { id: administrator.id, role: administrator.role });
   const signedIn = await authenticateLocalAccount('operator', 'A-different-long-passphrase-2026', accountStorage, sessions);
   assert.equal(signedIn.ok, true);
   setLocalAccountDisabled(operator.id, true, { id: administrator.id, role: 'Super Admin' }, accountStorage);
@@ -116,16 +117,17 @@ test('disabling an account blocks sign-in and revokes an existing device session
   );
 });
 
-test('the last active Super Admin cannot be demoted or disabled', async () => {
+test('a Super Admin cannot demote their own account or disable their own session', async () => {
   const storage = new MemoryStorage();
   const administrator = await createLocalAccount(account, storage);
   const actor = { id: administrator.id, role: 'Super Admin' };
-  assert.throws(() => updateLocalAccount(administrator.id, { role: 'Admin' }, actor, storage), /last active Super Admin/i);
+  assert.throws(() => updateLocalAccount(administrator.id, { role: 'Admin' }, actor, storage), /Self-promotion or self-demotion/i);
   assert.throws(() => setLocalAccountDisabled(administrator.id, true, actor, storage), /cannot disable your own active session/i);
   const secondAdmin = await createLocalAccount({
     name: 'Second Admin', email: 'second-admin@example.local', username: 'second-admin',
-    role: 'Super Admin', password: 'Another-long-passphrase-2026'
-  }, storage);
+    role: 'Viewer', password: 'Another-long-passphrase-2026'
+  }, storage, globalThis.crypto, new Date(), actor);
+  updateLocalAccount(secondAdmin.id, { role: 'Super Admin' }, actor, storage);
   setLocalAccountDisabled(secondAdmin.id, true, actor, storage);
   assert.throws(() => setLocalAccountDisabled(administrator.id, true, { id: secondAdmin.id, role: 'Super Admin' }, storage), /active Super Admin session/i);
 });
@@ -137,7 +139,7 @@ test('administrator password reset requires a new password on next sign-in', asy
   const operator = await createLocalAccount({
     name: 'Local Operator', email: 'operator@example.local', username: 'operator',
     role: 'Operator', password: 'A-different-long-passphrase-2026'
-  }, storage);
+  }, storage, globalThis.crypto, new Date(), { id: administrator.id, role: administrator.role });
   const temporaryPassword = 'Temporary-password-2026!';
   const updated = await changeLocalAccountPassword(
     operator.id, '', temporaryPassword, { id: administrator.id, role: 'Super Admin' }, storage
