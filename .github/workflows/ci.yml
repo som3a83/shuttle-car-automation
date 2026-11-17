@@ -42,6 +42,9 @@ jobs:
       - name: Run automated tests
         run: npm test
 
+      - name: Validate Play release configuration script
+        run: npm run check:release
+
       - name: Render store listing artwork and PWA icons
         run: npm run assets:render
 
