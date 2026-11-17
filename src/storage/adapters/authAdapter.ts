@@ -1,10 +1,19 @@
 import { importMappedLegacyKey, AUTH_LEGACY_KEY_MAP, type AdapterResult, type LegacyReadStorage } from './legacyKeyMap';
 import type { Role } from '../../types';
-import type { LocalAccount } from '../../security/localAuth';
+import { LOCAL_AUTH_ITERATIONS, type LocalAccount } from '../../security/localAuth';
 
-const ALLOWED_ROLES: readonly Role[] = [
-  'Super Admin', 'Admin', 'Supervisor', 'Maintenance Engineer', 'Technician', 'Operator', 'Viewer'
-];
+// Record<Role, true> makes additions/removals in the Role union a compile-time
+// obligation here; Object.keys supplies the matching runtime allow-list.
+const ALLOWED_ROLE_SET: Record<Role, true> = {
+  'Super Admin': true,
+  Admin: true,
+  Supervisor: true,
+  'Maintenance Engineer': true,
+  Technician: true,
+  Operator: true,
+  Viewer: true
+};
+const ALLOWED_ROLES = Object.keys(ALLOWED_ROLE_SET) as Role[];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
@@ -13,20 +22,20 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function isLocalAccount(value: unknown): value is LocalAccount {
   if (!isRecord(value)) return false;
   return typeof value.id === 'string' && value.id.length > 0 &&
-    typeof value.name === 'string' && value.name.trim().length > 0 &&
+    typeof value.name === 'string' && Boolean(value.name.trim()) &&
     typeof value.email === 'string' && typeof value.username === 'string' &&
     typeof value.passwordSalt === 'string' && /^[A-Za-z0-9+/]{22}==$/.test(value.passwordSalt) &&
     typeof value.passwordHash === 'string' && /^[A-Za-z0-9+/]{43}=$/.test(value.passwordHash) &&
     ALLOWED_ROLES.includes(value.role as Role) &&
-    value.iterations === 210_000 &&
+    value.iterations === LOCAL_AUTH_ITERATIONS &&
     Number.isInteger(value.failedAttempts) && Number(value.failedAttempts) >= 0 &&
-    typeof value.lockedUntil === 'number' && Number.isFinite(value.lockedUntil) &&
+    Number.isFinite(value.lockedUntil) &&
     (value.disabledAt === undefined || value.disabledAt === null ||
       (typeof value.disabledAt === 'string' && Number.isFinite(Date.parse(value.disabledAt)))) &&
     (value.mustChangePassword === undefined || typeof value.mustChangePassword === 'boolean') &&
     (value.credentialVersion === undefined ||
       (Number.isInteger(value.credentialVersion) && Number(value.credentialVersion) >= 1)) &&
-    typeof value.createdAt === 'string' && Number.isFinite(Date.parse(value.createdAt));
+    typeof value.createdAt === 'string';
 }
 
 function isLocalAccountRegistry(value: unknown): value is LocalAccount[] {
