@@ -947,3 +947,49 @@ button,select,input,textarea { touch-action:manipulation; }
 @media print {
   .customization-launcher,.customization-overlay { display:none !important; }
 }
+
+
+/* Collapsible desktop engineering navigation */
+.sidebar-collapse {
+  flex:none;
+  width:28px;
+  height:28px;
+  display:grid;
+  place-items:center;
+  margin-inline-start:auto;
+  border:1px solid var(--line);
+  border-radius:7px;
+  color:var(--muted);
+  background:rgba(255,255,255,.035);
+}
+.sidebar-collapse:hover { color:var(--copper-2); border-color:rgba(213,138,74,.42); }
+.sidebar-collapse:focus-visible { outline:2px solid var(--copper-2); outline-offset:2px; }
+.sidebar-collapse svg { transition:transform .2s ease; }
+.app-shell.sidebar-collapsed { grid-template-columns:78px minmax(0,1fr); }
+.sidebar-collapsed .sidebar { padding-inline:9px; }
+.sidebar-collapsed .brand-block { justify-content:center; flex-wrap:wrap; gap:8px; padding-inline:0; }
+.sidebar-collapsed .brand-symbol { width:38px; height:38px; }
+.sidebar-collapsed .brand-copy,
+.sidebar-collapsed .sidebar-caption,
+.sidebar-collapsed .nav-group-title,
+.sidebar-collapsed .nav-button span,
+.sidebar-collapsed .sidebar-user > div:last-child { display:none; }
+.sidebar-collapsed .sidebar-collapse { margin-inline-start:0; }
+.sidebar-collapsed .sidebar-collapse svg { transform:rotate(180deg); }
+.sidebar-collapsed .nav-button { justify-content:center; padding-inline:0; gap:0; }
+.sidebar-collapsed .nav-button svg { width:19px; height:19px; }
+.sidebar-collapsed .nav-active-mark { display:none; }
+.sidebar-collapsed .sidebar-user { justify-content:center; padding-inline:0; }
+@media (max-width:980px) {
+  .sidebar-collapse { display:none; }
+  .app-shell.sidebar-collapsed { grid-template-columns:1fr; }
+  .sidebar-collapsed .sidebar { padding:24px 16px 18px; }
+  .sidebar-collapsed .brand-block { justify-content:flex-start; flex-wrap:nowrap; gap:12px; padding-inline:7px; }
+  .sidebar-collapsed .brand-copy,
+  .sidebar-collapsed .sidebar-caption,
+  .sidebar-collapsed .nav-group-title,
+  .sidebar-collapsed .nav-button span,
+  .sidebar-collapsed .sidebar-user > div:last-child { display:revert; }
+  .sidebar-collapsed .nav-button { justify-content:flex-start; padding:10px 11px; gap:12px; }
+  .sidebar-collapsed .sidebar-user { justify-content:flex-start; padding:10px 7px; }
+}
