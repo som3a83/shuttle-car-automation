@@ -8,6 +8,8 @@ import { DEFAULT_CUSTOMIZATION } from './data/applicationCustomization';
 import { webcrypto } from 'node:crypto';
 import { authenticateLocalAccount, createLocalAccount } from './security/localAuth';
 
+const testCrypto = webcrypto as unknown as Crypto;
+
 describe('Shuttle Car Automation V10', () => {
   beforeEach(async () => {
     window.localStorage.clear();
@@ -20,9 +22,9 @@ describe('Shuttle Car Automation V10', () => {
       role: 'Super Admin' as const,
       password: 'Automation-Test-Admin-2026!'
     };
-    await createLocalAccount(credentials, window.localStorage, webcrypto);
+    await createLocalAccount(credentials, window.localStorage, testCrypto);
     const signIn = await authenticateLocalAccount(
-      credentials.username, credentials.password, window.localStorage, window.sessionStorage, webcrypto
+      credentials.username, credentials.password, window.localStorage, window.sessionStorage, testCrypto
     );
     if (!signIn.ok) throw new Error(`Test administrator sign-in failed: ${signIn.reason}`);
     window.history.replaceState({ tab: 'dashboard' }, '', '#/dashboard');
