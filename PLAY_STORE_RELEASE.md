@@ -43,9 +43,9 @@ After the secrets are configured, run **Actions → Android Play Store AAB → R
 - version_name: `1.0.0`
 - version_code: `1000000`
 
-Or push a version tag such as `v1.0.0`. Every later Play upload must use a strictly higher versionCode. The workflow runs TypeScript checks, tests and production build, generates/synchronizes the Capacitor Android project, enforces API 36, signs the release bundle and uploads the AAB plus SHA-256 checksum as a GitHub Actions artifact.
+Or push a version tag such as `v1.0.0`. Every later Play upload must use a strictly higher versionCode. The workflow runs TypeScript checks, tests and production build, generates/synchronizes the Capacitor Android project, enforces API 36, signs both the Android App Bundle (AAB) and release APK with the same publisher upload key, verifies both signatures, and uploads both files plus SHA-256 checksums as a GitHub Actions artifact.
 
-The workflow does not upload to Google Play automatically. Review the artifact and upload the signed `.aab` through Play Console.
+The workflow does not upload to Google Play automatically. Install the signed APK on a test device for final manual verification, then upload the signed `.aab` through Play Console. When Play App Signing is enabled, Google Play may re-sign the app with the app-signing key for distribution; keep the upload key and its backup secure.
 
 ## 5. Store listing and policy
 Before submission:
