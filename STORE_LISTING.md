@@ -3,7 +3,7 @@
 ## App identity
 - **App name:** Shuttle Car Automation
 - **Package ID:** `com.shuttlecar.automation`
-- **Version candidate:** 1.0.0 (versionCode 1; increment versionCode for every later upload)
+- **Version candidate:** 1.0.0 (versionCode 1000000 for the initial v1.0.0 tag build; increment for every later upload)
 - **Category suggestion:** Business
 - **Default language:** English (United States)
 - **Additional language:** Arabic (Egypt)
