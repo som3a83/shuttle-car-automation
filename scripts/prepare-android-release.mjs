@@ -83,10 +83,9 @@ if (!releaseBlockMatch) throw new Error('Could not locate release build type ins
 const releaseBlockStart = releaseBlockMatch.index ?? -1;
 const signingLine = 'signingConfig signingConfigs.release';
 if (releaseBlockStart < 0) throw new Error('Could not determine release build type location.');
-const releaseBlockEnd = appGradle.indexOf('\\n        }', releaseBlockStart);
-const releaseSection = appGradle.slice(releaseBlockStart, releaseBlockEnd >= 0 ? releaseBlockEnd : undefined);
-if (!releaseSection.includes(signingLine)) {
-  appGradle = appGradle.replace(releaseBlockPattern, '$1\\n            ' + signingLine);
+const buildTypesSection = appGradle.slice(releaseBuildTypeStart);
+if (!buildTypesSection.includes(signingLine)) {
+  appGradle = appGradle.replace(releaseBlockPattern, (match, opening) => opening + '\n            ' + signingLine);
 }
 fs.writeFileSync(appGradlePath, appGradle);
 
