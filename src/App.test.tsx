@@ -16,7 +16,7 @@ describe('Shuttle Car Automation V9', () => {
     expect(screen.getByText(/Total shuttle cars/i)).toBeInTheDocument();
     expect(screen.getByText(/Running shuttles/i)).toBeInTheDocument();
     expect(screen.getByText(/System communication status/i)).toBeInTheDocument();
-    expect(screen.getByText('SHUTTLE OPS · V9 ENGINEERING PLATFORM')).toBeInTheDocument();
+    expect(screen.getByText('SHUTTLE OPS · V10 OPERATIONS PLATFORM')).toBeInTheDocument();
   });
 
   it('switches to Arabic and updates interface direction', async () => {
