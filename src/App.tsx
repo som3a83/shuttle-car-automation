@@ -334,7 +334,7 @@ function App() {
     .filter((entry) => entry.visible)
     .filter((entry) => {
       const module = customization.modules.find((item) => item.id === entry.route);
-      return Boolean(module?.enabled) && !module.hiddenForRoles.includes(currentUser.role);
+      return module !== undefined && module.enabled && !module.hiddenForRoles.includes(currentUser.role);
     })
     .flatMap((entry) => {
       const base = navItems.find((item) => item.id === entry.route);
