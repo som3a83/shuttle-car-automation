@@ -43,12 +43,14 @@ npm run check
 npm test
 npm run build
 npm run assets:render
+npm run check:release
 ```
 
 - `npm run check`: TypeScript project check.
 - `npm test`: Vitest regression suite.
 - `npm run build`: production Vite bundle.
 - `npm run assets:render`: creates Google Play listing PNGs and PWA icons from the vector artwork.
+- `npm run check:release`: tests the API 36/version/signing Gradle configuration using temporary fixtures.
 
 The current GitHub CI runs these commands on the feature branch and the main branch. Read the matching commit's workflow result before treating any test/build as passed.
 
