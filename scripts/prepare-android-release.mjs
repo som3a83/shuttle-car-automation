@@ -4,7 +4,7 @@ import path from 'node:path';
 const root = process.cwd();
 const versionName = process.env.APP_VERSION || '1.0.0';
 const versionCodeRaw = process.env.APP_VERSION_CODE || '';
-if (!/^[1-9]\\d*$/.test(versionCodeRaw)) {
+if (!/^[1-9]\d*$/.test(versionCodeRaw)) {
   throw new Error('APP_VERSION_CODE must contain only a positive integer.');
 }
 const versionCode = Number(versionCodeRaw);
@@ -34,8 +34,8 @@ if (!fs.existsSync(variablesPath) || !fs.existsSync(appGradlePath)) {
 let variables = fs.readFileSync(variablesPath, 'utf8');
 function setGradleInteger(source, name, value) {
   const patterns = [
-    new RegExp('(\\b' + name + '\\s*=\\s*)\\d+'),
-    new RegExp('(\\b' + name + '\\s+)\\d+')
+    new RegExp('(\\b' + name + '\\s*=\\s*)\d+'),
+    new RegExp('(\\b' + name + '\\s+)\d+')
   ];
   let changed = false;
   for (const pattern of patterns) {
