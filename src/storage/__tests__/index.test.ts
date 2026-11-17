@@ -1,6 +1,7 @@
+import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
-  __setBackendForTesting, backup, get, getMode, getWithRevision, remove, restore, set,
+  __setBackendForTesting, __resetStorageForTesting, backup, get, getMode, getWithRevision, quarantineRecord, remove, restore, set,
   StorageError, LegacyFallbackEngine, type BackupEnvelope, type StorageEngine, type StorageKey, type StorageMode,
 } from '../index';
 
@@ -104,7 +105,7 @@ describe('revision conflicts and fallback rules', () => {
   it('CON-006 fallback mode is selectable through the injected engine', async () => { __setBackendForTesting(new MemoryEngine('legacy-fallback')); expect(await getMode()).toBe('legacy-fallback'); });
   it('CON-007 read-only recovery mode is selectable through the injected engine', async () => { __setBackendForTesting(new MemoryEngine('readonly-recovery')); expect(await getMode()).toBe('readonly-recovery'); });
   it('fallback rejects stale expected revision', async () => { __setBackendForTesting(new MemoryEngine('legacy-fallback')); await set(KEY, 'ar'); await expect(set(KEY, 'en', 0)).rejects.toMatchObject({ code: 'STORAGE_CONFLICT' }); });
-  it('fallback missing sidecar is a conflict when the key already exists', async () => {
+  it('fallback missing sidecar reads revision zero and expectedRevision zero creates the sidecar', async () => {
     const storage = new Map<string, string>([['operational.language', '"ar"']]);
     const original = globalThis.localStorage;
     Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: {
@@ -113,12 +114,77 @@ describe('revision conflicts and fallback rules', () => {
     } });
     try {
       __setBackendForTesting(new LegacyFallbackEngine());
-      await expect(set(KEY, 'en', 1)).rejects.toMatchObject({ code: 'STORAGE_CONFLICT', metadata: { revisionSidecarMissing: true } });
-      expect(storage.get('operational.language')).toBe('"ar"');
+      expect(await getWithRevision(KEY)).toEqual({ value: 'ar', revision: 0 });
+      await expect(set(KEY, 'en', 0)).resolves.toEqual({ revision: 1 });
+      expect(storage.get('shuttle.storage.revision.operational.language')).toBe('1');
     } finally { Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: original }); }
   });
   it('read-only recovery rejects set', async () => { __setBackendForTesting(new MemoryEngine('readonly-recovery')); await expect(set(KEY, 'ar')).rejects.toMatchObject({ code: 'STORAGE_RECOVERY_REQUIRED' }); });
   it('read-only recovery rejects remove', async () => { __setBackendForTesting(new MemoryEngine('readonly-recovery')); await expect(remove(KEY)).rejects.toMatchObject({ code: 'STORAGE_RECOVERY_REQUIRED' }); });
   it('read-only recovery rejects backup', async () => { __setBackendForTesting(new MemoryEngine('readonly-recovery')); await expect(backup()).rejects.toMatchObject({ code: 'STORAGE_RECOVERY_REQUIRED' }); });
   it('read-only recovery rejects restore', async () => { __setBackendForTesting(new MemoryEngine('readonly-recovery')); const b = await new MemoryEngine().backup(); await expect(restore(b)).rejects.toMatchObject({ code: 'STORAGE_RECOVERY_REQUIRED' }); });
+});
+
+
+describe('real IndexedDB storage behavior', () => {
+  beforeEach(async () => {
+    __resetStorageForTesting();
+    await new Promise<void>((resolve, reject) => {
+      const request = indexedDB.deleteDatabase('shuttle-car-storage');
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+      request.onblocked = () => reject(new Error('IndexedDB database deletion was blocked.'));
+    });
+    __setBackendForTesting(null);
+  });
+  afterEach(() => { __resetStorageForTesting(); });
+
+  it('IDB-001 uses fake IndexedDB for real transaction-backed reads and writes', async () => {
+    expect(await getMode()).toBe('indexeddb');
+    await expect(set(KEY, 'ar', 0)).resolves.toEqual({ revision: 1 });
+    await expect(getWithRevision(KEY)).resolves.toEqual({ value: 'ar', revision: 1 });
+  });
+
+  it('IDB-002 quarantines a corrupt stored shape and reports STORAGE_CORRUPT', async () => {
+    await set(KEY, 'ar');
+    const dbRequest = indexedDB.open('shuttle-car-storage', 1);
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      dbRequest.onsuccess = () => resolve(dbRequest.result);
+      dbRequest.onerror = () => reject(dbRequest.error);
+    });
+    const tx = db.transaction(['records'], 'readwrite');
+    tx.objectStore('records').put({ id: 'generation-1:' + KEY, value: { invalid: true }, revision: 1 });
+    await new Promise<void>((resolve, reject) => {
+      tx.oncomplete = () => resolve();
+      tx.onerror = tx.onabort = () => reject(tx.error);
+    });
+    await expect(get(KEY)).rejects.toMatchObject({ code: 'STORAGE_CORRUPT' });
+    const qtx = db.transaction(['quarantine'], 'readonly');
+    const quarantined = await new Promise<unknown[]>((resolve, reject) => {
+      const request = qtx.objectStore('quarantine').getAll();
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    expect(quarantined).toHaveLength(1);
+    expect(quarantined[0]).toMatchObject({ key: KEY, rawValue: { invalid: true }, reason: expect.any(String) });
+    db.close();
+  });
+
+  it('IDB-003 stores explicitly quarantined raw values with a reason', async () => {
+    await quarantineRecord(KEY, '{"broken":', 'JSON decode failure');
+    const dbRequest = indexedDB.open('shuttle-car-storage', 1);
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      dbRequest.onsuccess = () => resolve(dbRequest.result);
+      dbRequest.onerror = () => reject(dbRequest.error);
+    });
+    const tx = db.transaction(['quarantine'], 'readonly');
+    const rows = await new Promise<unknown[]>((resolve, reject) => {
+      const request = tx.objectStore('quarantine').getAll();
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ key: KEY, rawValue: '{"broken":', reason: 'JSON decode failure' });
+    db.close();
+  });
 });
