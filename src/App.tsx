@@ -689,6 +689,18 @@ function App() {
     showToast(language === 'ar' ? 'تم حفظ التقرير اليومي' : 'Daily report saved locally');
   };
 
+  const deleteDailyReport = (id: string) => {
+    const report = dailyReports.find(item => item.id === id);
+    if (!report) return;
+    const confirmed = window.confirm(language === 'ar'
+      ? 'حذف لقطة التقرير المحلية نهائيًا؟ لا يمكن استعادتها بعد الحذف.'
+      : 'Permanently delete this local report snapshot? This action cannot be undone.');
+    if (!confirmed) return;
+    setDailyReports(prev => prev.filter(item => item.id !== id));
+    pushNotification(language === 'ar' ? 'تم حذف لقطة تقرير' : 'Report snapshot deleted', id, 'warning');
+    showToast(language === 'ar' ? 'تم حذف التقرير المحلي' : 'Local report snapshot deleted');
+  };
+
   const downloadDailyReport = (report: DailyReportSnapshot) => {
     const rows: Array<Array<string | number>> = [
       ['SHUTTLE CAR AUTOMATION · DAILY DEVICE STATUS', report.reportDate],
@@ -1480,7 +1492,14 @@ function App() {
         </div>
         <div className="surface-card"><div className="card-head"><div><span className="eyebrow">REPORT ARCHIVE</span><h3>{language==='ar'?'أرشيف التقارير اليومية':'Daily report history'}</h3></div><span className="counter">{dailyReports.length}</span></div>
           {dailyReports.length===0 ? <div className="empty-state">{language==='ar'?'لم يتم إصدار تقارير بعد. اضغط إصدار التقرير اليومي لإنشاء أول لقطة محفوظة.':'No reports yet. Generate today’s report to create the first saved snapshot.'}</div> :
-            dailyReports.map(report=><div className="archive-row report-history-row" key={report.id}><div><strong>{report.reportDate} · {report.id}</strong><small>{formatNotificationTime(report.generatedAt)} · {report.shuttleCount} units · {report.openFaultCount} open faults</small></div><button className="btn-secondary" onClick={()=>downloadDailyReport(report)}>{language==='ar'?'تنزيل CSV':'Download CSV'}</button></div>)}
+            dailyReports.map(report=><div className="archive-row report-history-row" key={report.id}>
+              <div><strong>{report.reportDate} · {report.id}</strong><small>{formatNotificationTime(report.generatedAt)} · {report.shuttleCount} units · {report.openFaultCount} open faults</small></div>
+              <div className="record-actions">
+                <button className="btn-secondary" onClick={()=>downloadDailyReport(report)}>{language==='ar'?'تنزيل CSV':'Download CSV'}</button>
+                <button className="btn-secondary" onClick={()=>exportDailyReportXlsx(report)}>{language==='ar'?'Excel':'Excel'}</button>
+                <button className="btn-danger" onClick={()=>deleteDailyReport(report.id)}>{language==='ar'?'حذف':'Delete'}</button>
+              </div>
+            </div>)}
         </div>
         <p className="muted-text">{language==='ar'?'كل تقرير لقطة محفوظة لحظة الإصدار ولا يتغير تلقائيًا بعد ذلك. القيم غير الموثقة تظل غير معروفة ولا تُستبدل بأرقام تقديرية.':'Each report is a frozen snapshot from its creation time. Unverified values remain unknown and are never replaced with estimates.'}</p>
       </section>}
