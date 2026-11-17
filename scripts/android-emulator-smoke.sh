@@ -43,8 +43,6 @@ sleep 8
 adb exec-out screencap -p > "$EVIDENCE/engineering-app-screen.png"
 test -s "$EVIDENCE/engineering-app-screen.png"
 
-adb shell uiautomator dump /sdcard/shuttle-window.xml >/dev/null 2>&1 || true
-adb pull /sdcard/shuttle-window.xml "$EVIDENCE/ui-hierarchy.xml" >/dev/null 2>&1 || true
 adb shell dumpsys activity activities > "$EVIDENCE/activities.txt"
 grep -F "com.shuttlecar.automation/.MainActivity" "$EVIDENCE/activities.txt"
 adb logcat -d -t 5000 > "$EVIDENCE/device-logcat.txt"
