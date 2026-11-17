@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import type { Fault, Language, MaintenanceJob, ShiftRecord, Shuttle } from '../types';
+import { sanitizeSpreadsheetCell } from '../data/csvSafety';
 
 interface ShiftOperationsProps {
   language: Language;
@@ -11,7 +12,10 @@ interface ShiftOperationsProps {
 }
 
 function downloadCsv(rows: Array<Array<string | number>>) {
-  const csv = rows.map(row => row.map(value => '"' + String(value ?? '').replace(/"/g, '""') + '"').join(',')).join('\r\n');
+  const csv = rows.map(row => row.map(value => {
+    const safeValue = sanitizeSpreadsheetCell(value);
+    return '"' + String(safeValue ?? '').replace(/"/g, '""') + '"';
+  }).join(',')).join('\r\n');
   const url = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }));
   const link = document.createElement('a');
   link.href = url;
