@@ -14,6 +14,7 @@ import Battery3DViewer from './components/Battery3DViewer';
 import { getManufacturerReference } from './data/manufacturerReferences';
 import ShiftOperations from './components/ShiftOperations';
 import { archiveBatteryAndDetach, assignBatteryToShuttle, restoreBatteryRecord } from './data/batteryLifecycle';
+import { buildDailyReportSheets, buildRegisterSheets, downloadXlsx } from './data/excelExport';
 import type {
   AppSettings,
   Battery,
@@ -732,6 +733,24 @@ function App() {
     const url = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }));
     const link = document.createElement('a'); link.href = url; link.download = 'shuttle-register.csv'; link.click(); URL.revokeObjectURL(url);
   };
+  const exportFullRegisterXlsx = async () => {
+    try {
+      const sheets = buildRegisterSheets({ shuttles, batteries, faults, jobs, shifts, dailyReports, notifications }, language);
+      await downloadXlsx(sheets, 'shuttle-operations-register.xlsx');
+      showToast(language === 'ar' ? 'تم تصدير سجل التشغيل بصيغة Excel' : 'Operational register exported as Excel');
+    } catch {
+      showToast(language === 'ar' ? 'تعذر إنشاء ملف Excel' : 'Could not create the Excel workbook');
+    }
+  };
+  const exportDailyReportXlsx = async (report: DailyReportSnapshot) => {
+    try {
+      await downloadXlsx(buildDailyReportSheets(report, language), `shuttle-daily-report-${report.reportDate}.xlsx`);
+      showToast(language === 'ar' ? 'تم تصدير التقرير اليومي بصيغة Excel' : 'Daily report exported as Excel');
+    } catch {
+      showToast(language === 'ar' ? 'تعذر إنشاء ملف Excel' : 'Could not create the Excel workbook');
+    }
+  };
+
   const exportBackup = () => {
     const data = { schemaVersion: 10, exportedAt: new Date().toISOString(), warning: 'Local demo/record data only. Not a live PLC telemetry export.', shuttles, batteries, faults, jobs, notifications, settings, dailyReports, shifts };
     const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
@@ -1057,6 +1076,7 @@ function App() {
         <div className="report-toolbar">
           <button className="btn-primary" onClick={generateDailyReport}><Icon name="chart" size={16}/>{language==='ar'?'إصدار التقرير اليومي الآن':'Generate today’s report'}</button>
           <button className="btn-secondary" onClick={exportCsv}>{t.exportCsv}</button>
+          <button className="btn-secondary" onClick={exportFullRegisterXlsx}>{language==='ar'?'تصدير سجل Excel كامل':'Export full Excel register'}</button>
           <button className="btn-secondary" onClick={exportBackup}>{t.backup}</button>
           <button className="btn-secondary" onClick={()=>window.print()}>{t.print}</button>
         </div>
@@ -1075,7 +1095,10 @@ function App() {
             <Metric icon="battery" label={language==='ar'?'بطاريات بها عطل':'Faulted batteries'} value={dailyReports[0].faultedBatteryCount} accent="amber"/>
           </div>
           <p className="muted-text">{language==='ar'?'وقت الإصدار: ':'Generated: '}{formatNotificationTime(dailyReports[0].generatedAt)} · {language==='ar'?'مصادر القياس المؤكدة: ':'Verified telemetry sources: '}{dailyReports[0].verifiedTelemetryCount}</p>
-          <button className="btn-primary" onClick={()=>downloadDailyReport(dailyReports[0])}>{language==='ar'?'تنزيل التقرير CSV':'Download daily report CSV'}</button>
+          <div className="report-export-actions">
+            <button className="btn-primary" onClick={()=>downloadDailyReport(dailyReports[0])}>{language==='ar'?'تنزيل التقرير CSV':'Download daily report CSV'}</button>
+            <button className="btn-secondary" onClick={()=>exportDailyReportXlsx(dailyReports[0])}>{language==='ar'?'تنزيل التقرير Excel':'Download daily report Excel'}</button>
+          </div>
         </div>}
         <div className="surface-card"><div className="card-head"><div><span className="eyebrow">CURRENT REGISTER / LIVE STATUS NOT AVAILABLE</span><h3>{language==='ar'?'حالة الأجهزة الحالية':'Current shuttle status register'}</h3></div><span className="status-pill status-unknown">LOCAL RECORDS</span></div>
           <div className="table-wrap"><table><thead><tr><th>ID</th><th>{t.manufacturer}</th><th>{t.model}</th><th>{t.status}</th><th>{t.communication}</th><th>{t.zone}</th></tr></thead><tbody>{activeShuttles.map(item=><tr key={item.id}><td>{item.id}</td><td>{item.manufacturer}</td><td>{item.model}</td><td><StatusPill status={item.status} language={language}/></td><td>{item.connectivity}</td><td>{item.warehouseZone}</td></tr>)}</tbody></table></div>
