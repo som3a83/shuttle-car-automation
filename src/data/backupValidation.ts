@@ -142,6 +142,7 @@ function isConnectionEndpoint(value: unknown): value is CommunicationEndpoint {
     isString(value.name) && value.name.trim().length > 0 &&
     ['Modbus TCP', 'OPC UA', 'MQTT', 'REST API', 'WebSocket', 'BLE'].includes(String(value.protocol)) &&
     CONNECTIVITY.includes(value.mode as ConnectivityStatus) &&
+    value.mode !== 'REAL' &&
     isString(value.notes);
 }
 
@@ -183,7 +184,7 @@ function isShift(value: unknown): value is ShiftRecord {
 export function validateOperationalBackup(input: unknown): BackupValidationResult {
   if (!isRecord(input)) return { ok: false, error: 'Backup must contain a JSON object.' };
   const version = input.schemaVersion;
-  if (version !== undefined && (typeof version !== 'number' || !Number.isInteger(version) || version < 1 || version > 10)) {
+  if (version !== undefined && (typeof version !== 'number' || !Number.isInteger(version) || version < 1 || version > 11)) {
     return { ok: false, error: 'Backup schema version is unsupported.' };
   }
   const arrays = ['shuttles', 'batteries', 'faults', 'jobs'];
@@ -246,6 +247,12 @@ export function validateOperationalBackup(input: unknown): BackupValidationResul
   for (const [key, validator] of optionalArrays) {
     if (input[key] !== undefined && (!Array.isArray(input[key]) || !(input[key] as unknown[]).every(validator))) {
       return { ok: false, error: `The optional ${key} collection contains invalid records.` };
+    }
+  }
+  if (input.connections !== undefined) {
+    const names = (input.connections as CommunicationEndpoint[]).map((item) => item.name.trim().toLocaleLowerCase());
+    if (new Set(names).size !== names.length) {
+      return { ok: false, error: 'Duplicate connection endpoint names were found in the backup.' };
     }
   }
   if (input.settings !== undefined && !isSettings(input.settings)) {
