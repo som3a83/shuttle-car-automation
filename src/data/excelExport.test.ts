@@ -31,6 +31,31 @@ describe('multi-sheet Excel export', () => {
     expect(rows[1]).toContain('Cassioli');
   });
 
+  it('includes recorded maintenance completion results in the workbook', async () => {
+    const sheets = buildRegisterSheets({
+      shuttles: initialShuttles,
+      batteries: initialBatteries,
+      faults: initialFaults,
+      jobs: [{
+        id: 'MNT-DONE',
+        shuttleId: 'SC-01',
+        title: 'Drive inspection',
+        type: 'Preventive',
+        status: 'Completed',
+        scheduledDate: '2026-11-20',
+        technician: 'Technician A',
+        notes: 'Planned inspection',
+        completionNotes: 'Inspected gearbox mount and recorded torque verification.'
+      }],
+      shifts: [],
+      dailyReports: [],
+      notifications: [],
+      connections: []
+    }, 'en');
+    const maintenance = sheets.find(sheet => sheet.name === 'Maintenance');
+    expect(maintenance?.rows[1]).toContain('Inspected gearbox mount and recorded torque verification.');
+  });
+
   it('exports a daily snapshot with its active shift and battery movements', async () => {
     const report: DailyReportSnapshot = {
       id: 'RPT-1', reportDate: '2026-11-17', generatedAt: '2026-11-17T09:00:00.000Z',
