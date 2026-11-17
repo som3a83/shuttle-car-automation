@@ -168,13 +168,20 @@ export async function quarantineRecord(key: StorageKey, rawValue: unknown, reaso
   try {
     if (typeof indexedDB !== 'undefined') {
       const db = await openDatabase();
-      const tx = db.transaction([STORE_QUARANTINE], 'readwrite');
+      const tx = db.transaction([STORE_RECORDS, STORE_METADATA, STORE_QUARANTINE], 'readwrite');
+      const metadata = await requestResult<{ key: string; value: string } | undefined>(
+        tx.objectStore(STORE_METADATA).get(ACTIVE_GENERATION_KEY));
+      const generation = metadata?.value ?? 'generation-1';
       tx.objectStore(STORE_QUARANTINE).put(entry);
+      // Quarantine is a move: preserve the raw payload/reason, then remove the active record.
+      tx.objectStore(STORE_RECORDS).delete(generation + ':' + key);
       await transactionDone(tx);
       return;
     }
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem('shuttle.storage.quarantine.' + entry.id, stableJson(entry));
+      localStorage.removeItem(LEGACY_PREFIX + key);
+      localStorage.removeItem(LEGACY_REVISION_PREFIX + key);
       return;
     }
     fail('STORAGE_UNAVAILABLE', 'No quarantine-capable storage backend is available.', { key });
@@ -182,8 +189,9 @@ export async function quarantineRecord(key: StorageKey, rawValue: unknown, reaso
     indexedDbFailure(error, key);
   }
 }
-async function quarantineWithoutMasking(key: StorageKey, rawValue: unknown, reason: string): Promise<void> {
-  try { await quarantineRecord(key, rawValue, reason); } catch { /* Preserve the original corruption error. */ }
+async function quarantineWithoutMasking(key: StorageKey, rawValue: unknown, reason: string): Promise<boolean> {
+  try { await quarantineRecord(key, rawValue, reason); return true; }
+  catch { /* Preserve the original corruption error. */ return false; }
 }
 function openDatabase(): Promise<IDBDatabase> {
   if (typeof indexedDB === 'undefined') return Promise.reject(new Error('IndexedDB unavailable'));
@@ -318,19 +326,22 @@ export class LegacyFallbackEngine implements StorageEngine {
     try {
       const value: unknown = JSON.parse(raw);
       if (!validateStoredShape(key, value)) {
-        await quarantineWithoutMasking(key, raw, 'Legacy fallback record failed stored-shape validation.');
+        const moved = await quarantineWithoutMasking(key, raw, 'Legacy fallback record failed stored-shape validation.');
+        if (moved) { storage.removeItem(LEGACY_PREFIX + key); storage.removeItem(LEGACY_REVISION_PREFIX + key); }
         fail('STORAGE_CORRUPT', 'Stored data failed shape validation.', { key });
       }
       const revisionRaw = storage.getItem(LEGACY_REVISION_PREFIX + key);
       const revision = revisionRaw === null ? 0 : Number(revisionRaw);
       if (!Number.isSafeInteger(revision) || revision < 0) {
-        await quarantineWithoutMasking(key, raw, 'Legacy fallback revision metadata is invalid.');
+        const moved = await quarantineWithoutMasking(key, raw, 'Legacy fallback revision metadata is invalid.');
+        if (moved) { storage.removeItem(LEGACY_PREFIX + key); storage.removeItem(LEGACY_REVISION_PREFIX + key); }
         fail('STORAGE_CORRUPT', 'Stored revision metadata is invalid.', { key });
       }
       return { value, revision };
     } catch (error) {
       if (error instanceof StorageError) throw error;
-      await quarantineWithoutMasking(key, raw, 'Legacy fallback record could not be decoded.');
+      const moved = await quarantineWithoutMasking(key, raw, 'Legacy fallback record could not be decoded.');
+      if (moved) { storage.removeItem(LEGACY_PREFIX + key); storage.removeItem(LEGACY_REVISION_PREFIX + key); }
       fail('STORAGE_CORRUPT', 'Stored data could not be decoded.', { key });
     }
   }
