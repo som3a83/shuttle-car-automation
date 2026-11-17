@@ -41,7 +41,7 @@ Only the encrypted GitHub Actions secrets should receive the output. Do not send
 ## 4. Build the signed AAB
 After the secrets are configured, run **Actions → Android Play Store AAB → Run workflow** and supply:
 - version_name: `1.0.0`
-- version_code: `1`
+- version_code: `1000000`
 
 Or push a version tag such as `v1.0.0`. Every later Play upload must use a strictly higher versionCode. The workflow runs TypeScript checks, tests and production build, generates/synchronizes the Capacitor Android project, enforces API 36, signs the release bundle and uploads the AAB plus SHA-256 checksum as a GitHub Actions artifact.
 
