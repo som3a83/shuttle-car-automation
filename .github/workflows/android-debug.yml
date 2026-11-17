@@ -94,7 +94,7 @@ jobs:
             test -s "$APK"
             mkdir -p artifacts/android-smoke
 
-            timeout 30s adb wait-for-device
+            adb wait-for-device
             BOOTED=""
             for attempt in $(seq 1 45); do
               BOOTED="$(adb shell getprop sys.boot_completed | tr -d '\r' || true)"
@@ -105,19 +105,19 @@ jobs:
 
             adb shell wm size | tee artifacts/android-smoke/display-size.txt
             adb shell wm density | tee artifacts/android-smoke/display-density.txt
-            timeout 120s adb install -r "$APK"
+            adb install -r "$APK"
             adb logcat -c
-            timeout 30s adb shell am force-stop com.shuttlecar.automation
-            timeout 45s adb shell am start -W -n com.shuttlecar.automation/.MainActivity | tee artifacts/android-smoke/launch-result.txt
+            adb shell am force-stop com.shuttlecar.automation
+            adb shell am start -W -n com.shuttlecar.automation/.MainActivity | tee artifacts/android-smoke/launch-result.txt
             grep -F "Status: ok" artifacts/android-smoke/launch-result.txt
 
             sleep 8
             APP_PID="$(adb shell pidof com.shuttlecar.automation | tr -d '\r' || true)"
             test -n "$APP_PID"
-            timeout 30s adb exec-out screencap -p > artifacts/android-smoke/android-app-screen.png
+            adb exec-out screencap -p > artifacts/android-smoke/android-app-screen.png
             test -s artifacts/android-smoke/android-app-screen.png
-            timeout 30s adb shell dumpsys activity activities > artifacts/android-smoke/activities.txt
-            timeout 30s adb logcat -d -t 3000 > artifacts/android-smoke/device-logcat.txt
+            adb shell dumpsys activity activities > artifacts/android-smoke/activities.txt
+            adb logcat -d -t 3000 > artifacts/android-smoke/device-logcat.txt
 
             if grep -E "FATAL EXCEPTION|Process: com\.shuttlecar\.automation" artifacts/android-smoke/device-logcat.txt; then
               echo "Android app crash signature found in device log."
