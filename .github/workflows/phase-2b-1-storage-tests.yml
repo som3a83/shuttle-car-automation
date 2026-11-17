@@ -5,7 +5,8 @@ on:
     branches:
       - chatgpt/phase-2b-1-storage-core-2026-11-17
   pull_request:
-    # PR #38 targets the Phase 2A branch so it can inherit its changes without duplicating them.\n    branches: [main, chatgpt/phase-2a-quick-wins-2026-11-17]
+    # PR #38 targets the Phase 2A branch so it can inherit its changes without duplicating them.
+    branches: [main, chatgpt/phase-2a-quick-wins-2026-11-17]
     paths:
       - 'src/storage/**'
 
