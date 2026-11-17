@@ -256,11 +256,15 @@ describe('Shuttle Car Automation V10', () => {
     await user.click(screen.getByRole('button', { name: /Start job/i }));
     expect(screen.getByText('In Progress')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /Complete job/i }));
+    await user.type(screen.getByLabelText(/Completion result \/ work performed/i), 'Inspected rails and documented clearance verification.');
+    await user.click(screen.getByRole('button', { name: /Save result & complete/i }));
     expect(screen.getByText('Completed')).toBeInTheDocument();
+    expect(screen.getByText(/Completion result: Inspected rails and documented clearance verification/i)).toBeInTheDocument();
 
     await user.click(screen.getAllByRole('button', { name: /Notifications/i })[0]);
     expect(screen.getByText('Maintenance work order created')).toBeInTheDocument();
-    expect(screen.getAllByText('Maintenance work order updated')).toHaveLength(2);
+    expect(screen.getByText('Maintenance work order updated')).toBeInTheDocument();
+    expect(screen.getByText('Work order completed with recorded result')).toBeInTheDocument();
   });
 
   it('registers a new fleet unit without fabricating manufacturer identity data', async () => {
@@ -611,7 +615,7 @@ describe('Shuttle Car Automation V10', () => {
     await user.click(screen.getAllByRole('button', { name: /Device Connections/i })[0]);
     await user.type(screen.getByLabelText(/Connection name/i), 'Test vendor gateway');
     await user.selectOptions(screen.getByLabelText(/^Protocol$/i), 'OPC UA');
-    await user.type(screen.getByLabelText(/^Notes$/i), 'Vendor approved read-only interface reference pending');
+    await user.type(screen.getByLabelText(/Technical notes/i), 'Vendor approved read-only interface reference pending');
     await user.click(screen.getByRole('button', { name: /Save connection record/i }));
 
     expect(screen.getByText('Test vendor gateway')).toBeInTheDocument();
