@@ -77,6 +77,29 @@ export async function importOperationalKey(
 export async function importOperationalData(
   legacyStorage: LegacyReadStorage = globalThis.localStorage
 ): Promise<AdapterResult[]> {
+  /**
+   * ATOMICITY CONSTRAINT (2B-4 dependency):
+   *
+   * This adapter imports 12 operational keys. Each key is written through its
+   * own importMappedLegacyKey() call and separate set() operation. If a later
+   * key returns conflict or failed after earlier keys were imported, the
+   * destination store will contain a partial operational dataset.
+   *
+   * The 2B-1 set() API writes to the ACTIVE generation, not to a staging
+   * generation. Therefore 2B-4 (migration orchestrator) MUST NOT call this
+   * adapter directly against the active generation. It must use ONE of:
+   *
+   *   (A) A staging-generation writer that 2B-4 introduces (preferred), OR
+   *   (B) A rollback procedure: if this adapter returns partial success,
+   *       2B-4 must delete every successfully-imported operational key (via
+   *       remove()) before reporting failure to the user, OR
+   *   (C) A pre-flight check in 2B-4 that asserts ALL 12 operational target
+   *       keys are ABSENT from the destination before calling this adapter,
+   *       so that no key can return already-synced or conflict.
+   *
+   * This adapter alone cannot guarantee atomicity because the underlying
+   * storage API does not support multi-key transactions across keys.
+   */
   const results: AdapterResult[] = [];
   for (const entry of OPERATIONAL_LEGACY_KEY_MAP) {
     results.push(await importOperationalKey(entry.legacyKey, legacyStorage));

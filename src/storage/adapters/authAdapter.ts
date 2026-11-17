@@ -53,6 +53,30 @@ function isLocalAccountRegistry(value: unknown): value is LocalAccount[] {
 export function importAuthData(
   legacyStorage: LegacyReadStorage = globalThis.localStorage
 ): Promise<AdapterResult<LocalAccount[]>> {
+  /**
+   * ATOMICITY CONSTRAINT (2B-4 dependency):
+   *
+   * This adapter imports one key (auth.accounts) through a single
+   * importMappedLegacyKey() call and one set() operation. It cannot produce a
+   * partial multi-key auth import by itself. The single write can still return
+   * conflict or failed, in which case this adapter must not be treated as a
+   * successful import.
+   *
+   * The 2B-1 set() API writes to the ACTIVE generation, not to a staging
+   * generation. Therefore 2B-4 (migration orchestrator) MUST coordinate this
+   * write as part of the overall migration and must use ONE of:
+   *
+   *   (A) A staging-generation writer that 2B-4 introduces (preferred), OR
+   *   (B) A rollback procedure: if the overall migration fails after this key
+   *       was imported, 2B-4 must delete auth.accounts (via remove()) before
+   *       reporting failure to the user, OR
+   *   (C) A pre-flight check in 2B-4 that asserts auth.accounts is ABSENT from
+   *       the destination before calling this adapter, so it cannot return
+   *       already-synced or conflict.
+   *
+   * This adapter's single-key write does not provide a transaction with the
+   * other adapter families; 2B-4 must provide migration-level atomicity.
+   */
   return importMappedLegacyKey(
     AUTH_LEGACY_KEY_MAP.accounts.legacyKey,
     isLocalAccountRegistry,

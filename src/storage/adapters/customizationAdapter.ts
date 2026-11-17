@@ -37,6 +37,29 @@ function isCustomizationAudit(value: unknown): value is AuditEntry[] {
 export async function importCustomizationData(
   legacyStorage: LegacyReadStorage = globalThis.localStorage
 ): Promise<AdapterResult[]> {
+  /**
+   * ATOMICITY CONSTRAINT (2B-4 dependency):
+   *
+   * This adapter imports 2 customization keys (config + audit). Each key is
+   * written through its own importMappedLegacyKey() call and separate set()
+   * operation. If one key is imported but the other returns conflict or
+   * failed, the destination store will contain a partial customization dataset.
+   *
+   * The 2B-1 set() API writes to the ACTIVE generation, not to a staging
+   * generation. Therefore 2B-4 (migration orchestrator) MUST NOT call this
+   * adapter directly against the active generation. It must use ONE of:
+   *
+   *   (A) A staging-generation writer that 2B-4 introduces (preferred), OR
+   *   (B) A rollback procedure: if this adapter returns partial success,
+   *       2B-4 must delete the successfully-imported customization key (via
+   *       remove()) before reporting failure to the user, OR
+   *   (C) A pre-flight check in 2B-4 that asserts BOTH customization target
+   *       keys are ABSENT from the destination before calling this adapter,
+   *       so that neither can return already-synced or conflict.
+   *
+   * This adapter alone cannot guarantee atomicity because the underlying
+   * storage API does not support multi-key transactions across keys.
+   */
   const config = await importMappedLegacyKey(
     CUSTOMIZATION_LEGACY_KEY_MAP.config.legacyKey,
     isCustomizationConfig,
