@@ -303,8 +303,8 @@ describe('Shuttle Car Automation V9', () => {
     await user.click(screen.getByRole('button', { name: /Edit equipment/i }));
     await user.clear(screen.getAllByLabelText(/^Model$/i)[0]);
     await user.type(screen.getAllByLabelText(/^Model$/i)[0], 'Verified test model');
-    await user.clear(screen.getByLabelText(/Manufacturer serial/i));
-    await user.type(screen.getByLabelText(/Manufacturer serial/i), 'SERIAL-TEST-001');
+    await user.clear(screen.getAllByLabelText(/Manufacturer serial/i)[0]);
+    await user.type(screen.getAllByLabelText(/Manufacturer serial/i)[0], 'SERIAL-TEST-001');
     await user.click(screen.getByRole('button', { name: /Save changes/i }));
     expect(screen.getByText('Verified test model')).toBeInTheDocument();
     expect(screen.getByText('SERIAL-TEST-001')).toBeInTheDocument();
