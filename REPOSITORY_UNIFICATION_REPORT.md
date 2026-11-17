@@ -224,7 +224,8 @@ All 30 current branches were enumerated. Diverged branches are not merged wholes
 - PR #20: closed; industrial/commissioning-v1 → main; merged 2026-11-17T02:16:43Z — Industrial commissioning baseline: verified fleet, safety gates and vendor interface requirements
 - PR #21: closed; copilot/shuttle-industrial-ui-customization-fix → main; merged 2026-11-17T08:18:10Z — Complete industrial application workflows and local customization
 - PR #22: closed; industrial/live-telemetry-gateway-v1 → main; merged 2026-11-17T08:35:46Z — Add read-only industrial telemetry gateway and app client
-- PR #23: open (draft); engineering/industrial-ui-security-v1 → main; not merged — Security foundation: local identity, audit integrity and recoverable storage
+- PR #23: historical snapshot said open (draft); subsequently merged to `main` at `f7574cf5db3cfa636d0dae957e1b254cea68b369` — Security foundation: local identity, audit integrity and recoverable storage
+- PR #24: merged 2026-11-17T11:29:22Z at `28eeca047863d39b1126a1e3116640ac791f65f2` — Android emulator KVM and smoke-test workflow repair
 
 ## 7. Confirmed changes in the original unification pass
 
