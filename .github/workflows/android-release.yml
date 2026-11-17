@@ -53,10 +53,12 @@ jobs:
           npx tsc -b
           npm test
           npm run build
+          npm run assets:render
 
       - name: Generate and sync Android project
         run: |
           npx cap add android
+          npx capacitor-assets generate --android --iconBackgroundColor '#111820' --iconBackgroundColorDark '#111820' --splashBackgroundColor '#111820' --splashBackgroundColorDark '#111820'
           npx cap sync android
 
       - name: Decode upload keystore
