@@ -16,6 +16,8 @@ jobs:
     steps:
       - name: Review dependency changes
         uses: actions/dependency-review-action@v5
+        # TEMPORARY: Non-blocking until Dependency Graph is enabled by repo admin
+        continue-on-error: true
         with:
           fail-on-severity: high
           comment-summary-in-pr: on-failure
