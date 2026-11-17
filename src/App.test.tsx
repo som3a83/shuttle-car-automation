@@ -407,6 +407,27 @@ describe('Shuttle Car Automation V10', () => {
     expect(reports[0]).toMatchObject({shuttleCount:5,verifiedTelemetryCount:0});
   });
 
+  it('deletes only the selected daily report snapshot after confirmation', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getAllByRole('button', { name: /Reports Center/i })[0]);
+    await user.click(screen.getByRole('button', { name: /Generate today.s report/i }));
+    expect(screen.getByText(/LATEST SAVED DAILY REPORT/i)).toBeInTheDocument();
+
+    const cancelSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    await user.click(screen.getByRole('button', { name: /^Delete$/i }));
+    cancelSpy.mockRestore();
+    let saved = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:dailyReports') || '[]') as Array<{id:string}>;
+    expect(saved).toHaveLength(1);
+
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    await user.click(screen.getByRole('button', { name: /^Delete$/i }));
+    confirmSpy.mockRestore();
+    saved = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:dailyReports') || '[]') as Array<{id:string}>;
+    expect(saved).toHaveLength(0);
+    expect(screen.queryByText(/LATEST SAVED DAILY REPORT/i)).not.toBeInTheDocument();
+  });
+
   it('provides working in-app back and home navigation controls', async () => {
     const user = userEvent.setup();
     render(<App />);
