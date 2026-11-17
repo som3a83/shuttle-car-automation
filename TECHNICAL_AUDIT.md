@@ -76,7 +76,7 @@ Limitations that must remain visible:
 ## 7. Android and store readiness
 
 - A reproducible Android debug APK build path exists. The APK built and passed install/launch/process/screenshot/log checks in PR #24 run `44073395778`; a fresh post-merge run on `main` is underway.
-- Emulator launch verification passed on PR #24 head `b7ecfd6`; that exact commit was merged to `main`. A fresh post-merge Android run is still being verified.
+- Emulator launch verification passed on PR #24 head `b7ecfd6`; that exact code was merged to `main`. The fresh post-merge Android run `44074458921` is still being verified.
 - Production signing credentials, a signed AAB, Play Console validation, store review, privacy disclosures in the published listing and physical-device acceptance have not been established by this audit.
 - Therefore the project is **not yet certified as Google Play production-ready**.
 
