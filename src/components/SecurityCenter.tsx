@@ -51,10 +51,10 @@ export default function SecurityCenter({
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const isAuthenticated = currentUser.isAuthenticated;
-  const isAdministrator = isAuthenticated && (currentUser.role === 'Super Admin' || currentUser.role === 'Admin');
-  const isSuperAdmin = isAuthenticated && currentUser.role === 'Super Admin';
+  const isAdministrator = isAuthenticated && !currentUser.mustChangePassword && (currentUser.role === 'Super Admin' || currentUser.role === 'Admin');
+  const isSuperAdmin = isAuthenticated && !currentUser.mustChangePassword && currentUser.role === 'Super Admin';
   const canBootstrap = accounts.length === 0 && !registryError;
-  const canManageAccounts = canBootstrap || (!registryError && isAuthenticated && currentUser.role === 'Super Admin');
+  const canManageAccounts = canBootstrap || (!registryError && isAuthenticated && !currentUser.mustChangePassword && currentUser.role === 'Super Admin');
 
   const refresh = async () => {
     setAccounts(listLocalAccounts(localStorage));
@@ -352,6 +352,10 @@ export default function SecurityCenter({
         currentUser.id, passwordForm.current, passwordForm.next,
         { id: currentUser.id, role: currentUser.role }
       );
+      // The credential version has changed. Drop the old UI identity before
+      // attempting a new session; a failed audit write must leave the user out.
+      endLocalSession();
+      onSessionChange(null);
       const signedIn = await authenticateLocalAccount(currentUser.email, passwordForm.next);
       if (!signedIn.ok) throw new Error('Password changed, but a new local session could not be established. Sign in again.');
       await appendAuditRecord({
