@@ -5,7 +5,7 @@ import { initialShuttles } from './data/mockData';
 import { beforeEach, describe, it, expect } from 'vitest';
 import '@testing-library/jest-dom/vitest';
 
-describe('Shuttle Car Automation V9', () => {
+describe('Shuttle Car Automation V10', () => {
   beforeEach(() => {
     window.localStorage.clear();
     window.history.replaceState({ tab: 'dashboard' }, '', '#/dashboard');
@@ -368,8 +368,13 @@ describe('Shuttle Car Automation V9', () => {
     await user.click(screen.getByRole('button', { name: /Save battery$/i }));
     expect(screen.getAllByText('BAT-001').length).toBeGreaterThan(0);
     expect(screen.getByText('ACME · SC-01')).toBeInTheDocument();
-    const saved = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:batteries') || '[]') as Array<{id:string;assignment:string;status:string}>;
-    expect(saved.find(item => item.id === 'BAT-001')).toMatchObject({assignment:'SC-01',status:'Installed'});
+    const saved = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:batteries') || '[]') as Array<{id:string;assignment:string;status:string;movementHistory?:Array<{action:string;toShuttleId:string}>}>;
+    expect(saved.find(item => item.id === 'BAT-001')).toMatchObject({
+      assignment:'SC-01', status:'Installed',
+      movementHistory: expect.arrayContaining([expect.objectContaining({action:'Assigned',toShuttleId:'SC-01'})])
+    });
+    const savedShuttles = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:shuttles') || '[]') as Array<{id:string;installedBattery:string}>;
+    expect(savedShuttles.find(item => item.id === 'SC-01')?.installedBattery).toBe('BAT-001');
   });
 
   it('saves manually entered battery readings without marking them as live telemetry', async () => {
