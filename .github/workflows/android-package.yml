@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: shuttle-android-package-\${{ github.ref }}
+  group: shuttle-android-package-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
