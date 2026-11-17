@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import {
   defaultSettings,
   initialBatteries,
@@ -9,8 +9,8 @@ import {
   initialShuttles,
   users
 } from './data/mockData';
-import Shuttle3DViewer from './components/Shuttle3DViewer';
-import Battery3DViewer from './components/Battery3DViewer';
+const Shuttle3DViewer = lazy(() => import('./components/Shuttle3DViewer'));
+const Battery3DViewer = lazy(() => import('./components/Battery3DViewer'));
 import { getManufacturerReference } from './data/manufacturerReferences';
 import ShiftOperations from './components/ShiftOperations';
 import { archiveBatteryAndDetach, assignBatteryToShuttle, restoreBatteryRecord } from './data/batteryLifecycle';
@@ -926,7 +926,9 @@ function App() {
             <div className="view-tabs">{(['iso','side','front','top'] as ModelView[]).map(v=><button key={v} className={modelView===v?'active':''} onClick={()=>setModelView(v)}>{t[v]}</button>)}</div>
             <div className="model-canvas three-model-canvas">
                <div className="canvas-topline"><span>3D ENGINEERING MODEL: {selected.manufacturer.toUpperCase()} / {selected.id}</span><span>CONCEPTUAL · NOT VENDOR CAD</span></div>
-               <Shuttle3DViewer manufacturer={selected.manufacturer} shuttleId={selected.id} status={selected.status} view={modelView} exploded={exploded} animated={animated} selectedPart={selectedPart} zoom={modelZoom} resetKey={viewResetKey} onSelectPart={setSelectedPart} fallback={<ShuttleModel shuttle={selected} view={modelView} exploded={exploded} animated={animated}/>}/>
+               <Suspense fallback={<div className="viewer-loading" role="status">{language==='ar'?'جارٍ تحميل النموذج الهندسي ثلاثي الأبعاد…':'Loading 3D engineering model…'}</div>}>
+                 <Shuttle3DViewer manufacturer={selected.manufacturer} shuttleId={selected.id} status={selected.status} view={modelView} exploded={exploded} animated={animated} selectedPart={selectedPart} zoom={modelZoom} resetKey={viewResetKey} onSelectPart={setSelectedPart} fallback={<ShuttleModel shuttle={selected} view={modelView} exploded={exploded} animated={animated}/>}/>
+               </Suspense>
                <div className="canvas-bottomline"><span><i className="legend-dot" style={{background:selected.manufacturer==='Cassioli'?'#d28b4b':selected.manufacturer==='Craftsman'?'#45b8d2':'#a58af5'}}/>{selected.manufacturer}</span><span><i className="legend-dot" style={{background:'#75d6ff'}}/>Sensors</span><span><i className="legend-dot" style={{background:'#7bd9a9'}}/>Battery module</span></div>
              </div>
              <div className="model-zoom-control"><label htmlFor="model-zoom">{language==='ar'?'تكبير الرسم':'Drawing zoom'}</label><input id="model-zoom" type="range" min="0.75" max="1.25" step="0.05" value={modelZoom} onChange={event=>setModelZoom(Number(event.target.value))}/><output>{Math.round(modelZoom*100)}%</output></div>
@@ -977,7 +979,9 @@ function App() {
           <div className="surface-card battery-stage">
             {selectedBattery ? <>
               <div className="card-head"><div><span className="eyebrow">BATTERY MODULE / {selectedBattery.id}</span><h3>{t.batteryIllustration}</h3></div><StatusPill status={selectedBattery.status} language={language}/></div>
-              <Battery3DViewer battery={selectedBattery} fallback={<BatteryPack battery={selectedBattery}/>} />
+              <Suspense fallback={<div className="viewer-loading" role="status">{language==='ar'?'جارٍ تحميل رسم البطارية…':'Loading battery assembly…'}</div>}>
+                <Battery3DViewer battery={selectedBattery} fallback={<BatteryPack battery={selectedBattery}/>} />
+              </Suspense>
               <div className="battery-stat-grid">
                 <Detail label={t.charge} value={selectedBattery.soc === null ? t.unknown : selectedBattery.soc + '% (manual / reported)'}/>
                 <Detail label={t.health} value={selectedBattery.soh === null ? t.noData : selectedBattery.soh + '%'}/>
