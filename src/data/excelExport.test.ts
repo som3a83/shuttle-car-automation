@@ -81,4 +81,25 @@ describe('multi-sheet Excel export', () => {
     expect(summary.some(row => row.includes('SHF-1'))).toBe(true);
     expect(movementRows.some(row => row.includes('BAT-01') && row.includes('Assigned'))).toBe(true);
   });
+
+  it('writes formula-like XLSX cell values as quoted text', async () => {
+    const unsafeShuttle = { ...initialShuttles[0], notes: '=HYPERLINK("https://example.invalid","open")' };
+    const sheets = buildRegisterSheets({
+      shuttles: [unsafeShuttle],
+      batteries: [],
+      faults: [],
+      jobs: [],
+      shifts: [],
+      dailyReports: [],
+      notifications: [],
+      connections: []
+    }, 'en');
+    const buffer = await createXlsxBuffer(sheets);
+    const XLSX = await import('xlsx');
+    const workbook = XLSX.read(buffer, { type: 'array' });
+    const notesCell = workbook.Sheets.Shuttles.P2;
+
+    expect(notesCell.v).toBe(`'=HYPERLINK("https://example.invalid","open")`);
+    expect(notesCell.f).toBeUndefined();
+  });
 });
