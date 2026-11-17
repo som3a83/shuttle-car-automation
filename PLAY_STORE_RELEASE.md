@@ -49,7 +49,7 @@ The workflow does not upload to Google Play automatically. Review the artifact a
 
 ## 5. Store listing and policy
 Before submission:
-1. Use this publicly accessible policy URL in Play Console for the current public feature branch: https://github.com/som3a83/shuttle-car-automation/blob/copilot/complete-shuttle-automation-v6/PRIVACY_POLICY.md. After PR #2 is merged, update the Play Console URL to https://github.com/som3a83/shuttle-car-automation/blob/main/PRIVACY_POLICY.md.
+1. Use this publicly accessible policy URL in Play Console for the current public feature branch: https://github.com/som3a83/shuttle-car-automation/blob/main/PRIVACY_POLICY.md. After PR #2 is merged, update the Play Console URL to https://github.com/som3a83/shuttle-car-automation/blob/main/PRIVACY_POLICY.md.
 2. Review the privacy summary shown inside the application.
 3. Prepare store listing text from `STORE_LISTING.md`.
 4. Provide a 512 × 512 PNG icon, 1024 × 500 feature graphic and genuine screenshots of the final application.
