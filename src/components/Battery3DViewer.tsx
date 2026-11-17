@@ -230,7 +230,7 @@ export default function Battery3DViewer({ battery, fallback }: Battery3DViewerPr
           <path d="M860 180 H890 M860 405 H890 M880 180 V405" markerStart="url(#battery-dim-arrow)" markerEnd="url(#battery-dim-arrow)"/>
         </g>
       </svg>
-      <div className="battery-dimension-label battery-dimension-length">6.80 MU · PACK LENGTH</div>
+      <div className="battery-dimension-label battery-dimension-length">REF 680 × 370 mm · L × W</div>
       <div className="battery-dimension-label battery-dimension-width">3.70 MU · PACK WIDTH</div>
       <div className="battery-cad-stamp">ORTHOGRAPHIC / INTERNAL REFERENCE GEOMETRY</div>
     </div>
