@@ -1,3 +1,5 @@
+> **Historical document — V6 foundation report.** This records the initial V6 implementation phase and its then-current limitations. It is not the current application status, build report or release-readiness certificate. For the current 1.0.0 implementation and verified CI results, use [README.md](README.md) and the GitHub Actions runs associated with the exact commit.
+
 # AUTONOMOUS_PROJECT_COMPLETION_REPORT
 
 ## Repository and branch
