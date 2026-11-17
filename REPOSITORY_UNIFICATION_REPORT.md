@@ -12,7 +12,7 @@ Generated from a live GitHub repository snapshot.
 - PR #23 security/storage integration and PR #24 Android emulator CI repair are merged.
 - PR #24 Android run `44073395778` passed end-to-end: APK build, KVM-enabled emulator boot, install, app launch, process verification, screenshot and log evidence upload.
 - CI `44073395899`, CodeQL `44073395755`, Secret Scan `44073395834`, and Dependency Review `44073395776` passed on the PR #24 head before it was merged.
-- Main post-merge CI `44074458927`, CodeQL `44074458926`, and Secret Scan `44074458837` passed. The post-merge main Android run `44074458921` was still running at this report refresh.
+- Main post-merge CI `44074458927`, CodeQL `44074458926`, and Secret Scan `44074458837` passed. The post-merge main Android run `44074458921` also completed successfully on SHA `28eeca047863d39b1126a1e3116640ac791f65f2`, including emulator install/launch and evidence upload.
 - Main has 106 tracked files and 12 directories; no files were removed by PR #23 or PR #24.
 - The `main` ruleset exists but remains Disabled. The ruleset must be activated in GitHub Settings.
 - A Debug APK and emulator evidence are available as Actions artifacts. This is not a signed Play Store AAB.
