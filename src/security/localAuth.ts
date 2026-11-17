@@ -41,6 +41,8 @@ export interface LocalSession {
   role: Role;
   issuedAt: number;
   expiresAt: number;
+  mustChangePassword: boolean;
+  credentialVersion: number;
 }
 
 export interface AuthStorage {
