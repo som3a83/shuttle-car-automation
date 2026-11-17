@@ -112,7 +112,11 @@ jobs:
           disable-animations: true
           script: |
             set -euo pipefail
-            WORKSPACE="${GITHUB_WORKSPACE:?GITHUB_WORKSPACE is required}"
+            WORKSPACE="${PWD:?Repository working directory is required}"
+            if [[ ! -d "$WORKSPACE/android/app/build/outputs" ]]; then
+              echo "::error::Emulator action did not start in the repository workspace: $WORKSPACE"
+              exit 1
+            fi
             APK="$WORKSPACE/android/app/build/outputs/apk/debug/app-debug.apk"
             EVIDENCE="$WORKSPACE/artifacts/android-smoke"
             echo "Emulator script working directory: $PWD"
