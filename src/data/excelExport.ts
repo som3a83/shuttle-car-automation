@@ -1,5 +1,5 @@
 import type {
-  Battery, DailyReportSnapshot, Fault, Language, MaintenanceJob, NotificationItem, ShiftRecord, Shuttle
+  Battery, CommunicationEndpoint, DailyReportSnapshot, Fault, Language, MaintenanceJob, NotificationItem, ShiftRecord, Shuttle
 } from '../types';
 
 export type ExcelCell = string | number | boolean | null | undefined;
@@ -22,6 +22,7 @@ export function buildRegisterSheets(data: {
   shifts: ShiftRecord[];
   dailyReports: DailyReportSnapshot[];
   notifications: NotificationItem[];
+  connections?: CommunicationEndpoint[];
 }, language: Language): WorkbookSheetData[] {
   const h = (en: string, ar: string) => header(language, en, ar);
   const shuttles: ExcelCell[][] = [
@@ -46,13 +47,13 @@ export function buildRegisterSheets(data: {
   ];
   const faults: ExcelCell[][] = [
     ['ID',h('Shuttle','الشاتل'),h('Title','العنوان'),h('Severity','الخطورة'),h('Status','الحالة'),h('Reported at','وقت البلاغ'),
-      h('Description','الوصف'),h('Possible causes','أسباب محتملة'),h('Procedure','إجراء الفحص'),h('Corrective action','الإجراء التصحيحي'),h('Technician','الفني')],
+      h('Description','الوصف'),h('Possible causes','أسباب محتملة'),h('Procedure','إجراء الفحص'),h('Corrective action','الإجراء التصحيحي'),h('Technician','الفني'),h('Archived at','تاريخ الأرشفة')],
     ...data.faults.map(item => [item.id,item.shuttleId,item.title,item.severity,item.status,item.timestamp,item.description,item.probableCauses.join(' | '),
-      item.diagnosticProcedure,item.correctiveAction || '',item.assignedTechnician])
+      item.diagnosticProcedure,item.correctiveAction || '',item.assignedTechnician,item.archivedAt || ''])
   ];
   const maintenance: ExcelCell[][] = [
-    ['ID',h('Shuttle','الشاتل'),h('Work order','أمر العمل'),h('Type','النوع'),h('Status','الحالة'),h('Scheduled date','التاريخ المجدول'),h('Technician','الفني'),h('Notes','ملاحظات')],
-    ...data.jobs.map(item => [item.id,item.shuttleId,item.title,item.type,item.status,item.scheduledDate,item.technician,item.notes])
+    ['ID',h('Shuttle','الشاتل'),h('Work order','أمر العمل'),h('Type','النوع'),h('Status','الحالة'),h('Scheduled date','التاريخ المجدول'),h('Technician','الفني'),h('Notes','ملاحظات'),h('Completion result','نتيجة التنفيذ'),h('Archived at','تاريخ الأرشفة')],
+    ...data.jobs.map(item => [item.id,item.shuttleId,item.title,item.type,item.status,item.scheduledDate,item.technician,item.notes,item.completionNotes || '',item.archivedAt || ''])
   ];
   const shifts: ExcelCell[][] = [
     ['ID',h('Shift','الوردية'),h('Started at','وقت البداية'),h('Ended at','وقت النهاية'),h('Supervisor','المشرف'),h('Operators','المشغلون'),
@@ -68,6 +69,10 @@ export function buildRegisterSheets(data: {
     ...data.dailyReports.map(item => [item.id,item.reportDate,item.generatedAt,item.shuttleCount,item.runningCount,item.readyCount,item.disconnectedCount,
       item.openFaultCount,item.openMaintenanceCount,item.batteryCount,item.faultedBatteryCount,item.verifiedTelemetryCount,item.activeShift?.id || ''])
   ];
+  const connections: ExcelCell[][] = [
+    ['Name',h('Protocol','البروتوكول'),h('Mode','الحالة'),h('Notes','ملاحظات'),h('Archived at','تاريخ الأرشفة')],
+    ...(data.connections || []).map(item => [item.name,item.protocol,item.mode,item.notes,item.archivedAt || ''])
+  ];
   const notifications: ExcelCell[][] = [
     ['ID',h('Title','العنوان'),h('Detail','التفاصيل'),h('Severity','الأهمية'),h('Time','الوقت')],
     ...data.notifications.map(item => [item.id,item.title,item.detail,item.severity,item.time])
@@ -77,7 +82,8 @@ export function buildRegisterSheets(data: {
     { name: 'Batteries', rows: batteries, widths: [16,18,18,16,16,14,12,12,16,14,14,12,16,18,18,22] },
     { name: 'Battery movements', rows: movements, widths: [18,24,16,18,18,52,14] },
     { name: 'Faults', rows: faults, widths: [18,16,28,14,16,24,48,42,42,42,22] },
-    { name: 'Maintenance', rows: maintenance, widths: [18,16,28,16,16,18,22,42] },
+    { name: 'Maintenance', rows: maintenance, widths: [18,16,28,16,16,18,22,42,48,22] },
+    { name: 'Connections', rows: connections, widths: [32,20,18,60,22] },
     { name: 'Shift handovers', rows: shifts, widths: [24,14,24,24,24,32,18,18,20,20,42,52] },
     { name: 'Daily report history', rows: reportHistory, widths: [20,16,24,12,12,12,24,16,18,14,20,20,24] },
     { name: 'Notifications', rows: notifications, widths: [24,28,55,14,24] }

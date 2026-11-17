@@ -2,8 +2,9 @@ import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from './App';
 import { initialShuttles } from './data/mockData';
-import { beforeEach, describe, it, expect } from 'vitest';
+import { beforeEach, describe, it, expect, vi } from 'vitest';
 import '@testing-library/jest-dom/vitest';
+import { DEFAULT_CUSTOMIZATION } from './data/applicationCustomization';
 
 describe('Shuttle Car Automation V10', () => {
   beforeEach(() => {
@@ -16,7 +17,7 @@ describe('Shuttle Car Automation V10', () => {
     expect(screen.getByText(/Total shuttle cars/i)).toBeInTheDocument();
     expect(screen.getByText(/Running shuttles/i)).toBeInTheDocument();
     expect(screen.getByText(/System communication status/i)).toBeInTheDocument();
-    expect(screen.getByText('SHUTTLE OPS · V1.0.0')).toBeInTheDocument();
+    expect(screen.getByText('SHUTTLE CAR AUTOMATION · V1.0.0')).toBeInTheDocument();
   });
 
   it('switches to Arabic and updates interface direction', async () => {
@@ -255,11 +256,15 @@ describe('Shuttle Car Automation V10', () => {
     await user.click(screen.getByRole('button', { name: /Start job/i }));
     expect(screen.getByText('In Progress')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /Complete job/i }));
+    await user.type(screen.getByLabelText(/Completion result \/ work performed/i), 'Inspected rails and documented clearance verification.');
+    await user.click(screen.getByRole('button', { name: /Save result & complete/i }));
     expect(screen.getByText('Completed')).toBeInTheDocument();
+    expect(screen.getByText(/Completion result: Inspected rails and documented clearance verification/i)).toBeInTheDocument();
 
     await user.click(screen.getAllByRole('button', { name: /Notifications/i })[0]);
     expect(screen.getByText('Maintenance work order created')).toBeInTheDocument();
-    expect(screen.getAllByText('Maintenance work order updated')).toHaveLength(2);
+    expect(screen.getByText('Maintenance work order updated')).toBeInTheDocument();
+    expect(screen.getByText('Work order completed with recorded result')).toBeInTheDocument();
   });
 
   it('registers a new fleet unit without fabricating manufacturer identity data', async () => {
@@ -358,6 +363,34 @@ describe('Shuttle Car Automation V10', () => {
     expect(window.localStorage.getItem('shuttle-car-automation-v7:shuttles')).toContain('"archivedAt":null');
   });
 
+  it('blocks shuttle archiving while a linked fault is unresolved', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getAllByRole('button', { name: /Fleet Control Center/i })[0]);
+    await user.click(screen.getByRole('button', { name: /SC-04 Craftsman/i }));
+    await user.click(screen.getByRole('button', { name: /Archive device/i }));
+    await user.click(screen.getByRole('button', { name: /Confirm archive/i }));
+    expect(screen.getByText(/Resolve open fault reports and complete active work orders/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /SC-04 Craftsman/i })).toBeInTheDocument();
+  });
+
+  it('does not restore a shuttle when its manufacturer serial is already used by an active unit', async () => {
+    const shuttles = initialShuttles.map(item => item.id === 'SC-01'
+      ? { ...item, serialNumber: 'SERIAL-DUPLICATE', archivedAt: '2026-11-17T00:00:00.000Z' }
+      : item.id === 'SC-02'
+        ? { ...item, serialNumber: 'SERIAL-DUPLICATE' }
+        : item);
+    window.localStorage.setItem('shuttle-car-automation-v7:shuttles', JSON.stringify(shuttles));
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getAllByRole('button', { name: /Fleet Control Center/i })[0]);
+    await user.click(screen.getByRole('button', { name: /Show archived devices/i }));
+    await user.click(screen.getAllByRole('button', { name: /Restore/i })[0]);
+    expect(screen.getByText(/Cannot restore: this manufacturer serial number belongs to another active shuttle/i)).toBeInTheDocument();
+    const saved = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:shuttles') || '[]') as Array<{id:string;archivedAt?:string|null}>;
+    expect(saved.find(item => item.id === 'SC-01')?.archivedAt).toBeTruthy();
+  });
+
   it('registers and assigns a new battery to an active shuttle', async () => {
     const user = userEvent.setup();
     render(<App />);
@@ -406,6 +439,27 @@ describe('Shuttle Car Automation V10', () => {
     expect(reports[0]).toMatchObject({shuttleCount:5,verifiedTelemetryCount:0});
   });
 
+  it('deletes only the selected daily report snapshot after confirmation', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getAllByRole('button', { name: /Reports Center/i })[0]);
+    await user.click(screen.getByRole('button', { name: /Generate today.s report/i }));
+    expect(screen.getByText(/LATEST SAVED DAILY REPORT/i)).toBeInTheDocument();
+
+    const cancelSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    await user.click(screen.getByRole('button', { name: /^Delete$/i }));
+    cancelSpy.mockRestore();
+    let saved = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:dailyReports') || '[]') as Array<{id:string}>;
+    expect(saved).toHaveLength(1);
+
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    await user.click(screen.getByRole('button', { name: /^Delete$/i }));
+    confirmSpy.mockRestore();
+    saved = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:dailyReports') || '[]') as Array<{id:string}>;
+    expect(saved).toHaveLength(0);
+    expect(screen.queryByText(/LATEST SAVED DAILY REPORT/i)).not.toBeInTheDocument();
+  });
+
   it('provides working in-app back and home navigation controls', async () => {
     const user = userEvent.setup();
     render(<App />);
@@ -417,6 +471,22 @@ describe('Shuttle Car Automation V10', () => {
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Dashboard');
   });
 
+  it('collapses and expands the desktop engineering sidebar and remembers the choice locally', async () => {
+    const user = userEvent.setup();
+    const { container } = render(<App />);
+    const shell = container.querySelector('.app-shell');
+    expect(shell).not.toHaveClass('sidebar-collapsed');
+
+    await user.click(screen.getByRole('button', { name: /Collapse sidebar/i }));
+    expect(shell).toHaveClass('sidebar-collapsed');
+    expect(screen.getByRole('button', { name: /Expand sidebar/i })).toBeInTheDocument();
+    expect(window.localStorage.getItem('shuttle-car-automation-v7:sidebarCollapsed')).toBe('true');
+
+    await user.click(screen.getByRole('button', { name: /Expand sidebar/i }));
+    expect(shell).not.toHaveClass('sidebar-collapsed');
+    expect(window.localStorage.getItem('shuttle-car-automation-v7:sidebarCollapsed')).toBe('false');
+  });
+
   it('opens system settings directly from the fixed workspace controls', async () => {
     const user = userEvent.setup();
     render(<App />);
@@ -426,8 +496,165 @@ describe('Shuttle Car Automation V10', () => {
     expect(screen.getByText(/Privacy & data handling/i)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Read the full privacy policy/i })).toHaveAttribute(
       'href',
-      'https://github.com/som3a83/shuttle-car-automation/blob/copilot/complete-shuttle-automation-v6/PRIVACY_POLICY.md'
+      'https://github.com/som3a83/shuttle-car-automation/blob/main/PRIVACY_POLICY.md'
     );
+  });
+
+
+  it('applies saved navigation labels and dashboard widget visibility to the live application', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    const customization = JSON.parse(JSON.stringify(DEFAULT_CUSTOMIZATION)) as typeof DEFAULT_CUSTOMIZATION;
+    const reportsEntry = customization.navigation.find((item) => item.id === 'reports');
+    const batteryWidget = customization.dashboard.find((item) => item.id === 'battery-status');
+    if (!reportsEntry || !batteryWidget) throw new Error('Expected default customization entries are missing.');
+    reportsEntry.label = 'Service reports';
+    reportsEntry.labelAr = 'تقارير الخدمات';
+    reportsEntry.group = 'CUSTOM OPERATIONS';
+    batteryWidget.visible = false;
+
+    act(() => {
+      window.dispatchEvent(new CustomEvent('shuttle-customization-change', { detail: customization }));
+    });
+
+    const reportsButton = screen.getByRole('button', { name: 'Service reports' });
+    expect(reportsButton).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Battery overview' })).not.toBeInTheDocument();
+    await user.click(reportsButton);
+    expect(window.location.hash).toBe('#/reports');
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Service reports');
+  });
+
+  it('removes disabled modules from navigation without deleting application records', () => {
+    render(<App />);
+    const customization = JSON.parse(JSON.stringify(DEFAULT_CUSTOMIZATION)) as typeof DEFAULT_CUSTOMIZATION;
+    const aiModule = customization.modules.find((item) => item.id === 'ai');
+    if (!aiModule) throw new Error('Expected AI module preference is missing.');
+    aiModule.enabled = false;
+
+    act(() => {
+      window.dispatchEvent(new CustomEvent('shuttle-customization-change', { detail: customization }));
+    });
+
+    expect(screen.queryByRole('button', { name: 'AI Technical Assistant' })).not.toBeInTheDocument();
+    expect(window.localStorage.getItem('shuttle-car-automation-v7:shuttles')).toBeTruthy();
+  });
+
+  it('applies compact sizing to the fleet dashboard widget', () => {
+    const { container } = render(<App />);
+    const customization = JSON.parse(JSON.stringify(DEFAULT_CUSTOMIZATION)) as typeof DEFAULT_CUSTOMIZATION;
+    const fleetWidget = customization.dashboard.find((item) => item.id === 'fleet-status');
+    if (!fleetWidget) throw new Error('Default fleet widget preference is missing.');
+    fleetWidget.size = 'compact';
+
+    act(() => {
+      window.dispatchEvent(new CustomEvent('shuttle-customization-change', { detail: customization }));
+    });
+
+    const renderedWidget = container.querySelector('.dashboard-fleet-widget');
+    expect(renderedWidget).toBeInTheDocument();
+    expect(renderedWidget).not.toHaveClass('dashboard-widget-wide');
+  });
+
+  it('edits, resolves, archives and restores a fault report without deleting corrective action', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getAllByRole('button', { name: /Fault & Diagnostics/i })[0]);
+    await user.type(screen.getByLabelText(/Fault title/i), 'Test bearing inspection');
+    await user.type(screen.getByLabelText(/Observed symptom/i), 'Newly observed vibration during manual inspection');
+    await user.click(screen.getByRole('button', { name: /Register fault/i }));
+
+    const editButtons = screen.getAllByRole('button', { name: /Edit report/i });
+    await user.click(editButtons[0]);
+    const titleInputs = screen.getAllByLabelText(/Fault title/i);
+    await user.clear(titleInputs[0]);
+    await user.type(titleInputs[0], 'Updated bearing inspection');
+    await user.click(screen.getByRole('button', { name: /Save changes/i }));
+    expect(screen.getByText('Updated bearing inspection')).toBeInTheDocument();
+
+    const actionFields = screen.getAllByPlaceholderText(/corrective action/i);
+    await user.type(actionFields[0], 'Inspected bearing and recorded measured clearance; technician verification completed.');
+    await user.click(screen.getAllByRole('button', { name: /Save corrective action/i })[0]);
+    await user.click(screen.getAllByRole('button', { name: /Start investigation/i })[0]);
+    await user.click(screen.getAllByRole('button', { name: /Resolve/i })[0]);
+
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    await user.click(screen.getAllByRole('button', { name: /Archive/i })[0]);
+    confirmSpy.mockRestore();
+
+    expect(screen.queryByText('Updated bearing inspection')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /Show archived faults/i }));
+    expect(screen.getByText(/Updated bearing inspection/)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /Restore/i }));
+    const saved = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:faults') || '[]') as Array<{title:string;archivedAt?:string|null;correctiveAction?:string}>;
+    expect(saved.find(item => item.title === 'Updated bearing inspection')).toMatchObject({
+      archivedAt: null,
+      correctiveAction: 'Inspected bearing and recorded measured clearance; technician verification completed.'
+    });
+  });
+
+  it('edits and archives completed maintenance orders but keeps unfinished orders active', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getAllByRole('button', { name: /Maintenance Management/i })[0]);
+    await user.type(screen.getByLabelText(/Work order title/i), 'Drive assembly inspection');
+    await user.type(screen.getByLabelText(/Scheduled date/i), '2026-11-25');
+    await user.click(screen.getByRole('button', { name: /Save work order/i }));
+
+    await user.click(screen.getByRole('button', { name: /Edit order/i }));
+    const title = screen.getAllByLabelText(/Work order title/i)[0];
+    await user.clear(title);
+    await user.type(title, 'Updated drive inspection');
+    await user.click(screen.getByRole('button', { name: /Save changes/i }));
+    expect(screen.getByText('Updated drive inspection')).toBeInTheDocument();
+
+    await user.click(screen.getAllByRole('button', { name: /Start job/i })[0]);
+    await user.click(screen.getAllByRole('button', { name: /Complete job/i })[0]);
+    await user.type(screen.getByLabelText(/Completion result \/ work performed/i), 'Inspected gearbox mount and verified fastener torque.');
+    await user.click(screen.getByRole('button', { name: /Save result & complete/i }));
+    expect(screen.getByText(/Completion result: Inspected gearbox mount and verified fastener torque/i)).toBeInTheDocument();
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    await user.click(screen.getAllByRole('button', { name: /Archive/i })[0]);
+    confirmSpy.mockRestore();
+
+    expect(screen.queryByText('Updated drive inspection')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /Show archived work orders/i }));
+    expect(screen.getByText(/Updated drive inspection/)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /Restore/i }));
+    const saved = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:maintenance') || '[]') as Array<{title:string;status:string;archivedAt?:string|null}>;
+    expect(saved.find(item => item.title === 'Updated drive inspection')).toMatchObject({ status:'Completed', archivedAt:null });
+  });
+
+  it('manages connection register entries locally without claiming live connectivity', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getAllByRole('button', { name: /Device Connections/i })[0]);
+    await user.type(screen.getByLabelText(/Connection name/i), 'Test vendor gateway');
+    await user.selectOptions(screen.getByLabelText(/^Protocol$/i), 'OPC UA');
+    await user.type(screen.getByLabelText(/Technical notes/i), 'Vendor approved read-only interface reference pending');
+    await user.click(screen.getByRole('button', { name: /Save connection record/i }));
+
+    expect(screen.getByText('Test vendor gateway')).toBeInTheDocument();
+    expect(screen.getAllByText(/Not configured · read-only after commissioning/i).length).toBeGreaterThan(0);
+
+    await user.click(screen.getAllByRole('button', { name: /Edit record/i }).find(button => button.closest('article')?.textContent?.includes('Test vendor gateway'))!);
+    const editName = screen.getAllByLabelText(/Connection name/i).find(input => (input as HTMLInputElement).value === 'Test vendor gateway');
+    expect(editName).toBeTruthy();
+    await user.clear(editName!);
+    await user.type(editName!, 'Approved test gateway');
+    await user.click(screen.getByRole('button', { name: /^Save$/i }));
+    expect(screen.getByText('Approved test gateway')).toBeInTheDocument();
+
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const card = screen.getByText('Approved test gateway').closest('article');
+    await user.click(card!.querySelector('button.btn-danger')!);
+    confirmSpy.mockRestore();
+    await user.click(screen.getByRole('button', { name: /Show archived connection records/i }));
+    expect(screen.getByText('Approved test gateway')).toBeInTheDocument();
+    await user.click(screen.getAllByRole('button', { name: /Restore/i })[0]);
+
+    const saved = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:connections') || '[]') as Array<{name:string;protocol:string;mode:string;archivedAt?:string|null}>;
+    expect(saved.find(item => item.name === 'Approved test gateway')).toMatchObject({ protocol:'OPC UA', mode:'UNKNOWN', archivedAt:null });
   });
 
 });

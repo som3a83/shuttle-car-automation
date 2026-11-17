@@ -112,6 +112,8 @@ export interface Battery {
 
 export interface Fault {
   id: string;
+  /** Soft archive retains the original report and its corrective-action history. */
+  archivedAt?: string | null;
   shuttleId: string;
   title: string;
   severity: FaultSeverity;
@@ -126,6 +128,8 @@ export interface Fault {
 
 export interface MaintenanceJob {
   id: string;
+  /** Soft archive is permitted only after a work order is completed. */
+  archivedAt?: string | null;
   shuttleId: string;
   title: string;
   type: 'Preventive' | 'Corrective';
@@ -133,6 +137,8 @@ export interface MaintenanceJob {
   scheduledDate: string;
   technician: string;
   notes: string;
+  /** Recorded result required by the application completion workflow; optional for legacy backups. */
+  completionNotes?: string;
 }
 
 export interface NotificationItem {
@@ -144,6 +150,8 @@ export interface NotificationItem {
 }
 
 export interface CommunicationEndpoint {
+  /** Soft archive retains endpoint configuration history. */
+  archivedAt?: string | null;
   name: string;
   protocol: 'Modbus TCP' | 'OPC UA' | 'MQTT' | 'REST API' | 'WebSocket' | 'BLE';
   mode: ConnectivityStatus;

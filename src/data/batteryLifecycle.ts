@@ -38,7 +38,7 @@ export function assignBatteryToShuttle(
 ): BatteryAssignmentResult {
   const selected = batteries.find(item => item.id === batteryId && !item.archivedAt);
   if (!selected) return { batteries, shuttles, changed: false, message: 'Battery was not found or is archived.' };
-  if (['Fault', 'Maintenance', 'Charging', 'Discharging'].includes(selected.status)) {
+  if (targetShuttleId && ['Fault', 'Maintenance', 'Charging', 'Discharging'].includes(selected.status)) {
     return { batteries, shuttles, changed: false, message: `Battery in ${selected.status} state cannot be assigned to a shuttle.` };
   }
 
@@ -82,7 +82,11 @@ export function assignBatteryToShuttle(
     ...(selectedBattery.movementHistory || [])
   ];
   selectedBattery.assignment = targetShuttleId || 'Unassigned';
-  selectedBattery.status = targetShuttleId ? 'Installed' : 'Available';
+  selectedBattery.status = targetShuttleId
+    ? 'Installed'
+    : selectedBattery.status === 'Installed'
+      ? 'Available'
+      : selectedBattery.status;
 
   if (currentTargetBatteryId && currentTargetBatteryId !== batteryId) {
     const displacedIndex = nextBatteries.findIndex(item => item.id === currentTargetBatteryId && !item.archivedAt);

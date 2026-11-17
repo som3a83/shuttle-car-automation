@@ -13,11 +13,15 @@ const Shuttle3DViewer = lazy(() => import('./components/Shuttle3DViewer'));
 const Battery3DViewer = lazy(() => import('./components/Battery3DViewer'));
 import { getManufacturerReference } from './data/manufacturerReferences';
 import ShiftOperations from './components/ShiftOperations';
+import { loadCustomization, validateCustomization, type CustomizationConfig } from './data/applicationCustomization';
 import { archiveBatteryAndDetach, assignBatteryToShuttle, restoreBatteryRecord } from './data/batteryLifecycle';
+import { validateOperationalBackup } from './data/backupValidation';
+import { archiveCompletedWorkOrder, archiveFaultRecord, restoreFaultRecord, restoreWorkOrder } from './data/recordLifecycle';
 import { buildDailyReportSheets, buildRegisterSheets, downloadXlsx } from './data/excelExport';
 import type {
   AppSettings,
   Battery,
+  CommunicationEndpoint,
   Fault,
   Language,
   MaintenanceJob,
@@ -52,7 +56,7 @@ const navItems: { id: Tab; en: string; ar: string; icon: string; group: string }
 
 const copy = {
   en: {
-    appName: 'SHUTTLE OPERATIONS', subtitle: 'Industrial control & engineering suite',
+    appName: 'SHUTTLE CAR AUTOMATION', subtitle: 'Industrial control & engineering suite',
     demo: 'DEMO MODE · LOCAL RECORDS', demoText: 'No live equipment connection: no shuttle is connected to live PLC or manufacturer telemetry. Values marked unverified are not machine readings.',
     total: 'Total shuttle cars', running: 'Running shuttles', idle: 'Idle / Ready', faulted: 'Fault records', disconnected: 'Offline / unknown', battery: 'Verified battery SOC',
     fleet: 'Fleet overview', fleetSub: 'Manage equipment identity, operating condition, assignment and service history.',
@@ -288,11 +292,13 @@ function App() {
   const [language, setLanguage] = useState<Language>(() => readLocal('language', 'en'));
   const [theme, setTheme] = useState<Theme>(() => readLocal('theme', 'dark'));
   const [activeTab, setActiveTab] = useState<Tab>(() => tabFromLocation());
+  const [customization, setCustomization] = useState<CustomizationConfig>(() => loadCustomization());
   const [currentUser, setCurrentUser] = useState(users[0]);
   const [shuttles, setShuttles] = useState<Shuttle[]>(() => readLocal('shuttles', initialShuttles));
   const [batteries, setBatteries] = useState<Battery[]>(() => readLocal('batteries', initialBatteries));
   const [faults, setFaults] = useState<Fault[]>(() => readLocal('faults', initialFaults));
   const [jobs, setJobs] = useState<MaintenanceJob[]>(() => readLocal('maintenance', initialMaintenance));
+  const [connections, setConnections] = useState<CommunicationEndpoint[]>(() => readLocal('connections', initialConnections));
   const [notifications, setNotifications] = useState(() => readLocal('notifications', initialNotifications));
   const [settings, setSettings] = useState<AppSettings>(() => readLocal('settings', defaultSettings));
   const [selectedId, setSelectedId] = useState('SC-01');
@@ -306,10 +312,18 @@ function App() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [mobileNav, setMobileNav] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => readLocal('sidebarCollapsed', false));
   const [toast, setToast] = useState('');
   const [newAsset, setNewAsset] = useState({ manufacturer: 'Cassioli', zone: '', model: '', serialNumber: '', hardwareVersion: '', firmwareVersion: '', assignedOperator: '', notes: '' });
   const [editingShuttle, setEditingShuttle] = useState<Shuttle | null>(null);
   const [editingBattery, setEditingBattery] = useState(false);
+  const [editingFaultId, setEditingFaultId] = useState<string | null>(null);
+  const [showArchivedFaults, setShowArchivedFaults] = useState(false);
+  const [editingJobId, setEditingJobId] = useState<string | null>(null);
+  const [completingJobId, setCompletingJobId] = useState<string | null>(null);
+  const [showArchivedJobs, setShowArchivedJobs] = useState(false);
+  const [editingConnectionName, setEditingConnectionName] = useState<string | null>(null);
+  const [showArchivedConnections, setShowArchivedConnections] = useState(false);
   const [pendingShuttleArchive, setPendingShuttleArchive] = useState<string | null>(null);
   const [pendingBatteryArchive, setPendingBatteryArchive] = useState<string | null>(null);
   const [showArchived, setShowArchived] = useState(false);
@@ -318,10 +332,40 @@ function App() {
   const routeStackRef = useRef<Tab[]>([tabFromLocation()]);
 
   const t = copy[language];
+  useEffect(() => {
+    const applyCustomization = (event: Event) => {
+      const detail = (event as CustomEvent<CustomizationConfig>).detail;
+      setCustomization(validateCustomization(detail));
+    };
+    window.addEventListener('shuttle-customization-change', applyCustomization);
+    return () => window.removeEventListener('shuttle-customization-change', applyCustomization);
+  }, []);
+
+  const visibleNavigation = useMemo(() => customization.navigation
+    .filter((entry) => entry.visible)
+    .filter((entry) => {
+      const module = customization.modules.find((item) => item.id === entry.route);
+      return module !== undefined && module.enabled && !module.hiddenForRoles.includes(currentUser.role);
+    })
+    .flatMap((entry) => {
+      const base = navItems.find((item) => item.id === entry.route);
+      return base ? [{ ...base, en: entry.label, ar: entry.labelAr || base.ar, group: entry.group, menuId: entry.id, order: entry.order }] : [];
+    })
+    .sort((a, b) => a.order - b.order), [customization, currentUser.role]);
+
+  const dashboardWidgets = customization.dashboard
+    .filter((widget) => widget.visible)
+    .sort((a, b) => a.order - b.order);
   const activeShuttles = shuttles.filter(s => !s.archivedAt);
   const archivedShuttles = shuttles.filter(s => Boolean(s.archivedAt));
   const activeBatteries = batteries.filter(b => !b.archivedAt);
   const archivedBatteries = batteries.filter(b => Boolean(b.archivedAt));
+  const activeFaults = faults.filter(f => !f.archivedAt);
+  const archivedFaults = faults.filter(f => Boolean(f.archivedAt));
+  const activeJobs = jobs.filter(j => !j.archivedAt);
+  const archivedJobs = jobs.filter(j => Boolean(j.archivedAt));
+  const activeConnections = connections.filter(c => !c.archivedAt);
+  const archivedConnections = connections.filter(c => Boolean(c.archivedAt));
   const selected = activeShuttles.find(s => s.id === selectedId) || activeShuttles[0] || null;
   const selectedBattery = activeBatteries.find(b => b.id === selectedBatteryId) || activeBatteries[0] || null;
   const selectedManufacturerReference = selected ? getManufacturerReference(selected.manufacturer) : null;
@@ -332,15 +376,15 @@ function App() {
   }), [activeShuttles, search, statusFilter]);
 
   useEffect(() => {
-    const values: Record<string, unknown> = { language, theme, shuttles, batteries, faults, maintenance: jobs, notifications, settings, dailyReports, shifts };
+    const values: Record<string, unknown> = { language, theme, sidebarCollapsed, shuttles, batteries, faults, maintenance: jobs, connections, notifications, settings, dailyReports, shifts };
     try { Object.entries(values).forEach(([key, value]) => localStorage.setItem(PREFIX + key, JSON.stringify(value))); } catch { /* local storage is optional */ }
-  }, [language, theme, shuttles, batteries, faults, jobs, notifications, settings, dailyReports, shifts]);
+  }, [language, theme, sidebarCollapsed, shuttles, batteries, faults, jobs, connections, notifications, settings, dailyReports, shifts]);
 
   const metrics = {
     total: activeShuttles.length,
     running: activeShuttles.filter(s => s.status === 'Running').length,
     idle: activeShuttles.filter(s => s.status === 'Idle' || s.status === 'Ready').length,
-    faulted: faults.filter(f => f.status !== 'Resolved').length,
+    faulted: activeFaults.filter(f => f.status !== 'Resolved').length,
     disconnected: activeShuttles.filter(s => s.connectivity !== 'REAL').length,
     verifiedSoc: activeBatteries.filter(b => b.connectionMode === 'REAL' && b.soc !== null).length
   };
@@ -366,7 +410,7 @@ function App() {
 
   useEffect(() => {
     const page = navItems.find((item) => item.id === activeTab);
-    document.title = page ? `${page.en} · ShuttleOps` : 'ShuttleOps';
+    document.title = page ? `${page.en} · Shuttle Car Automation` : 'Shuttle Car Automation';
     document.documentElement.scrollTop = 0;
     document.body.scrollTop = 0;
   }, [activeTab]);
@@ -434,6 +478,11 @@ function App() {
   };
   const changeFaultStatus = (id: string, status: Fault['status']) => {
     const current = faults.find(item => item.id === id);
+    if (!current) return;
+    if (status === 'Resolved' && !current.correctiveAction?.trim()) {
+      showToast(language === 'ar' ? 'لا يمكن حل العطل دون توثيق الإجراء التصحيحي' : 'A corrective action must be documented before this fault can be resolved.');
+      return;
+    }
     setFaults(prev => prev.map(item => item.id === id ? { ...item, status } : item));
     if (current && current.status !== status) {
       pushNotification(
@@ -457,6 +506,13 @@ function App() {
 
   const addShuttle = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const requestedSerial = newAsset.serialNumber.trim().toLocaleLowerCase();
+    const duplicateSerial = requestedSerial && requestedSerial !== 'not recorded' &&
+      shuttles.some((item) => !item.archivedAt && item.serialNumber.trim().toLocaleLowerCase() === requestedSerial);
+    if (duplicateSerial) {
+      showToast(language === 'ar' ? 'الرقم المسلسل مسجل بالفعل لجهاز نشط' : 'This manufacturer serial number is already registered to an active shuttle.');
+      return;
+    }
     const id = 'SC-' + String(Math.max(0, ...shuttles.map(s => Number(s.id.replace('SC-', '')) || 0)) + 1).padStart(2, '0');
     const record: Shuttle = {
       id, manufacturer: newAsset.manufacturer.trim() || 'Other', model: newAsset.model.trim() || 'Not recorded',
@@ -473,6 +529,23 @@ function App() {
   };
 
   const archiveShuttle = (id: string) => {
+    const unit = shuttles.find(item => item.id === id);
+    const hasLinkedBattery = batteries.some(item => !item.archivedAt && item.assignment === id) ||
+      Boolean(unit?.installedBattery && unit.installedBattery !== 'Not recorded');
+    if (hasLinkedBattery) {
+      showToast(language === 'ar'
+        ? 'افصل البطارية من سجل الجهاز أولًا قبل أرشفة الشاتل'
+        : 'Remove or reassign the registered battery before archiving this shuttle.');
+      return;
+    }
+    const hasOpenFault = activeFaults.some(item => item.shuttleId === id && item.status !== 'Resolved');
+    const hasOpenWork = activeJobs.some(item => item.shuttleId === id && item.status !== 'Completed');
+    if (hasOpenFault || hasOpenWork) {
+      showToast(language === 'ar'
+        ? 'أغلق الأعطال المفتوحة وأكمل أوامر الصيانة قبل أرشفة الجهاز'
+        : 'Resolve open fault reports and complete active work orders before archiving this shuttle.');
+      return;
+    }
     const archivedAt = new Date().toISOString();
     setShuttles(prev => prev.map(item => item.id === id ? { ...item, archivedAt } : item));
     const next = activeShuttles.find(item => item.id !== id);
@@ -483,6 +556,15 @@ function App() {
   };
 
   const restoreShuttle = (id: string) => {
+    const archived = shuttles.find(item => item.id === id && item.archivedAt);
+    if (!archived) return;
+    const serial = archived.serialNumber.trim().toLocaleLowerCase();
+    const duplicateSerial = serial && serial !== 'not recorded' &&
+      shuttles.some(item => item.id !== id && !item.archivedAt && item.serialNumber.trim().toLocaleLowerCase() === serial);
+    if (duplicateSerial) {
+      showToast(language === 'ar' ? 'لا يمكن الاستعادة: الرقم المسلسل مستخدم لجهاز نشط آخر' : 'Cannot restore: this manufacturer serial number belongs to another active shuttle.');
+      return;
+    }
     setShuttles(prev => prev.map(item => item.id === id ? { ...item, archivedAt: null } : item));
     setSelectedId(id);
     pushNotification(language === 'ar' ? 'تم استعادة جهاز' : 'Shuttle restored', id);
@@ -491,10 +573,17 @@ function App() {
   const saveShuttleEdit = (event: React.FormEvent<HTMLFormElement>, id: string) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
+    const nextSerial = String(form.get('serialNumber') || 'Not recorded').trim() || 'Not recorded';
+    const duplicateSerial = nextSerial.toLocaleLowerCase() !== 'not recorded' &&
+      shuttles.some((item) => item.id !== id && !item.archivedAt && item.serialNumber.trim().toLocaleLowerCase() === nextSerial.toLocaleLowerCase());
+    if (duplicateSerial) {
+      showToast(language === 'ar' ? 'الرقم المسلسل مستخدم بالفعل لجهاز آخر' : 'This manufacturer serial number is already assigned to another active shuttle.');
+      return;
+    }
     const patch: Partial<Shuttle> = {
       manufacturer: String(form.get('manufacturer') || 'Other').trim(),
       model: String(form.get('model') || 'Not recorded').trim() || 'Not recorded',
-      serialNumber: String(form.get('serialNumber') || 'Not recorded').trim() || 'Not recorded',
+      serialNumber: nextSerial,
       hardwareVersion: String(form.get('hardwareVersion') || 'Not recorded').trim() || 'Not recorded',
       firmwareVersion: String(form.get('firmwareVersion') || 'Not recorded').trim() || 'Not recorded',
       warehouseZone: String(form.get('zone') || 'Not recorded').trim() || 'Not recorded',
@@ -605,8 +694,8 @@ function App() {
       runningCount: activeShuttles.filter(item => item.status === 'Running').length,
       readyCount: activeShuttles.filter(item => item.status === 'Ready').length,
       disconnectedCount: activeShuttles.filter(item => item.connectivity !== 'REAL').length,
-      openFaultCount: faults.filter(item => item.status !== 'Resolved').length,
-      openMaintenanceCount: jobs.filter(item => item.status !== 'Completed').length,
+      openFaultCount: activeFaults.filter(item => item.status !== 'Resolved').length,
+      openMaintenanceCount: activeJobs.filter(item => item.status !== 'Completed').length,
       batteryCount: activeBatteries.length,
       faultedBatteryCount: activeBatteries.filter(item => item.status === 'Fault').length,
       verifiedTelemetryCount: activeShuttles.filter(item => item.connectivity === 'REAL').length + activeBatteries.filter(item => item.connectionMode === 'REAL').length,
@@ -619,9 +708,21 @@ function App() {
     showToast(language === 'ar' ? 'تم حفظ التقرير اليومي' : 'Daily report saved locally');
   };
 
+  const deleteDailyReport = (id: string) => {
+    const report = dailyReports.find(item => item.id === id);
+    if (!report) return;
+    const confirmed = window.confirm(language === 'ar'
+      ? 'حذف لقطة التقرير المحلية نهائيًا؟ لا يمكن استعادتها بعد الحذف.'
+      : 'Permanently delete this local report snapshot? This action cannot be undone.');
+    if (!confirmed) return;
+    setDailyReports(prev => prev.filter(item => item.id !== id));
+    pushNotification(language === 'ar' ? 'تم حذف لقطة تقرير' : 'Report snapshot deleted', id, 'warning');
+    showToast(language === 'ar' ? 'تم حذف التقرير المحلي' : 'Local report snapshot deleted');
+  };
+
   const downloadDailyReport = (report: DailyReportSnapshot) => {
     const rows: Array<Array<string | number>> = [
-      ['SHUTTLE OPERATIONS · DAILY DEVICE STATUS', report.reportDate],
+      ['SHUTTLE CAR AUTOMATION · DAILY DEVICE STATUS', report.reportDate],
       ['Generated at', report.generatedAt],
       ['Active shuttle units', report.shuttleCount],
       ['Running', report.runningCount],
@@ -718,6 +819,170 @@ function App() {
     event.currentTarget.reset(); showToast(t.done);
   };
 
+  const saveFaultEdit = (event: React.FormEvent<HTMLFormElement>, id: string) => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const title = String(form.get('title') || '').trim();
+    const description = String(form.get('description') || '').trim();
+    if (!title || !description) {
+      showToast(language === 'ar' ? 'العنوان والوصف مطلوبان' : 'Fault title and description are required.');
+      return;
+    }
+    setFaults(prev => prev.map(item => item.id === id ? {
+      ...item,
+      title,
+      severity: String(form.get('severity') || item.severity) as Fault['severity'],
+      description,
+      probableCauses: String(form.get('cause') || '').split(/[\\n,،]+/).map(value => value.trim()).filter(Boolean),
+      diagnosticProcedure: String(form.get('procedure') || '').trim() || 'Field verification required',
+      assignedTechnician: String(form.get('technician') || '').trim() || 'Not assigned'
+    } : item));
+    setEditingFaultId(null);
+    pushNotification(language === 'ar' ? 'تم تعديل بلاغ العطل' : 'Fault report updated', id, 'info');
+    showToast(language === 'ar' ? 'تم حفظ التعديلات' : 'Fault report changes saved');
+  };
+
+  const archiveFault = (id: string) => {
+    const result = archiveFaultRecord(faults, id);
+    if (!result.changed) {
+      showToast(language === 'ar' ? 'لا يمكن أرشفة البلاغ قبل إغلاقه' : (result.message || 'Fault record cannot be archived.'));
+      return;
+    }
+    setFaults(result.records);
+    setEditingFaultId(null);
+    pushNotification(language === 'ar' ? 'تمت أرشفة بلاغ عطل' : 'Fault report archived', id, 'warning');
+    showToast(language === 'ar' ? 'تمت الأرشفة مع الاحتفاظ بسجل البلاغ' : 'Fault archived; report history retained');
+  };
+
+  const restoreFault = (id: string) => {
+    const result = restoreFaultRecord(faults, id);
+    if (!result.changed) return;
+    setFaults(result.records);
+    pushNotification(language === 'ar' ? 'تمت استعادة بلاغ عطل' : 'Fault report restored', id);
+  };
+
+  const completeJob = (event: React.FormEvent<HTMLFormElement>, id: string) => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const completionNotes = String(form.get('completionNotes') || '').trim();
+    if (!completionNotes) {
+      showToast(language === 'ar' ? 'سجل نتيجة التنفيذ قبل إتمام أمر الصيانة' : 'Record the work performed and result before completing this work order.');
+      return;
+    }
+    const current = jobs.find(item => item.id === id && !item.archivedAt);
+    if (!current || current.status === 'Completed') return;
+    setJobs(prev => prev.map(item => item.id === id ? {
+      ...item,
+      status: 'Completed',
+      completionNotes
+    } : item));
+    setCompletingJobId(null);
+    if (settings.maintenanceReminders) {
+      pushNotification(
+        language === 'ar' ? 'تم إكمال أمر الصيانة وتوثيق النتيجة' : 'Work order completed with recorded result',
+        id + ' · ' + current.title,
+        'info'
+      );
+    }
+    showToast(language === 'ar' ? 'تم إتمام أمر الصيانة وحفظ النتيجة' : 'Work order completed; result saved');
+  };
+
+  const saveJobEdit = (event: React.FormEvent<HTMLFormElement>, id: string) => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const title = String(form.get('title') || '').trim();
+    const scheduledDate = String(form.get('date') || '').trim();
+    if (!title || !scheduledDate) {
+      showToast(language === 'ar' ? 'عنوان أمر الصيانة والتاريخ مطلوبان' : 'Work-order title and scheduled date are required.');
+      return;
+    }
+    setJobs(prev => prev.map(item => item.id === id ? {
+      ...item,
+      title,
+      type: String(form.get('type') || item.type) as MaintenanceJob['type'],
+      scheduledDate,
+      technician: String(form.get('technician') || '').trim() || 'Not assigned',
+      notes: String(form.get('notes') || '').trim()
+    } : item));
+    setEditingJobId(null);
+    pushNotification(language === 'ar' ? 'تم تعديل أمر الصيانة' : 'Work order updated', id);
+    showToast(language === 'ar' ? 'تم حفظ أمر الصيانة' : 'Work order changes saved');
+  };
+
+  const archiveJob = (id: string) => {
+    const result = archiveCompletedWorkOrder(jobs, id);
+    if (!result.changed) {
+      showToast(language === 'ar' ? 'لا يمكن أرشفة أمر صيانة غير مكتمل' : (result.message || 'Only completed work orders can be archived.'));
+      return;
+    }
+    setJobs(result.records);
+    setEditingJobId(null);
+    pushNotification(language === 'ar' ? 'تمت أرشفة أمر صيانة مكتمل' : 'Completed work order archived', id);
+  };
+
+  const restoreJob = (id: string) => {
+    const result = restoreWorkOrder(jobs, id);
+    if (!result.changed) return;
+    setJobs(result.records);
+    pushNotification(language === 'ar' ? 'تمت استعادة أمر صيانة' : 'Work order restored', id);
+  };
+
+  const addConnection = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const name = String(form.get('name') || '').trim();
+    if (!name) return;
+    if (connections.some(item => item.name.trim().toLocaleLowerCase() === name.toLocaleLowerCase())) {
+      showToast(language === 'ar' ? 'اسم نقطة الاتصال موجود بالفعل' : 'A connection with this name already exists.');
+      return;
+    }
+    const endpoint: CommunicationEndpoint = {
+      name,
+      protocol: String(form.get('protocol') || 'REST API') as CommunicationEndpoint['protocol'],
+      mode: 'UNKNOWN',
+      notes: String(form.get('notes') || '').trim() || 'Not configured. Approved vendor interface and read-only gateway details are required.'
+    };
+    setConnections(prev => [endpoint, ...prev]);
+    event.currentTarget.reset();
+    pushNotification(language === 'ar' ? 'تمت إضافة سجل نقطة اتصال' : 'Connection register entry added', endpoint.name + ' · ' + endpoint.protocol);
+    showToast(language === 'ar' ? 'تم حفظ سجل الاتصال المحلي' : 'Local connection record saved');
+  };
+
+  const saveConnectionEdit = (event: React.FormEvent<HTMLFormElement>, previousName: string) => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const name = String(form.get('name') || '').trim();
+    if (!name) {
+      showToast(language === 'ar' ? 'اسم نقطة الاتصال مطلوب' : 'Connection name is required.');
+      return;
+    }
+    const duplicate = connections.some(item =>
+      item.name !== previousName && item.name.trim().toLocaleLowerCase() === name.toLocaleLowerCase()
+    );
+    if (duplicate) {
+      showToast(language === 'ar' ? 'اسم نقطة الاتصال مستخدم بالفعل' : 'A connection with this name already exists.');
+      return;
+    }
+    setConnections(prev => prev.map(item => item.name === previousName ? {
+      ...item,
+      name,
+      protocol: String(form.get('protocol') || item.protocol) as CommunicationEndpoint['protocol'],
+      notes: String(form.get('notes') || '').trim(),
+      mode: 'UNKNOWN'
+    } : item));
+    setEditingConnectionName(null);
+    showToast(language === 'ar' ? 'تم حفظ بيانات نقطة الاتصال' : 'Connection record updated');
+  };
+
+  const archiveConnection = (name: string) => {
+    setConnections(prev => prev.map(item => item.name === name ? { ...item, archivedAt: new Date().toISOString() } : item));
+    setEditingConnectionName(null);
+  };
+
+  const restoreConnection = (name: string) => {
+    setConnections(prev => prev.map(item => item.name === name ? { ...item, archivedAt: null } : item));
+  };
+
   const statusText = (status: ShuttleStatus) => {
     const key: Record<ShuttleStatus, string> = { Ready: 'statusReady', Running: 'statusRunning', Idle: 'statusIdle', Charging: 'statusCharging', Maintenance: 'statusMaintenance', Fault: 'statusFault', Disconnected: 'statusDisconnected', Unknown: 'statusUnknown' };
     return t[key[status] as keyof typeof copy.en];
@@ -728,14 +993,15 @@ function App() {
       ...shuttles.map(s => ['Shuttle',s.id,s.manufacturer,s.status,s.connectivity,s.notes]),
       ...batteries.map(b => ['Battery',b.id,b.manufacturer,b.status,b.connectionMode,b.notes]),
       ...faults.map(f => ['Fault',f.id,f.shuttleId,f.status,f.severity,f.description]),
-      ...jobs.map(j => ['Maintenance',j.id,j.shuttleId,j.status,j.type,j.notes])];
+      ...jobs.map(j => ['Maintenance',j.id,j.shuttleId,j.status,j.type,j.notes]),
+      ...connections.map(endpoint => ['Connection',endpoint.name,endpoint.protocol,endpoint.mode,'Local register only',endpoint.notes])];
     const csv = rows.map(row => row.map(value => '"' + String(value ?? '').replace(/"/g,'""') + '"').join(',')).join('\r\n');
     const url = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }));
     const link = document.createElement('a'); link.href = url; link.download = 'shuttle-register.csv'; link.click(); URL.revokeObjectURL(url);
   };
   const exportFullRegisterXlsx = async () => {
     try {
-      const sheets = buildRegisterSheets({ shuttles, batteries, faults, jobs, shifts, dailyReports, notifications }, language);
+      const sheets = buildRegisterSheets({ shuttles, batteries, faults, jobs, connections, shifts, dailyReports, notifications }, language);
       await downloadXlsx(sheets, 'shuttle-operations-register.xlsx');
       showToast(language === 'ar' ? 'تم تصدير سجل التشغيل بصيغة Excel' : 'Operational register exported as Excel');
     } catch {
@@ -752,7 +1018,7 @@ function App() {
   };
 
   const exportBackup = () => {
-    const data = { schemaVersion: 10, exportedAt: new Date().toISOString(), warning: 'Local demo/record data only. Not a live PLC telemetry export.', shuttles, batteries, faults, jobs, notifications, settings, dailyReports, shifts };
+    const data = { schemaVersion: 11, exportedAt: new Date().toISOString(), warning: 'Local demo/record data only. Not a live PLC telemetry export.', shuttles, batteries, faults, jobs, connections, notifications, settings, dailyReports, shifts };
     const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
     const link = document.createElement('a'); link.href = url; link.download = 'shuttle-local-backup.json'; link.click(); URL.revokeObjectURL(url);
   };
@@ -763,23 +1029,28 @@ function App() {
     const reader = new FileReader();
     reader.onload = () => {
       try {
-        const data = JSON.parse(String(reader.result)) as Record<string, unknown>;
-        if (!Array.isArray(data.shuttles) || !Array.isArray(data.batteries) || !Array.isArray(data.faults) || !Array.isArray(data.jobs)) {
-          throw new Error('Backup structure is incomplete');
+        const parsed: unknown = JSON.parse(String(reader.result));
+        const validation = validateOperationalBackup(parsed);
+        if (!validation.ok) {
+          showToast(language === 'ar' ? 'رفض استيراد النسخة الاحتياطية: بنية البيانات غير سليمة' : `Backup rejected: ${validation.error}`);
+          event.target.value = '';
+          return;
         }
-        setShuttles(data.shuttles as Shuttle[]);
-        setBatteries(data.batteries as Battery[]);
-        setFaults(data.faults as Fault[]);
-        setJobs(data.jobs as MaintenanceJob[]);
-        setNotifications(Array.isArray(data.notifications) ? data.notifications as NotificationItem[] : []);
-        setDailyReports(Array.isArray(data.dailyReports) ? data.dailyReports as DailyReportSnapshot[] : []);
-        setShifts(Array.isArray(data.shifts) ? data.shifts as ShiftRecord[] : []);
-        if (data.settings && typeof data.settings === 'object') setSettings(data.settings as AppSettings);
-        setSelectedId((data.shuttles as Shuttle[]).find(item => !item.archivedAt)?.id || '');
-        setSelectedBatteryId((data.batteries as Battery[]).find(item => !item.archivedAt)?.id || '');
-        showToast(language === 'ar' ? 'تم استيراد النسخة الاحتياطية' : 'Backup restored');
+        const data = validation.data;
+        setShuttles(data.shuttles);
+        setBatteries(data.batteries);
+        setFaults(data.faults);
+        setJobs(data.jobs);
+        setConnections(data.connections.length ? data.connections : initialConnections);
+        setNotifications(data.notifications);
+        setDailyReports(data.dailyReports);
+        setShifts(data.shifts);
+        if (data.settings) setSettings(data.settings);
+        setSelectedId(data.shuttles.find(item => !item.archivedAt)?.id || '');
+        setSelectedBatteryId(data.batteries.find(item => !item.archivedAt)?.id || '');
+        showToast(language === 'ar' ? 'تم التحقق من النسخة الاحتياطية واستيرادها' : 'Backup validated and restored');
       } catch {
-        showToast(language === 'ar' ? 'ملف النسخة الاحتياطية غير صالح' : 'Backup file is invalid');
+        showToast(language === 'ar' ? 'ملف النسخة الاحتياطية غير صالح أو تالف' : 'Backup file is invalid or corrupted');
       }
       event.target.value = '';
     };
@@ -792,6 +1063,7 @@ function App() {
     setBatteries(initialBatteries);
     setFaults(initialFaults);
     setJobs(initialMaintenance);
+    setConnections(initialConnections);
     setNotifications(initialNotifications);
     setDailyReports([]);
     setShifts([]);
@@ -801,19 +1073,21 @@ function App() {
   };
 
   const header = navItems.find(n => n.id === activeTab);
+  const headerPreference = visibleNavigation.find(item => item.id === activeTab);
   const statusOptions: ShuttleStatus[] = ['Ready','Running','Idle','Charging','Maintenance','Fault','Disconnected','Unknown'];
 
-  return <div className={'app-shell ' + theme} dir={language === 'ar' ? 'rtl' : 'ltr'}>
+  return <div className={'app-shell ' + theme + (sidebarCollapsed ? ' sidebar-collapsed' : '')} dir={language === 'ar' ? 'rtl' : 'ltr'}>
     <aside className={'sidebar ' + (mobileNav ? 'mobile-open' : '')}>
       <div className="brand-block">
         <div className="brand-symbol"><span/><span/><span/></div>
-        <div className="brand-copy"><strong>SHUTTLE<span>OPS</span></strong><small>ENGINEERING PLATFORM</small></div>
+        <div className="brand-copy"><strong>SHUTTLE CAR</strong><small>AUTOMATION · ENGINEERING PLATFORM</small></div>
+        <button className="sidebar-collapse" type="button" aria-label={sidebarCollapsed ? (language === 'ar' ? 'توسيع القائمة الجانبية' : 'Expand sidebar') : (language === 'ar' ? 'طي القائمة الجانبية' : 'Collapse sidebar')} title={sidebarCollapsed ? (language === 'ar' ? 'توسيع القائمة الجانبية' : 'Expand sidebar') : (language === 'ar' ? 'طي القائمة الجانبية' : 'Collapse sidebar')} aria-pressed={sidebarCollapsed} onClick={() => setSidebarCollapsed(value => !value)}><Icon name="chevron" size={15}/></button>
         <button className="mobile-close" onClick={() => setMobileNav(false)} aria-label="Close navigation">×</button>
       </div>
       <div className="sidebar-caption">{t.appName}</div>
-      {['OPERATIONS','ENGINEERING','SYSTEM','ADMIN'].map(group => <div className="nav-group" key={group}>
-        <div className="nav-group-title">{language === 'ar' ? ({OPERATIONS:'التشغيل',ENGINEERING:'الهندسة',SYSTEM:'النظام',ADMIN:'الإدارة'} as Record<string,string>)[group] : group}</div>
-        {navItems.filter(item => item.group === group).map(item => <button key={item.id} type="button" title={language === 'ar' ? item.ar : item.en} aria-current={activeTab === item.id ? 'page' : undefined} className={'nav-button ' + (activeTab === item.id ? 'active' : '')} onClick={() => go(item.id)}>
+      {Array.from(new Set(visibleNavigation.map((item) => item.group))).map(group => <div className="nav-group" key={group}>
+        <div className="nav-group-title">{language === 'ar' ? ({OPERATIONS:'التشغيل',ENGINEERING:'الهندسة',SYSTEM:'النظام',ADMIN:'الإدارة'} as Record<string,string>)[group] || group : group}</div>
+        {visibleNavigation.filter(item => item.group === group).map(item => <button key={item.menuId} type="button" title={language === 'ar' ? item.ar : item.en} aria-current={activeTab === item.id ? 'page' : undefined} className={'nav-button ' + (activeTab === item.id ? 'active' : '')} onClick={() => go(item.id)}>
           <Icon name={item.icon}/><span>{language === 'ar' ? item.ar : item.en}</span>{activeTab === item.id && <i className="nav-active-mark"/>}
         </button>)}
       </div>)}
@@ -822,7 +1096,7 @@ function App() {
 
     <main className="workspace">
       <header className="topbar">
-        <div className="topbar-heading"><button className="mobile-menu" onClick={() => setMobileNav(true)} aria-label="Open navigation"><Icon name="grid" size={20}/></button><div className="breadcrumb">SHUTTLE OPS <span>/</span> {language === 'ar' ? header?.ar : header?.en}</div><h1>{language === 'ar' ? header?.ar : header?.en}</h1></div>
+        <div className="topbar-heading"><button className="mobile-menu" onClick={() => setMobileNav(true)} aria-label="Open navigation"><Icon name="grid" size={20}/></button><div className="breadcrumb">SHUTTLE CAR AUTOMATION <span>/</span> {language === 'ar' ? (headerPreference?.ar || header?.ar) : (headerPreference?.en || header?.en)}</div><h1>{language === 'ar' ? (headerPreference?.ar || header?.ar) : (headerPreference?.en || header?.en)}</h1></div>
         <div className="topbar-actions">
           <button className="topbar-route-button" type="button" onClick={goBack} disabled={!canGoBack} aria-label={language === 'ar' ? 'رجوع' : 'Go back'} title={language === 'ar' ? 'رجوع' : 'Go back'}><Icon name="chevron" size={17}/></button>
           <button className="topbar-route-button" type="button" onClick={() => go('dashboard')} aria-label={language === 'ar' ? 'الرئيسية' : 'Home'} title={language === 'ar' ? 'الرئيسية' : 'Home'}><Icon name="grid" size={17}/></button>
@@ -834,7 +1108,7 @@ function App() {
       </header>
 
       <nav className="mobile-nav" aria-label={language === 'ar' ? 'التنقل السريع' : 'Quick navigation'}>
-        {navItems.slice(0, 4).map((item) => <button key={item.id} type="button" className={activeTab === item.id ? 'active' : ''} aria-current={activeTab === item.id ? 'page' : undefined} onClick={() => go(item.id)}><Icon name={item.icon} size={16}/><span>{language === 'ar' ? item.ar : item.en}</span></button>)}
+        {visibleNavigation.slice(0, 4).map((item) => <button key={item.menuId} type="button" className={activeTab === item.id ? 'active' : ''} aria-current={activeTab === item.id ? 'page' : undefined} onClick={() => go(item.id)}><Icon name={item.icon} size={16}/><span>{language === 'ar' ? item.ar : item.en}</span></button>)}
         <button type="button" onClick={() => setMobileNav(true)} aria-expanded={mobileNav}><Icon name="grid" size={16}/><span>{language === 'ar' ? 'المزيد' : 'More'}</span></button>
       </nav>
 
@@ -846,6 +1120,8 @@ function App() {
           <div className="hero-machine"><div className="machine-orbit orbit-one"/><div className="machine-orbit orbit-two"/><div className="machine-label label-top">SHUTTLE / ASRS</div><ShuttleModel shuttle={selected || initialShuttles[0]} view="iso" exploded={false} animated={animated}/><div className="machine-label label-bottom">{selected?.manufacturer || 'CASSIOLI'} · {selected?.id || 'SC-01'}</div></div>
         </div>
         <div className="section-heading"><div><span className="eyebrow">FLEET TELEMETRY / LOCAL RECORDS</span><h2>{language === 'ar' ? 'مؤشرات الأسطول' : 'Fleet at a glance'}</h2></div><button className="text-button" onClick={() => go('fleet')}>{t.viewRegister}<Icon name="chevron" size={15}/></button></div>
+        <div className="dashboard-composition">
+        {dashboardWidgets.some((widget) => widget.id === 'fleet-status') && <section className={`dashboard-fleet-widget ${dashboardWidgets.find((widget) => widget.id === 'fleet-status')?.size === 'wide' ? 'dashboard-widget-wide' : ''}`} style={{ order: dashboardWidgets.find((widget) => widget.id === 'fleet-status')?.order ?? 0 }}>
         <div className="metric-grid">
           <Metric icon="truck" label={t.total} value={metrics.total} accent="blue" detail={language === 'ar' ? 'إجمالي السجلات' : 'Registered assets'}/>
           <Metric icon="grid" label={t.running} value={metrics.running} accent="green" detail={language === 'ar' ? 'لا توجد قراءة تشغيل مؤكدة' : 'No verified running signal'}/>
@@ -864,6 +1140,28 @@ function App() {
             <div className="system-health-graphic"><div className="hub-core"><Icon name="network" size={28}/><strong>PLC</strong><small>NOT LINKED</small></div><div className="hub-node node-one">MODBUS</div><div className="hub-node node-two">OPC UA</div><div className="hub-node node-three">MQTT</div><div className="hub-node node-four">REST</div><svg viewBox="0 0 300 180"><path d="M150 90 40 35M150 90 260 35M150 90 40 145M150 90 260 145" stroke="currentColor" strokeDasharray="5 7" opacity=".4" fill="none"/></svg></div>
             <p className="muted-text">{t.connectionSub}</p><button className="btn-secondary full" onClick={() => go('connections')}>{language === 'ar' ? 'إعداد الاتصال' : 'View connection architecture'} <Icon name="arrow" size={15}/></button>
           </div>
+        </div>
+        </section>}
+        {dashboardWidgets.filter((widget) => widget.id !== 'fleet-status').map((widget) => (
+          <section key={widget.id} className={`surface-card dashboard-custom-widget ${widget.size === 'wide' ? 'dashboard-widget-wide' : ''}`} style={{ order: widget.order }}>
+            {widget.id === 'battery-status' && <>
+              <div className="card-head"><div><span className="eyebrow">BATTERY REGISTER</span><h3>{language === 'ar' ? 'ملخص البطاريات' : 'Battery overview'}</h3></div><button className="icon-button" onClick={() => go('batteries')}><Icon name="arrow"/></button></div>
+              {activeBatteries.length === 0 ? <p className="muted-text">{language === 'ar' ? 'لا توجد بطاريات مسجلة.' : 'No battery records are registered.'}</p> : activeBatteries.slice(0, 5).map((battery) => <div className="dashboard-record-row" key={battery.id}><strong>{battery.id}</strong><span>{battery.assignment}</span><StatusPill status={battery.status} language={language}/><small>{battery.soc == null ? t.unknown : `${battery.soc}% · MANUAL/REPORTED`}</small></div>)}
+            </>}
+            {widget.id === 'faults' && <>
+              <div className="card-head"><div><span className="eyebrow">RELIABILITY</span><h3>{language === 'ar' ? 'الأعطال المفتوحة' : 'Open fault records'}</h3></div><button className="icon-button" onClick={() => go('faults')}><Icon name="arrow"/></button></div>
+              {activeFaults.filter((fault) => fault.status !== 'Resolved').length === 0 ? <p className="muted-text">{t.noFaults}</p> : activeFaults.filter((fault) => fault.status !== 'Resolved').slice(0, 4).map((fault) => <div className="dashboard-record-row" key={fault.id}><strong>{fault.id}</strong><span>{fault.shuttleId} · {fault.title}</span><StatusPill status={fault.status} language={language}/><small>{fault.severity}</small></div>)}
+            </>}
+            {widget.id === 'maintenance' && <>
+              <div className="card-head"><div><span className="eyebrow">SERVICE</span><h3>{language === 'ar' ? 'قائمة الصيانة' : 'Maintenance queue'}</h3></div><button className="icon-button" onClick={() => go('maintenance')}><Icon name="arrow"/></button></div>
+              {activeJobs.filter((job) => job.status !== 'Completed').length === 0 ? <p className="muted-text">{t.noWork}</p> : activeJobs.filter((job) => job.status !== 'Completed').slice(0, 4).map((job) => <div className="dashboard-record-row" key={job.id}><strong>{job.id}</strong><span>{job.shuttleId} · {job.title}</span><StatusPill status={job.status} language={language}/><small>{job.scheduledDate}</small></div>)}
+            </>}
+            {widget.id === 'activity' && <>
+              <div className="card-head"><div><span className="eyebrow">LOCAL EVENT LOG</span><h3>{language === 'ar' ? 'أحدث النشاطات' : 'Recent local activity'}</h3></div><button className="icon-button" onClick={() => go('notifications')}><Icon name="arrow"/></button></div>
+              {notifications.length === 0 ? <p className="muted-text">{t.noNotifications}</p> : notifications.slice(0, 5).map((notification) => <div className="dashboard-record-row" key={notification.id}><strong>{notification.title}</strong><span>{notification.detail}</span><small>{formatNotificationTime(notification.time)}</small></div>)}
+            </>}
+          </section>
+        ))}
         </div>
       </section>}
 
@@ -984,13 +1282,13 @@ function App() {
               </Suspense>
               <div className="battery-stat-grid">
                 <Detail label={t.charge} value={selectedBattery.soc === null ? t.unknown : selectedBattery.soc + '% (manual / reported)'}/>
-                <Detail label={t.health} value={selectedBattery.soh === null ? t.noData : selectedBattery.soh + '%'}/>
-                <Detail label={t.temperature} value={selectedBattery.temperature === null ? t.noData : selectedBattery.temperature + '°C'}/>
-                <Detail label={t.voltage} value={selectedBattery.voltage === null ? t.noData : selectedBattery.voltage + ' V'}/>
-                <Detail label={language==='ar'?'التيار':'Current'} value={selectedBattery.current === null ? t.noData : selectedBattery.current + ' A'}/>
+                <Detail label={t.health} value={selectedBattery.soh === null ? t.noData : selectedBattery.soh + '% (manual)'}/>
+                <Detail label={t.temperature} value={selectedBattery.temperature === null ? t.noData : selectedBattery.temperature + '°C (manual)'}/>
+                <Detail label={t.voltage} value={selectedBattery.voltage === null ? t.noData : selectedBattery.voltage + ' V (manual)'}/>
+                <Detail label={language==='ar'?'التيار':'Current'} value={selectedBattery.current === null ? t.noData : selectedBattery.current + ' A (manual)'}/>
                 <Detail label={language==='ar'?'السعة':'Capacity'} value={selectedBattery.capacity}/>
                 <Detail label={language==='ar'?'الجهد الاسمي':'Nominal voltage'} value={selectedBattery.nominalVoltage}/>
-                <Detail label={language==='ar'?'دورات الشحن':'Charge cycles'} value={selectedBattery.cycles ?? t.noData}/>
+                <Detail label={language==='ar'?'دورات الشحن':'Charge cycles'} value={selectedBattery.cycles === null ? t.noData : selectedBattery.cycles + ' (manual)'}/>
               </div>
               <div className="notice-inline"><Icon name="alert"/>{language==='ar'?'القراءات التي تدخلها هنا يدوية/مبلغ عنها. لن تظهر كقراءات حية إلا بعد ربط مصدر موثوق والتحقق منه.':'Values entered here are manual/reported. They are not live telemetry until a verified source is connected.'}</div>
             </> : <div className="empty-state"><Icon name="battery" size={34}/><h3>{language==='ar'?'لا توجد بطاريات نشطة':'No active battery records'}</h3><p>{language==='ar'?'سجل بطارية جديدة من النموذج المجاور لبدء الإدارة.':'Register a battery using the form beside this panel.'}</p></div>}
@@ -1061,17 +1359,150 @@ function App() {
 
       {activeTab === 'faults' && <section className="page-content">
         <PageIntro eyebrow="RELIABILITY / FAILURE ANALYSIS" title={t.faults} subtitle={t.faultSub}/>
-        <div className="two-column-page"><div className="surface-card"><div className="card-head"><div><span className="eyebrow">FAULT LOG</span><h3>{t.newFaults}</h3></div><span className="counter">{faults.filter(f=>f.status!=='Resolved').length}</span></div><div className="record-stack">{faults.map(f=><div className="fault-record" key={f.id}><div className="record-top"><div><span className="eyebrow">{f.id} · {f.shuttleId}</span><h3>{f.title}</h3></div><div className="record-badges"><span className={'severity severity-'+f.severity.toLowerCase()}>{f.severity}</span><StatusPill status={f.status} language={language}/></div></div><p>{f.description}</p><div className="record-meta"><span>Cause: {f.probableCauses.join(', ')}</span><span>Assigned: {f.assignedTechnician}</span></div><div className="record-meta">Procedure: {f.diagnosticProcedure}</div>{!f.correctiveAction?.trim()?<form className="action-form" onSubmit={e=>recordCorrectiveAction(e,f.id)}><textarea name="action" placeholder={t.corrective} required/><button className="btn-secondary" type="submit">{t.saveAction}</button></form>:<div className="corrective-saved"><Icon name="check" size={15}/>{f.correctiveAction}</div>}<div className="record-actions"><button className="btn-secondary" disabled={f.status!=='Open'} onClick={()=>changeFaultStatus(f.id,'Investigating')}>{t.investigate}</button><button className="btn-primary" disabled={!f.correctiveAction?.trim()||f.status==='Resolved'} onClick={()=>changeFaultStatus(f.id,'Resolved')}>{t.resolve}</button></div></div>)}{faults.length===0&&<div className="empty-state">{t.noFaults}</div>}</div></div>
-          <div className="surface-card"><div className="card-head"><div><span className="eyebrow">NEW FIELD REPORT</span><h3>{t.registerFault}</h3></div></div><form className="stack-form" onSubmit={addFault}><label>Shuttle<select name="shuttleId">{activeShuttles.map(s=><option key={s.id} value={s.id}>{s.id} · {s.manufacturer}</option>)}</select></label><label>{t.faultTitle}<input name="title" required/></label><label>{t.severity}<select name="severity"><option>Critical</option><option>Major</option><option>Moderate</option><option>Minor</option></select></label><label>{t.description}<textarea name="description" required/></label><label>{t.probableCause}<input name="cause"/></label><label>{t.procedure}<textarea name="procedure"/></label><label>{t.technician}<input name="technician"/></label><button className="btn-primary" type="submit">{t.registerFault}</button></form></div></div>
+        <div className="two-column-page">
+          <div className="surface-card">
+            <div className="card-head"><div><span className="eyebrow">FAULT LOG / ACTIVE RECORDS</span><h3>{t.newFaults}</h3></div><span className="counter">{activeFaults.filter(f=>f.status!=='Resolved').length}</span></div>
+            <div className="record-stack">
+              {activeFaults.map(f=><article className="fault-record" key={f.id}>
+                <div className="record-top"><div><span className="eyebrow">{f.id} · {f.shuttleId}</span><h3>{f.title}</h3></div><div className="record-badges"><span className={'severity severity-'+f.severity.toLowerCase()}>{f.severity}</span><StatusPill status={f.status} language={language}/></div></div>
+                {editingFaultId===f.id ? <form className="stack-form record-edit-form" onSubmit={event=>saveFaultEdit(event,f.id)}>
+                  <label>{t.faultTitle}<input name="title" defaultValue={f.title} required/></label>
+                  <label>{t.severity}<select name="severity" defaultValue={f.severity}><option>Critical</option><option>Major</option><option>Moderate</option><option>Minor</option></select></label>
+                  <label>{t.description}<textarea name="description" defaultValue={f.description} required/></label>
+                  <label>{t.probableCause}<textarea name="cause" defaultValue={f.probableCauses.join(', ')}/></label>
+                  <label>{t.procedure}<textarea name="procedure" defaultValue={f.diagnosticProcedure}/></label>
+                  <label>{t.technician}<input name="technician" defaultValue={f.assignedTechnician}/></label>
+                  <div className="record-actions"><button className="btn-primary" type="submit">{language==='ar'?'حفظ التعديل':'Save changes'}</button><button className="btn-secondary" type="button" onClick={()=>setEditingFaultId(null)}>{t.cancel}</button></div>
+                </form> : <>
+                  <p>{f.description}</p>
+                  <div className="record-meta"><span>{language==='ar'?'السبب المحتمل: ':'Probable cause: '}{f.probableCauses.join('، ')}</span><span>{language==='ar'?'المسؤول: ':'Assigned: '}{f.assignedTechnician}</span></div>
+                  <div className="record-meta">{language==='ar'?'إجراء الفحص: ':'Diagnostic procedure: '}{f.diagnosticProcedure}</div>
+                  {!f.correctiveAction?.trim()
+                    ? <form className="action-form" onSubmit={event=>recordCorrectiveAction(event,f.id)}><textarea name="action" placeholder={t.corrective} required/><button className="btn-secondary" type="submit">{t.saveAction}</button></form>
+                    : <div className="corrective-saved"><Icon name="check" size={15}/>{f.correctiveAction}</div>}
+                  <div className="record-actions">
+                    <button className="btn-secondary" type="button" onClick={()=>setEditingFaultId(f.id)}>{language==='ar'?'تعديل البلاغ':'Edit report'}</button>
+                    <button className="btn-secondary" disabled={f.status!=='Open'} onClick={()=>changeFaultStatus(f.id,'Investigating')}>{t.investigate}</button>
+                    <button className="btn-primary" disabled={!f.correctiveAction?.trim()||f.status==='Resolved'} onClick={()=>changeFaultStatus(f.id,'Resolved')}>{t.resolve}</button>
+                    <button className="btn-danger" disabled={f.status!=='Resolved'} title={f.status!=='Resolved'?(language==='ar'?'أغلق البلاغ قبل الأرشفة':'Resolve the report before archiving'):''} onClick={()=>{if(window.confirm(language==='ar'?'أرشفة البلاغ المغلق مع الاحتفاظ بسجله؟':'Archive this resolved fault record and retain its history?')) archiveFault(f.id);}}>{language==='ar'?'أرشفة':'Archive'}</button>
+                  </div>
+                </>}
+              </article>)}
+              {activeFaults.length===0&&<div className="empty-state">{t.noFaults}</div>}
+            </div>
+          </div>
+          <div className="surface-card">
+            <div className="card-head"><div><span className="eyebrow">NEW FIELD REPORT</span><h3>{t.registerFault}</h3></div></div>
+            <form className="stack-form" onSubmit={addFault}>
+              <label>Shuttle<select name="shuttleId">{activeShuttles.map(s=><option key={s.id} value={s.id}>{s.id} · {s.manufacturer}</option>)}</select></label>
+              <label>{t.faultTitle}<input name="title" required/></label>
+              <label>{t.severity}<select name="severity"><option>Critical</option><option>Major</option><option>Moderate</option><option>Minor</option></select></label>
+              <label>{t.description}<textarea name="description" required/></label>
+              <label>{t.probableCause}<input name="cause"/></label>
+              <label>{t.procedure}<textarea name="procedure"/></label>
+              <label>{t.technician}<input name="technician"/></label>
+              <button className="btn-primary" type="submit">{t.registerFault}</button>
+            </form>
+          </div>
+        </div>
+        <div className="surface-card archive-panel">
+          <button className="text-button" type="button" onClick={()=>setShowArchivedFaults(value=>!value)}>{showArchivedFaults?(language==='ar'?'إخفاء أرشيف الأعطال':'Hide fault archive'):(language==='ar'?'عرض الأعطال المؤرشفة':'Show archived faults')} · {archivedFaults.length}</button>
+          {showArchivedFaults && archivedFaults.map(item=><div className="archive-row" key={item.id}><div><strong>{item.id} · {item.title}</strong><small>{item.shuttleId} · {item.status} · {item.archivedAt}</small></div><button className="btn-secondary" onClick={()=>restoreFault(item.id)}>{language==='ar'?'استعادة':'Restore'}</button></div>)}
+        </div>
       </section>}
 
       {activeTab === 'maintenance' && <section className="page-content">
         <PageIntro eyebrow="MAINTENANCE / WORK MANAGEMENT" title={t.maintenance} subtitle={t.maintenanceSub}/>
-        <div className="two-column-page"><div className="surface-card"><div className="card-head"><div><span className="eyebrow">WORK ORDER QUEUE</span><h3>{t.backlog}</h3></div><span className="counter">{jobs.filter(j=>j.status!=='Completed').length}</span></div><div className="record-stack">{jobs.map(j=><div className="work-record" key={j.id}><div className="record-top"><div><span className="eyebrow">{j.id} · {j.shuttleId}</span><h3>{j.title}</h3></div><StatusPill status={j.status} language={language}/></div><div className="record-meta"><span>Type: {j.type}</span><span>Date: {j.scheduledDate}</span><span>Technician: {j.technician}</span></div><p>{j.notes}</p><div className="record-actions"><button className="btn-secondary" disabled={j.status!=='Scheduled'} onClick={()=>changeJobStatus(j.id,'In Progress')}>{t.startWork}</button><button className="btn-primary" disabled={j.status==='Completed'} onClick={()=>changeJobStatus(j.id,'Completed')}>{t.completeWork}</button></div></div>)}{jobs.length===0&&<div className="empty-state">{t.noWork}</div>}</div></div>
-          <div className="surface-card"><div className="card-head"><div><span className="eyebrow">PLANNED SERVICE</span><h3>{t.createWork}</h3></div></div><form className="stack-form" onSubmit={addJob}><label>Shuttle<select name="shuttleId">{activeShuttles.map(s=><option key={s.id} value={s.id}>{s.id} · {s.manufacturer}</option>)}</select></label><label>{t.workTitle}<input name="title" required/></label><label>Type<select name="type"><option>Preventive</option><option>Corrective</option></select></label><label>{t.date}<input name="date" type="date" required/></label><label>{t.technician}<input name="technician"/></label><label>{t.notes}<textarea name="notes"/></label><button className="btn-primary" type="submit">{language === 'ar' ? 'حفظ أمر الصيانة' : 'Save work order'}</button></form></div></div>
+        <div className="two-column-page">
+          <div className="surface-card">
+            <div className="card-head"><div><span className="eyebrow">WORK ORDER QUEUE / ACTIVE</span><h3>{t.backlog}</h3></div><span className="counter">{activeJobs.filter(j=>j.status!=='Completed').length}</span></div>
+            <div className="record-stack">
+              {activeJobs.map(j=><article className="work-record" key={j.id}>
+                <div className="record-top"><div><span className="eyebrow">{j.id} · {j.shuttleId}</span><h3>{j.title}</h3></div><StatusPill status={j.status} language={language}/></div>
+                {editingJobId===j.id ? <form className="stack-form record-edit-form" onSubmit={event=>saveJobEdit(event,j.id)}>
+                  <label>{t.workTitle}<input name="title" defaultValue={j.title} required/></label>
+                  <label>Type<select name="type" defaultValue={j.type}><option>Preventive</option><option>Corrective</option></select></label>
+                  <label>{t.date}<input name="date" type="date" defaultValue={j.scheduledDate} required/></label>
+                  <label>{t.technician}<input name="technician" defaultValue={j.technician}/></label>
+                  <label>{t.notes}<textarea name="notes" defaultValue={j.notes}/></label>
+                  <div className="record-actions"><button className="btn-primary" type="submit">{language==='ar'?'حفظ التعديل':'Save changes'}</button><button className="btn-secondary" type="button" onClick={()=>setEditingJobId(null)}>{t.cancel}</button></div>
+                </form> : <>
+                  <div className="record-meta"><span>Type: {j.type}</span><span>Date: {j.scheduledDate}</span><span>Technician: {j.technician}</span></div>
+                  <p>{j.notes}</p>
+                  {j.completionNotes && <div className="corrective-saved"><Icon name="check" size={15}/>{language==='ar'?'نتيجة التنفيذ: ':'Completion result: '}{j.completionNotes}</div>}
+                  {completingJobId===j.id && <form className="stack-form record-edit-form" onSubmit={event=>completeJob(event,j.id)}>
+                    <label>{language==='ar'?'نتيجة التنفيذ والعمل المنفذ':'Completion result / work performed'}<textarea name="completionNotes" required minLength={4} autoFocus/></label>
+                    <div className="record-actions"><button className="btn-primary" type="submit">{language==='ar'?'حفظ النتيجة وإتمام المهمة':'Save result & complete'}</button><button className="btn-secondary" type="button" onClick={()=>setCompletingJobId(null)}>{t.cancel}</button></div>
+                  </form>}
+                  <div className="record-actions">
+                    <button className="btn-secondary" onClick={()=>setEditingJobId(j.id)}>{language==='ar'?'تعديل الأمر':'Edit order'}</button>
+                    <button className="btn-secondary" disabled={j.status!=='Scheduled'} onClick={()=>changeJobStatus(j.id,'In Progress')}>{t.startWork}</button>
+                    <button className="btn-primary" disabled={j.status==='Completed'} onClick={()=>setCompletingJobId(j.id)}>{t.completeWork}</button>
+                    <button className="btn-danger" disabled={j.status!=='Completed'} onClick={()=>{if(window.confirm(language==='ar'?'أرشفة أمر الصيانة المكتمل؟':'Archive this completed work order?')) archiveJob(j.id);}}>{language==='ar'?'أرشفة':'Archive'}</button>
+                  </div>
+                </>}
+              </article>)}
+              {activeJobs.length===0&&<div className="empty-state">{t.noWork}</div>}
+            </div>
+          </div>
+          <div className="surface-card">
+            <div className="card-head"><div><span className="eyebrow">PLANNED SERVICE</span><h3>{t.createWork}</h3></div></div>
+            <form className="stack-form" onSubmit={addJob}>
+              <label>Shuttle<select name="shuttleId">{activeShuttles.map(s=><option key={s.id} value={s.id}>{s.id} · {s.manufacturer}</option>)}</select></label>
+              <label>{t.workTitle}<input name="title" required/></label>
+              <label>Type<select name="type"><option>Preventive</option><option>Corrective</option></select></label>
+              <label>{t.date}<input name="date" type="date" required/></label>
+              <label>{t.technician}<input name="technician"/></label>
+              <label>{t.notes}<textarea name="notes"/></label>
+              <button className="btn-primary" type="submit">{language === 'ar' ? 'حفظ أمر الصيانة' : 'Save work order'}</button>
+            </form>
+          </div>
+        </div>
+        <div className="surface-card archive-panel">
+          <button className="text-button" type="button" onClick={()=>setShowArchivedJobs(value=>!value)}>{showArchivedJobs?(language==='ar'?'إخفاء أرشيف الصيانة':'Hide maintenance archive'):(language==='ar'?'عرض أوامر الصيانة المؤرشفة':'Show archived work orders')} · {archivedJobs.length}</button>
+          {showArchivedJobs && archivedJobs.map(item=><div className="archive-row" key={item.id}><div><strong>{item.id} · {item.title}</strong><small>{item.shuttleId} · {item.status} · {item.scheduledDate}</small></div><button className="btn-secondary" onClick={()=>restoreJob(item.id)}>{language==='ar'?'استعادة':'Restore'}</button></div>)}
+        </div>
+        <p className="muted-text">{language==='ar'?'لا يمكن أرشفة أمر صيانة غير مكتمل؛ أكمل العمل أولًا حتى لا يختفي من قائمة التشغيل.':'Unfinished work orders cannot be archived; complete the work first so active tasks cannot disappear from the queue.'}</p>
       </section>}
 
-      {activeTab === 'connections' && <section className="page-content"><PageIntro eyebrow="INDUSTRIAL NETWORK / INTEGRATION" title={language==='ar'?'معمارية الاتصال بالمعدات':'Device integration architecture'} subtitle={t.connectionSub}/><div className="protocol-grid">{initialConnections.map((c,i)=><div className="surface-card protocol-card" key={c.name}><div className="protocol-icon"><Icon name="network" size={23}/></div><div className="protocol-index">0{i+1}</div><h3>{c.protocol}</h3><strong>{c.name}</strong><p>{c.notes}</p><div className="protocol-footer"><StatusPill status={c.mode} language={language}/><span>{t.notConfigured}</span></div></div>)}</div><div className="notice-inline"><Icon name="alert"/>{language==='ar'?'قبل تفعيل أي اتصال: يلزم دليل المصنع، وخريطة العناوين، وبيانات الشبكة، وتصريح فني. البداية قراءة فقط.':'Before enabling a connection: obtain vendor interface manuals, register/address maps, network details and engineering authorization. Begin read-only.'}</div></section>}
+      {activeTab === 'connections' && <section className="page-content">
+        <PageIntro eyebrow="INDUSTRIAL NETWORK / INTEGRATION REGISTER" title={language==='ar'?'سجل واجهات الاتصال':'Device integration register'} subtitle={language==='ar'?'إدارة سجلات واجهات الاتصال والبروتوكولات المطلوبة قبل التكليف الفني. لا يتم إنشاء اتصال فعلي من هذه الشاشة.':'Maintain the interface and protocol register required before engineering commissioning. This screen does not create a live connection.'}/>
+        <div className="protocol-grid">
+          {activeConnections.map((endpoint,index)=><article className="surface-card protocol-card" key={endpoint.name}>
+            <div className="protocol-icon"><Icon name="network" size={23}/></div>
+            <div className="protocol-index">{String(index+1).padStart(2,'0')}</div>
+            {editingConnectionName===endpoint.name
+              ? <form className="stack-form record-edit-form" onSubmit={event=>saveConnectionEdit(event,endpoint.name)}>
+                  <label>{language==='ar'?'اسم نقطة الاتصال':'Connection name'}<input name="name" defaultValue={endpoint.name} required/></label>
+                  <label>Protocol<select name="protocol" defaultValue={endpoint.protocol}><option>Modbus TCP</option><option>OPC UA</option><option>MQTT</option><option>REST API</option><option>WebSocket</option><option>BLE</option></select></label>
+                  <label>{t.notes}<textarea name="notes" defaultValue={endpoint.notes}/></label>
+                  <div className="record-actions"><button className="btn-primary" type="submit">{language==='ar'?'حفظ':'Save'}</button><button className="btn-secondary" type="button" onClick={()=>setEditingConnectionName(null)}>{t.cancel}</button></div>
+                </form>
+              : <>
+                  <h3>{endpoint.protocol}</h3>
+                  <strong>{endpoint.name}</strong>
+                  <p>{endpoint.notes}</p>
+                  <div className="protocol-footer"><StatusPill status="UNKNOWN" language={language}/><span>{language==='ar'?'غير مهيأ — للقراءة فقط بعد التكليف':'Not configured · read-only after commissioning'}</span></div>
+                  <div className="record-actions"><button className="btn-secondary" onClick={()=>setEditingConnectionName(endpoint.name)}>{language==='ar'?'تعديل السجل':'Edit record'}</button><button className="btn-danger" onClick={()=>{if(window.confirm(language==='ar'?'أرشفة سجل الاتصال؟':'Archive this connection register entry?')) archiveConnection(endpoint.name);}}>{language==='ar'?'أرشفة':'Archive'}</button></div>
+                </>}
+          </article>)}
+          {activeConnections.length===0&&<div className="surface-card empty-state">{language==='ar'?'لا توجد نقاط اتصال نشطة. أضف سجلًا من النموذج أدناه.':'No active connection records. Add one using the form below.'}</div>}
+        </div>
+        <div className="surface-card add-asset-card">
+          <div className="card-head"><div><span className="eyebrow">REGISTER INTERFACE / NEW</span><h3>{language==='ar'?'إضافة سجل اتصال':'Add connection record'}</h3></div><Icon name="plus" size={20}/></div>
+          <form className="form-grid" onSubmit={addConnection}>
+            <label>{language==='ar'?'اسم نقطة الاتصال':'Connection name'}<input name="name" required placeholder="Approved vendor gateway / PLC interface"/></label>
+            <label>Protocol<select name="protocol"><option>Modbus TCP</option><option>OPC UA</option><option>MQTT</option><option>REST API</option><option>WebSocket</option><option>BLE</option></select></label>
+            <label>{t.notes}<input name="notes" placeholder={language==='ar'?'الموديل، الواجهة المعتمدة، مرجع المستند':'Exact model, approved interface and document reference'}/></label>
+            <button className="btn-primary" type="submit">{language==='ar'?'حفظ سجل الاتصال':'Save connection record'}</button>
+          </form>
+        </div>
+        <div className="surface-card archive-panel">
+          <button className="text-button" type="button" onClick={()=>setShowArchivedConnections(value=>!value)}>{showArchivedConnections?(language==='ar'?'إخفاء أرشيف الاتصالات':'Hide connection archive'):(language==='ar'?'عرض سجلات الاتصال المؤرشفة':'Show archived connection records')} · {archivedConnections.length}</button>
+          {showArchivedConnections&&archivedConnections.map(item=><div className="archive-row" key={item.name}><div><strong>{item.name}</strong><small>{item.protocol} · {item.archivedAt}</small></div><button className="btn-secondary" onClick={()=>restoreConnection(item.name)}>{language==='ar'?'استعادة':'Restore'}</button></div>)}
+        </div>
+        <div className="notice-inline"><Icon name="alert"/>{language==='ar'?'هذه السجلات لا تفتح منفذًا ولا تختبر الشبكة ولا تثبت وجود اتصال حي. قبل أي تكامل: يلزم دليل المصنع، وخريطة العناوين، وبيانات الشبكة، وتصريح فني. البداية قراءة فقط ومن خلال بوابة OT معتمدة.':'These records do not open sockets, probe networks or prove a live connection. Obtain vendor manuals, approved address maps, network details and engineering authorization. Start read-only through an approved OT gateway.'}</div>
+      </section>}
 
       {activeTab === 'ai' && <section className="page-content"><PageIntro eyebrow="ENGINEERING SUPPORT / DECISION ASSISTANCE" title={language==='ar'?'المساعد الفني والهندسي':'Technical engineering assistant'} subtitle={t.aiSub}/><div className="assistant-layout"><div className="surface-card assistant-main"><div className="assistant-mark"><Icon name="spark" size={28}/></div><span className="eyebrow">ENGINEERING CHECKLIST · NOT AI GENERATED</span><h2>{language==='ar'?'مسار فحص مبدئي لعربة Craftsman':'Craftsman field verification checklist'}</h2><p>{language==='ar'?'البلاغات المسجلة تشمل عدم قراءة الطبالي الخشبية، وسحب البطارية، والإنذارات الكاذبة، وانزلاق العجلات على الثلج، وفصل الحساسات والتوقف المفاجئ. لا يمكن تحديد السبب من هذه المعلومات وحدها.':'Reported observations include wooden pallet recognition problems, rapid battery drain, false alarms, wheel slip on ice, sensor cut-outs and sudden stops. These observations alone do not establish a root cause.'}</p><div className="checklist">{['Inspect sensor lenses, mounting and detection field','Verify wooden pallet detection with known-good samples','Capture battery voltage/current trend under controlled load','Inspect wheel tread, bearings and ice contamination','Review safety interlocks and event logs before return to service'].map((x,i)=><div className="check-row" key={x}><span>0{i+1}</span><p>{x}</p><StatusPill status="Unknown" language={language}/></div>)}</div><div className="notice-inline"><Icon name="alert"/> {t.modelDisclaimer}</div></div><div className="surface-card assistant-side"><div className="card-head"><div><span className="eyebrow">ASSISTANT STATUS</span><h3>AI PROVIDER</h3></div><span className="status-pill status-unknown">NOT CONNECTED</span></div><p className="muted-text">{language==='ar'?'لم يتم ربط Gemini أو أي مزود ذكاء اصطناعي. المحتوى المعروض قائمة فحص ثابتة ولا يمثل تشخيصًا آليًا.':'Gemini or another AI provider is not configured. The displayed content is a static checklist, not an automated diagnosis.'}</p><div className="assistant-info"><Detail label="Mode" value="Advisory only"/><Detail label="Source" value="Manual field reports"/><Detail label="Machine control" value="Disabled"/></div></div></div></section>}
 
@@ -1086,8 +1517,8 @@ function App() {
         </div>
         <div className="report-metrics">
           <Metric icon="truck" label={language==='ar'?'الأجهزة النشطة':'Active shuttles'} value={activeShuttles.length} accent="blue"/>
-          <Metric icon="alert" label={language==='ar'?'الأعطال المفتوحة':'Open faults'} value={faults.filter(f=>f.status!=='Resolved').length} accent="red"/>
-          <Metric icon="wrench" label={language==='ar'?'أوامر صيانة مفتوحة':'Open work orders'} value={jobs.filter(j=>j.status!=='Completed').length} accent="amber"/>
+          <Metric icon="alert" label={language==='ar'?'الأعطال المفتوحة':'Open faults'} value={activeFaults.filter(f=>f.status!=='Resolved').length} accent="red"/>
+          <Metric icon="wrench" label={language==='ar'?'أوامر صيانة مفتوحة':'Open work orders'} value={activeJobs.filter(j=>j.status!=='Completed').length} accent="amber"/>
           <Metric icon="battery" label={language==='ar'?'البطاريات النشطة':'Active batteries'} value={activeBatteries.length} accent="cyan"/>
         </div>
         {dailyReports[0] && <div className="surface-card latest-report-card">
@@ -1112,7 +1543,14 @@ function App() {
         </div>
         <div className="surface-card"><div className="card-head"><div><span className="eyebrow">REPORT ARCHIVE</span><h3>{language==='ar'?'أرشيف التقارير اليومية':'Daily report history'}</h3></div><span className="counter">{dailyReports.length}</span></div>
           {dailyReports.length===0 ? <div className="empty-state">{language==='ar'?'لم يتم إصدار تقارير بعد. اضغط إصدار التقرير اليومي لإنشاء أول لقطة محفوظة.':'No reports yet. Generate today’s report to create the first saved snapshot.'}</div> :
-            dailyReports.map(report=><div className="archive-row report-history-row" key={report.id}><div><strong>{report.reportDate} · {report.id}</strong><small>{formatNotificationTime(report.generatedAt)} · {report.shuttleCount} units · {report.openFaultCount} open faults</small></div><button className="btn-secondary" onClick={()=>downloadDailyReport(report)}>{language==='ar'?'تنزيل CSV':'Download CSV'}</button></div>)}
+            dailyReports.map(report=><div className="archive-row report-history-row" key={report.id}>
+              <div><strong>{report.reportDate} · {report.id}</strong><small>{formatNotificationTime(report.generatedAt)} · {report.shuttleCount} units · {report.openFaultCount} open faults</small></div>
+              <div className="record-actions">
+                <button className="btn-secondary" onClick={()=>downloadDailyReport(report)}>{language==='ar'?'تنزيل CSV':'Download CSV'}</button>
+                <button className="btn-secondary" onClick={()=>exportDailyReportXlsx(report)}>{language==='ar'?'Excel':'Excel'}</button>
+                <button className="btn-danger" onClick={()=>deleteDailyReport(report.id)}>{language==='ar'?'حذف':'Delete'}</button>
+              </div>
+            </div>)}
         </div>
         <p className="muted-text">{language==='ar'?'كل تقرير لقطة محفوظة لحظة الإصدار ولا يتغير تلقائيًا بعد ذلك. القيم غير الموثقة تظل غير معروفة ولا تُستبدل بأرقام تقديرية.':'Each report is a frozen snapshot from its creation time. Unverified values remain unknown and are never replaced with estimates.'}</p>
       </section>}
@@ -1149,11 +1587,11 @@ function App() {
         </div>
         <div className="surface-card"><h3>{language==='ar'?'النسخ الاحتياطي واستعادة البيانات':'Backup and restore'}</h3><p className="muted-text">{language==='ar'?'صدّر كل سجلات الأجهزة والبطاريات والأعطال والصيانة والتقارير. يمكن استيراد ملف JSON صادر من التطبيق.':'Export shuttle, battery, fault, maintenance and daily report data. Restore a JSON backup previously exported by this app.'}</p><div className="settings-action-row"><button className="btn-primary" onClick={exportBackup}>{t.backup}</button><label className="file-import-button">{language==='ar'?'استعادة من ملف JSON':'Restore from JSON'}<input aria-label={language==='ar'?'استعادة نسخة احتياطية':'Restore backup'} type="file" accept="application/json,.json" onChange={importBackup}/></label></div></div>
         <div className="surface-card"><h3>{language==='ar'?'حالة قاعدة البيانات المحلية':'Local data store'}</h3><div className="spec-list"><Detail label={language==='ar'?'أجهزة نشطة':'Active shuttles'} value={activeShuttles.length}/><Detail label={language==='ar'?'أجهزة مؤرشفة':'Archived shuttles'} value={archivedShuttles.length}/><Detail label={language==='ar'?'بطاريات نشطة':'Active batteries'} value={activeBatteries.length}/><Detail label={language==='ar'?'تقارير يومية محفوظة':'Saved daily reports'} value={dailyReports.length}/><Detail label={language==='ar'?'مكان التخزين':'Storage'} value="This device · Local browser storage"/></div><p className="muted-text">{language==='ar'?'لا توجد مزامنة سحابية أو قاعدة بيانات مشتركة حاليًا. احتفظ بنسخة احتياطية على وسيط خارجي.':'There is no cloud sync or shared database yet. Keep a backup on a separate storage location.'}</p></div>
-        <div className="surface-card privacy-policy-card"><h3>{language==='ar'?'الخصوصية والتعامل مع البيانات':'Privacy & data handling'}</h3><p>{language==='ar'?'يعمل الإصدار الحالي محليًا على هذا الجهاز. لا توجد حسابات أو مزامنة سحابية أو خادم للتطبيق، ولا يتم إرسال سجلات المعدات أو أسماء المشغلين أو الملاحظات إلى ناشر التطبيق.':'This release stores records locally on this device. There are no app accounts, cloud sync or app backend, and equipment records, operator names and notes are not sent to the publisher.'}</p><p>{language==='ar'?'قد تتضمن السجلات أسماء العاملين وبيانات تشغيلية. التخزين المحلي ليس تشفيرًا متخصصًا؛ لا تدخل كلمات مرور أو مفاتيح أو أسرارًا حساسة. ملفات النسخ الاحتياطي والتصدير تكون تحت سيطرتك وقد تحتوي على البيانات نفسها.':'Records may include staff names and operational details. Local storage is not application-level encryption; do not enter passwords, keys or sensitive secrets. Exported backups remain under your control and may contain the same information.'}</p><p>{language==='ar'?'لحذف البيانات المحلية استخدم إعدادات Android لمسح بيانات التطبيق. زر إعادة الضبط هنا يعيد بيانات البداية ولا يضمن المسح الآمن.':'To remove local data, clear this app’s storage in Android settings. The reset button restores starter records and does not perform secure erasure.'}</p><p><a href="https://github.com/som3a83/shuttle-car-automation/blob/copilot/complete-shuttle-automation-v6/PRIVACY_POLICY.md" target="_blank" rel="noreferrer">{language==='ar'?'قراءة سياسة الخصوصية الكاملة':'Read the full privacy policy'}</a> · <a href="https://github.com/som3a83/shuttle-car-automation/blob/copilot/complete-shuttle-automation-v6/TERMS_OF_USE.md" target="_blank" rel="noreferrer">{language==='ar'?'شروط الاستخدام':'Terms of use'}</a></p></div>
+        <div className="surface-card privacy-policy-card"><h3>{language==='ar'?'الخصوصية والتعامل مع البيانات':'Privacy & data handling'}</h3><p>{language==='ar'?'يعمل الإصدار الحالي محليًا على هذا الجهاز. لا توجد حسابات أو مزامنة سحابية أو خادم للتطبيق، ولا يتم إرسال سجلات المعدات أو أسماء المشغلين أو الملاحظات إلى ناشر التطبيق.':'This release stores records locally on this device. There are no app accounts, cloud sync or app backend, and equipment records, operator names and notes are not sent to the publisher.'}</p><p>{language==='ar'?'قد تتضمن السجلات أسماء العاملين وبيانات تشغيلية. التخزين المحلي ليس تشفيرًا متخصصًا؛ لا تدخل كلمات مرور أو مفاتيح أو أسرارًا حساسة. ملفات النسخ الاحتياطي والتصدير تكون تحت سيطرتك وقد تحتوي على البيانات نفسها.':'Records may include staff names and operational details. Local storage is not application-level encryption; do not enter passwords, keys or sensitive secrets. Exported backups remain under your control and may contain the same information.'}</p><p>{language==='ar'?'لحذف البيانات المحلية استخدم إعدادات Android لمسح بيانات التطبيق. زر إعادة الضبط هنا يعيد بيانات البداية ولا يضمن المسح الآمن.':'To remove local data, clear this app’s storage in Android settings. The reset button restores starter records and does not perform secure erasure.'}</p><p><a href="https://github.com/som3a83/shuttle-car-automation/blob/main/PRIVACY_POLICY.md" target="_blank" rel="noreferrer">{language==='ar'?'قراءة سياسة الخصوصية الكاملة':'Read the full privacy policy'}</a> · <a href="https://github.com/som3a83/shuttle-car-automation/blob/main/TERMS_OF_USE.md" target="_blank" rel="noreferrer">{language==='ar'?'شروط الاستخدام':'Terms of use'}</a></p></div>
         <div className="surface-card danger-settings"><h3>{language==='ar'?'إعادة بيانات التطبيق':'Reset local records'}</h3><p className="muted-text">{language==='ar'?'إعادة السجلات المحلية إلى بيانات البداية. لا يمكن التراجع عن ذلك دون نسخة احتياطية.':'Restore local records to the original seed data. This cannot be undone without a backup.'}</p><button className="btn-danger" onClick={resetLocalData}>{language==='ar'?'إعادة بيانات البداية':'Reset local records'}</button></div>
       </div></section>}
 
-      <footer className="app-footer"><span>SHUTTLE OPS · V1.0.0</span><span>{t.dataNotice}</span></footer>
+      <footer className="app-footer"><span>SHUTTLE CAR AUTOMATION · V1.0.0</span><span>{t.dataNotice}</span></footer>
     </main>
     {mobileNav && <button className="nav-scrim" onClick={()=>setMobileNav(false)} aria-label="Close navigation overlay"/>}
     {toast && <div className="toast"><Icon name="check"/>{toast}</div>}
