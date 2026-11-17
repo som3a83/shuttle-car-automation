@@ -123,7 +123,7 @@ test('the last active Super Admin cannot be demoted or disabled', async () => {
     role: 'Super Admin', password: 'Another-long-passphrase-2026'
   }, storage);
   setLocalAccountDisabled(secondAdmin.id, true, actor, storage);
-  assert.throws(() => setLocalAccountDisabled(administrator.id, true, { id: secondAdmin.id, role: 'Super Admin' }, storage), /cannot disable your own active session/i);
+  assert.throws(() => setLocalAccountDisabled(administrator.id, true, { id: secondAdmin.id, role: 'Super Admin' }, storage), /active Super Admin session/i);
 });
 
 test('administrator password reset requires a new password on next sign-in', async () => {
