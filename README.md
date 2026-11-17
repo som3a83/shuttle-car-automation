@@ -124,7 +124,7 @@ The current version stores operational records, local account metadata and audit
 
 Exported JSON, CSV and XLSX files may include equipment information, staff names and operational notes. Protect exported files and the device. Local browser storage is not application-level encryption; do not enter passwords, API keys or highly sensitive secrets.
 
-See [PRIVACY_POLICY.md](PRIVACY_POLICY.md) for the current data handling notice. The publicly reachable policy page for the current branch is: https://github.com/som3a83/shuttle-car-automation/blob/copilot/complete-shuttle-automation-v6/PRIVACY_POLICY.md.
+See [PRIVACY_POLICY.md](PRIVACY_POLICY.md) for the current data handling notice. The publicly reachable policy page for the current branch is: https://github.com/som3a83/shuttle-car-automation/blob/main/PRIVACY_POLICY.md.
 
 ## Local identity and storage integrity
 
