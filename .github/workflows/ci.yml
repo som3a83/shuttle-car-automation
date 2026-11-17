@@ -44,6 +44,9 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+      - name: Audit production and development dependencies
+        run: npm audit --audit-level=high
+
       - name: TypeScript project check
         run: npm run check
 
