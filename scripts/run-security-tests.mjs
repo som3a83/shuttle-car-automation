@@ -6,7 +6,7 @@ const securityTestDirectory = fileURLToPath(new URL('../src/security/', import.m
 const testFiles = (await readdir(securityTestDirectory))
   .filter((name) => name.endsWith('.test.mjs'))
   .sort()
-  .map((name) => new URL(name, new URL('../src/security/', import.meta.url)).pathname);
+  .map((name) => fileURLToPath(new URL(name, new URL('../src/security/', import.meta.url))));
 
 if (testFiles.length === 0) {
   throw new Error('No Node.js security test files were found in src/security.');
