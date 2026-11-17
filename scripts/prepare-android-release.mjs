@@ -75,9 +75,18 @@ if (!appGradle.includes('signingConfigs')) {
   if (!/\bbuildTypes\s*\{/.test(appGradle)) throw new Error('Could not locate buildTypes block in android/app/build.gradle.');
   appGradle = appGradle.replace(/(\bbuildTypes\s*\{)/, signingBlock + '    $1');
 }
-if (!/signingConfig\s+signingConfigs\.release/.test(appGradle)) {
-  if (!/\brelease\s*\{/.test(appGradle)) throw new Error('Could not locate release build type in android/app/build.gradle.');
-  appGradle = appGradle.replace(/(\brelease\s*\{)/, '$1\n            signingConfig signingConfigs.release');
+const releaseBuildTypeStart = appGradle.search(/\bbuildTypes\s*\{/);
+if (releaseBuildTypeStart < 0) throw new Error('Could not locate buildTypes block in android/app/build.gradle.');
+const releaseBlockPattern = /(\bbuildTypes\s*\{[\s\S]*?\brelease\s*\{)/;
+const releaseBlockMatch = appGradle.match(releaseBlockPattern);
+if (!releaseBlockMatch) throw new Error('Could not locate release build type inside buildTypes in android/app/build.gradle.');
+const releaseBlockStart = releaseBlockMatch.index ?? -1;
+const signingLine = 'signingConfig signingConfigs.release';
+if (releaseBlockStart < 0) throw new Error('Could not determine release build type location.');
+const releaseBlockEnd = appGradle.indexOf('\\n        }', releaseBlockStart);
+const releaseSection = appGradle.slice(releaseBlockStart, releaseBlockEnd >= 0 ? releaseBlockEnd : undefined);
+if (!releaseSection.includes(signingLine)) {
+  appGradle = appGradle.replace(releaseBlockPattern, '$1\\n            ' + signingLine);
 }
 fs.writeFileSync(appGradlePath, appGradle);
 
