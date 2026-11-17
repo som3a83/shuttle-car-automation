@@ -5,6 +5,17 @@ import {
   readOperationalStorageIssues, resolveOperationalRecovery
 } from './operationalStorage.ts';
 
+async function resolveOtherMissingCollections(storage, except) {
+  const state = await bootstrapOperationalStorage(storage);
+  if (state.status !== 'recovery-required') return state;
+  for (const item of state.items) {
+    if (!except.includes(item.collection)) {
+      await resolveOperationalRecovery(item.collection, 'empty', storage);
+    }
+  }
+  return bootstrapOperationalStorage(storage);
+}
+
 class MemoryStorage {
   values = new Map();
   getItem(key) { return this.values.has(key) ? this.values.get(key) : null; }
@@ -35,7 +46,8 @@ test('legacy records require preview and an explicit migration decision', async 
   assert.equal(storage.getItem(legacyKey), JSON.stringify(legacy));
 
   await resolveOperationalRecovery('shuttles', 'legacy', storage);
-  assert.deepEqual(await bootstrapOperationalStorage(storage), { status: 'ready', issues: [] });
+  const settled = await resolveOtherMissingCollections(storage, ['shuttles']);
+  assert.deepEqual(settled, { status: 'ready', issues: [] });
   assert.deepEqual(JSON.parse(storage.getItem(`${OPERATIONAL_PREFIX}verified:shuttles`)).payload, legacy);
 });
 
@@ -54,7 +66,8 @@ test('verified previous snapshot is previewed and not restored until an explicit
   assert.equal(storage.getItem(`${OPERATIONAL_PREFIX}verified:shifts`), '{broken');
 
   await resolveOperationalRecovery('shifts', 'previous', storage);
-  assert.deepEqual(await bootstrapOperationalStorage(storage), { status: 'ready', issues: [] });
+  const settled = await resolveOtherMissingCollections(storage, ['shifts']);
+  assert.deepEqual(settled, { status: 'ready', issues: [] });
   assert.deepEqual(JSON.parse(storage.getItem(`${OPERATIONAL_PREFIX}shifts`)), [{ id: 'SHIFT-1' }]);
 });
 
@@ -68,7 +81,7 @@ test('a corrupt-only collection is preserved until the user explicitly chooses a
   assert.equal([...storage.values.keys()].some((key) => key.includes('verified:faults:quarantine:')), false);
 
   await resolveOperationalRecovery('faults', 'empty', storage);
-  const after = await bootstrapOperationalStorage(storage);
+  const after = await resolveOtherMissingCollections(storage, ['faults']);
   assert.equal(after.status, 'ready');
   assert.deepEqual(JSON.parse(storage.getItem(`${OPERATIONAL_PREFIX}faults`)), []);
   assert.equal([...storage.values.keys()].some((key) => key.includes('verified:faults:quarantine:')), true);
@@ -86,6 +99,8 @@ test('missing collection in a non-empty store is flagged instead of receiving de
   assert.equal(batteries.canUseEmpty, true);
   assert.equal(storage.getItem(`${OPERATIONAL_PREFIX}batteries`), null);
   await resolveOperationalRecovery('batteries', 'empty', storage);
+  await resolveOperationalRecovery('shuttles', 'legacy', storage);
+  await resolveOtherMissingCollections(storage, ['batteries', 'shuttles']);
   assert.deepEqual(JSON.parse(storage.getItem(`${OPERATIONAL_PREFIX}batteries`)), []);
 });
 
