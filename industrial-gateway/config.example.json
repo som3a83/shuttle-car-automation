@@ -1,0 +1,9 @@
+{
+  "assets": [
+    { "id": "SC-01", "manufacturer": "Cassioli", "model": "", "firmware": "", "adapter_id": "", "allowed_tags": [], "enabled": false },
+    { "id": "SC-02", "manufacturer": "Cassioli", "model": "", "firmware": "", "adapter_id": "", "allowed_tags": [], "enabled": false },
+    { "id": "SC-03", "manufacturer": "Cassioli", "model": "", "firmware": "", "adapter_id": "", "allowed_tags": [], "enabled": false },
+    { "id": "SC-04", "manufacturer": "Craftsman", "model": "", "firmware": "", "adapter_id": "", "allowed_tags": [], "enabled": false },
+    { "id": "SC-05", "manufacturer": "ACME", "model": "", "firmware": "", "adapter_id": "", "allowed_tags": [], "enabled": false }
+  ]
+}

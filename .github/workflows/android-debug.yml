@@ -6,6 +6,7 @@ on:
       - main
       - "development/**"
       - "copilot/**"
+      - "industrial/**"
   pull_request:
     branches:
       - main
@@ -46,7 +47,11 @@ jobs:
           SDK_ROOT="${ANDROID_HOME:-$HOME/Android/Sdk}"
           SDKMANAGER="$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
           test -x "$SDKMANAGER"
+          # sdkmanager closes stdin after accepting all licenses; yes may receive SIGPIPE.
+          # Keep the final sdkmanager exit code while avoiding a false pipeline failure.
+          set +o pipefail
           yes | "$SDKMANAGER" --licenses >/dev/null
+          set -o pipefail
           "$SDKMANAGER" "platform-tools" "platforms;android-36" "build-tools;36.0.0" "emulator" "system-images;android-35;google_apis;x86_64"
           echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
           echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"

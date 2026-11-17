@@ -2,7 +2,7 @@
 
 A bilingual, offline-first operational workspace for recording and reviewing industrial shuttle-car fleets. Built with React 18, TypeScript, Vite, Capacitor 8 and Three.js.
 
-> **Release scope:** this is a device-local operational recordkeeping application. It is not connected to physical shuttles, PLCs, battery-management systems or vendor gateways. It does not send machine-control commands. It is not a safety system.
+> **Release scope:** this is a device-local operational application with an optional HTTPS client for a separately deployed read-only OT gateway. No physical shuttle is connected by default, no vendor driver is bundled, and the app never sends machine-control commands. It is not a safety system.
 
 ## Application workspaces
 
@@ -13,7 +13,7 @@ A bilingual, offline-first operational workspace for recording and reviewing ind
 - **Engineering:** interactive Three.js conceptual shuttle and lithium-battery assemblies with selectable components and camera views.
 - **Faults and diagnostics:** manually reported observations, editable records, corrective-action documentation, investigation/resolution workflow, and resolved-only archive/restore.
 - **Maintenance:** local work-order creation and editing, scheduled/in-progress/completed tracking, mandatory recorded completion results for new completions, completed-only archive/restore, and completion-result Excel export. Unfinished work cannot be hidden by archiving.
-- **Connections:** editable local interface register for Modbus TCP, OPC UA, MQTT, REST, WebSocket and BLE, with archive/restore and backup/export support. Entries remain UNKNOWN; no endpoint is probed or configured by the app.
+- **Connections:** local vendor-interface register plus an optional HTTPS client for an approved read-only OT gateway. It can show fresh vendor telemetry only after the external gateway and exact manufacturer adapter are commissioned. The app does not scan or probe PLC networks.
 - **Application customization:** locally saved module visibility, navigation labels/groups/order, aliases to existing routes, dashboard widget visibility/order/size, and restoration of default preferences. This is device-local customization, not authentication or secure authorization.
 - **Technical assistant:** static inspection checklist, not a connected AI service or certified diagnosis.
 - **Reports:** daily snapshots with per-report CSV/XLSX export and confirmed local deletion, multi-sheet register XLSX/CSV exports, JSON backup and browser print/Save as PDF.
@@ -33,7 +33,7 @@ A bilingual, offline-first operational workspace for recording and reviewing ind
 - Equipment, batteries, faults, work orders and connection-register entries are local records. Removal from active screens uses soft archive where history matters; restore returns the same record.
 - Fault reports may be archived only after resolution. A corrective action is required before a fault can be resolved.
 - Work orders may be archived only after completion. Scheduled, in-progress and overdue work remains visible.
-- Connection-register entries are documentation placeholders only. They cannot be marked REAL from the local interface. Live integration requires an approved OT gateway and vendor-specific read-only commissioning outside this app.
+- Connection-register entries remain documentation placeholders. Live telemetry requires the separately deployed `industrial-gateway` service, an exact vendor-specific adapter, and an approved read-only commissioning. The gateway read token is held in the screen session memory only and is not persisted to localStorage.
 - Daily report snapshots are frozen at generation time. Each snapshot can be exported as CSV/XLSX or deleted after confirmation.
 - The customization activity list and preferences are mutable local-device data. They are not a tamper-proof audit trail and are not server-enforced permissions.
 
@@ -134,8 +134,12 @@ See [PRIVACY_POLICY.md](PRIVACY_POLICY.md) for the current data handling notice.
 
 ## Industrial connectivity and safety boundaries
 
-- No live PLC, manufacturer API, gateway or telemetry endpoint is configured.
-- Battery SOC/SOH, voltage, current, temperature, cycles and shuttle status are manual, simulated or unknown unless a verified source is explicitly identified.
+- The Connections workspace now includes an optional HTTPS client for a separate read-only OT edge gateway. The app does not itself open PLC sockets or scan plant networks.
+- The Python standard-library gateway is in [industrial-gateway](industrial-gateway/README.md). It exposes authenticated status/read APIs and a separate authenticated telemetry-ingest route for vendor-approved adapters.
+- The gateway ships with the five known asset identities, but every asset is disabled and uncommissioned. Exact model, controller/firmware, adapter identity and the manufacturer-approved tag map must be documented before readings are accepted.
+- No Cassioli, Craftsman or ACME driver is supplied yet: the manufacturers' exact interface documents and hardware details have not been provided. Therefore no physical shuttle is connected by this code change alone.
+- The app accepts a gateway read token for the current screen session only; it is not persisted to localStorage. Plant access must use HTTPS, network segmentation and the approved VPN/identity layer.
+- Battery SOC/SOH, voltage, current, temperature, cycles and shuttle status remain manual, simulated or unknown unless a fresh, good-quality sample comes from a commissioned vendor adapter.
 - Do not invent register maps, device addresses, network parameters or vendor credentials.
 - The 3D shuttle and battery assemblies are conceptual engineering illustrations, not manufacturer CAD, service drawings or dimensionally verified models.
 - The application does not send movement, charging, PLC-write or machine-control commands.
