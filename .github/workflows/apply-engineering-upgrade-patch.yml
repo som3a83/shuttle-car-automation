@@ -16,20 +16,19 @@ jobs:
         with:
           ref: engineering/industrial-ui-security-v1
           fetch-depth: 0
-      - name: Verify and apply the local source patch
+      - name: Verify and apply the prepared source patch
         shell: bash
         run: |
           set -euo pipefail
-          python3 - <<'PY'
-          import base64, gzip, pathlib
-          encoded = pathlib.Path("engineering-upgrade.patch.gz.b64").read_text().strip()
-          compressed = base64.b64decode(encoded, validate=True)
-          patch = gzip.decompress(compressed)
-          pathlib.Path("/tmp/engineering-upgrade.patch").write_bytes(patch)
-          PY
-          git apply --check /tmp/engineering-upgrade.patch
-          git apply /tmp/engineering-upgrade.patch
-          rm engineering-upgrade.patch.gz.b64
+          test -f engineering/upgrade/SHA256
+          cat engineering/upgrade/part-*.b64 | tr -d '\n' | base64 --decode > /tmp/upgrade.patch.gz
+          expected="$(tr -d '\n' < engineering/upgrade/SHA256)"
+          actual="$(sha256sum /tmp/upgrade.patch.gz | cut -d ' ' -f 1)"
+          test "$actual" = "$expected"
+          gzip --decompress --stdout /tmp/upgrade.patch.gz > /tmp/upgrade.patch
+          git apply --check /tmp/upgrade.patch
+          git apply /tmp/upgrade.patch
+          rm -rf engineering/upgrade engineering-upgrade.patch.gz.b64
           rm .github/workflows/apply-engineering-upgrade-patch.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
