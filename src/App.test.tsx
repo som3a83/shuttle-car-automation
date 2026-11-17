@@ -471,4 +471,20 @@ describe('Shuttle Car Automation V10', () => {
     expect(window.localStorage.getItem('shuttle-car-automation-v7:shuttles')).toBeTruthy();
   });
 
+  it('applies compact sizing to the fleet dashboard widget', () => {
+    const { container } = render(<App />);
+    const customization = JSON.parse(JSON.stringify(DEFAULT_CUSTOMIZATION)) as typeof DEFAULT_CUSTOMIZATION;
+    const fleetWidget = customization.dashboard.find((item) => item.id === 'fleet-status');
+    if (!fleetWidget) throw new Error('Default fleet widget preference is missing.');
+    fleetWidget.size = 'compact';
+
+    act(() => {
+      window.dispatchEvent(new CustomEvent('shuttle-customization-change', { detail: customization }));
+    });
+
+    const renderedWidget = container.querySelector('.dashboard-fleet-widget');
+    expect(renderedWidget).toBeInTheDocument();
+    expect(renderedWidget).not.toHaveClass('dashboard-widget-wide');
+  });
+
 });
