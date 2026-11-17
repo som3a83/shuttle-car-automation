@@ -397,6 +397,7 @@ describe('Shuttle Car Automation V10', () => {
     await user.click(screen.getByRole('button', { name: /Generate today.s report/i }));
     expect(screen.getByText(/LATEST SAVED DAILY REPORT/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Download daily report CSV/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Download daily report Excel/i })).toBeInTheDocument();
     first.unmount();
     render(<App />);
     await user.click(screen.getAllByRole('button', { name: /Reports Center/i })[0]);
