@@ -872,3 +872,16 @@ button,select,input,textarea { touch-action:manipulation; }
 @media (max-width:520px) {
   .shift-opening-asset { grid-template-columns:1fr 1fr; gap:5px; font-size:9px; }
 }
+
+.viewer-loading {
+  min-height: 220px;
+  display: grid;
+  place-items: center;
+  padding: 2rem;
+  color: var(--muted, #93a2ad);
+  text-align: center;
+  border: 1px dashed rgba(135, 157, 172, 0.28);
+  border-radius: 14px;
+  background: rgba(17, 27, 36, 0.42);
+  letter-spacing: 0.02em;
+}
