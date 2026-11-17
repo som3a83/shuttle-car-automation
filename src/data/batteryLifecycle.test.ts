@@ -29,7 +29,8 @@ describe('battery lifecycle and assignment consistency', () => {
   });
 
   it('releases the previously installed battery when replacing it', () => {
-    const result = assignBatteryToShuttle(initialBatteries, initialShuttles, 'BAT-ACME-01', 'SC-01', '2026-11-17T08:00:00.000Z');
+    const serviceableInstalled = { ...initialBatteries[0], status: 'Installed' as const };
+    const result = assignBatteryToShuttle([serviceableInstalled], initialShuttles, 'BAT-ACME-01', 'SC-01', '2026-11-17T08:00:00.000Z');
     expect(result.changed).toBe(true);
     expect(result.shuttles.find(item => item.id === 'SC-05')?.installedBattery).toBe('Not recorded');
     expect(result.shuttles.find(item => item.id === 'SC-01')?.installedBattery).toBe('BAT-ACME-01');
@@ -42,15 +43,18 @@ describe('battery lifecycle and assignment consistency', () => {
     const archived = { ...spareBattery, archivedAt: '2026-11-16T00:00:00.000Z' };
     const archivedResult = assignBatteryToShuttle([archived], initialShuttles, archived.id, 'SC-01');
     const unknownResult = assignBatteryToShuttle([spareBattery], initialShuttles, spareBattery.id, 'SC-99');
+    const faultedResult = assignBatteryToShuttle(initialBatteries, initialShuttles, 'BAT-ACME-01', 'SC-01');
     expect(archivedResult.changed).toBe(false);
     expect(unknownResult.changed).toBe(false);
     expect(unknownResult.message).toMatch(/Target shuttle/);
+    expect(faultedResult.changed).toBe(false);
+    expect(faultedResult.message).toMatch(/cannot be assigned/);
   });
 
   it('archives and detaches a battery while preserving its movement journal', () => {
     const result = archiveBatteryAndDetach(initialBatteries, initialShuttles, 'BAT-ACME-01', '2026-11-17T09:00:00.000Z');
     expect(result.batteries[0]).toMatchObject({
-      archivedAt: '2026-11-17T09:00:00.000Z', assignment: 'Unassigned',
+      archivedAt: '2026-11-17T09:00:00.000Z', assignment: 'Unassigned', status: 'Fault',
       movementHistory: [expect.objectContaining({ action: 'Archived', fromShuttleId: 'SC-05', toShuttleId: 'Unassigned' })]
     });
     expect(result.shuttles.find(item => item.id === 'SC-05')?.installedBattery).toBe('Not recorded');
