@@ -49,7 +49,7 @@ const copy = {
     appName: 'SHUTTLE OPERATIONS', subtitle: 'Industrial control & engineering suite',
     demo: 'DEMO MODE · LOCAL RECORDS', demoText: 'No live equipment connection: no shuttle is connected to live PLC or manufacturer telemetry. Values marked unverified are not machine readings.',
     total: 'Total shuttle cars', running: 'Running shuttles', idle: 'Idle / Ready', faulted: 'Fault records', disconnected: 'Offline / unknown', battery: 'Verified battery SOC',
-    fleet: 'Fleet overview', fleetSub: 'Five registered assets · 3 Cassioli · 1 Craftsman · 1 ACME',
+    fleet: 'Fleet overview', fleetSub: 'Manage equipment identity, operating condition, assignment and service history.',
     engineering: 'Engineering visualization', engineeringSub: 'Interactive mechanical schematic with selectable views and component callouts.',
     selectAsset: 'Select shuttle', status: 'Operating state', manufacturer: 'Manufacturer', model: 'Model', serial: 'Serial number', zone: 'Operating zone', batteryPack: 'Installed battery', communication: 'Communication', lastSeen: 'Last communication',
     noData: 'Not recorded', unknown: 'Unknown / not verified', openFleet: 'Open fleet register', openEngineering: 'Open engineering view',
@@ -83,7 +83,7 @@ const copy = {
     appName: 'منظومة تشغيل الشاتل', subtitle: 'إدارة صناعية وتصميم هندسي',
     demo: 'وضع تجريبي / بيانات محلية', demoText: 'لا يوجد اتصال حي بوحدات التحكم أو بيانات الشركة المصنعة. أي قيمة غير مؤكدة ليست قراءة مباشرة من المعدة.',
     total: 'إجمالي عربات النقل', running: 'قيد التشغيل', idle: 'جاهز / متوقف', faulted: 'سجلات الأعطال', disconnected: 'غير متصل / غير معروف', battery: 'شحن بطارية مؤكد',
-    fleet: 'ملخص الأسطول', fleetSub: '5 عربات مسجلة · 3 كاسيولي · 1 كرافتسمان · 1 إيه سي إم إي',
+    fleet: 'ملخص الأسطول', fleetSub: 'إدارة بيانات المعدات وحالتها وتخصيصها وسجل الخدمة والصيانة.',
     engineering: 'التصور الهندسي', engineeringSub: 'رسم ميكانيكي تفاعلي مع أوضاع عرض متعددة وإظهار المكونات.',
     selectAsset: 'اختر العربة', status: 'حالة التشغيل', manufacturer: 'الشركة المصنعة', model: 'الموديل', serial: 'الرقم المسلسل', zone: 'منطقة التشغيل', batteryPack: 'البطارية المركبة', communication: 'الاتصال', lastSeen: 'آخر اتصال',
     noData: 'غير مسجل', unknown: 'غير معروف / لم يتم التحقق', openFleet: 'فتح سجل الأسطول', openEngineering: 'فتح التصور الهندسي',
@@ -372,7 +372,11 @@ function App() {
   };
   const goBack = () => {
     if (routeStackRef.current.length > 1) {
+      const next = routeStackRef.current[routeStackRef.current.length - 2];
+      routeStackRef.current = routeStackRef.current.slice(0, -1);
       window.history.back();
+      setActiveTab(next);
+      setMobileNav(false);
       return;
     }
     if (activeTab !== 'dashboard') go('dashboard');
@@ -789,7 +793,7 @@ function App() {
 
       {activeTab === 'dashboard' && <section className="page-content">
         <div className="hero-panel">
-          <div className="hero-copy"><div className="eyebrow"><span/> PRECISION INDUSTRIAL · MECHANICAL INTELLIGENCE</div><h2>{language === 'ar' ? 'تحكم هندسي في أسطول الشاتل' : 'Precision control for your shuttle fleet'}</h2><p>{language === 'ar' ? 'مركز موحد لمتابعة العربات والبطاريات والأعطال والصيانة، مع رسومات ميكانيكية تفاعلية.' : 'A unified workspace for shuttle assets, battery records, faults and maintenance — with interactive mechanical visualization.'}</p><div className="hero-actions"><button className="btn-primary" onClick={() => go('fleet')}>{t.openFleet}<Icon name="arrow" size={16}/></button><button className="btn-secondary" onClick={() => go('engineering')}>{t.openEngineering}</button></div><div className="hero-footnote"><span className="pulse-dot"/> {language === 'ar' ? '5 عربات مسجلة في السجل المحلي' : '5 assets registered in the local fleet register'}</div></div>
+          <div className="hero-copy"><div className="eyebrow"><span/> PRECISION INDUSTRIAL · MECHANICAL INTELLIGENCE</div><h2>{language === 'ar' ? 'تحكم هندسي في أسطول الشاتل' : 'Precision control for your shuttle fleet'}</h2><p>{language === 'ar' ? 'مركز موحد لمتابعة العربات والبطاريات والأعطال والصيانة، مع رسومات ميكانيكية تفاعلية.' : 'A unified workspace for shuttle assets, battery records, faults and maintenance — with interactive mechanical visualization.'}</p><div className="hero-actions"><button className="btn-primary" onClick={() => go('fleet')}>{t.openFleet}<Icon name="arrow" size={16}/></button><button className="btn-secondary" onClick={() => go('engineering')}>{t.openEngineering}</button></div><div className="hero-footnote"><span className="pulse-dot"/> {language === 'ar' ? 'عدد الأجهزة النشطة: ' + metrics.total : metrics.total + ' active units in the local fleet register'}</div></div>
           <div className="hero-machine"><div className="machine-orbit orbit-one"/><div className="machine-orbit orbit-two"/><div className="machine-label label-top">SHUTTLE / ASRS</div><ShuttleModel shuttle={selected || initialShuttles[0]} view="iso" exploded={false} animated={animated}/><div className="machine-label label-bottom">{selected?.manufacturer || 'CASSIOLI'} · {selected?.id || 'SC-01'}</div></div>
         </div>
         <div className="section-heading"><div><span className="eyebrow">FLEET TELEMETRY / LOCAL RECORDS</span><h2>{language === 'ar' ? 'مؤشرات الأسطول' : 'Fleet at a glance'}</h2></div><button className="text-button" onClick={() => go('fleet')}>{t.viewRegister}<Icon name="chevron" size={15}/></button></div>
