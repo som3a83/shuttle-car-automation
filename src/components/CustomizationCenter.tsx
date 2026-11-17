@@ -34,17 +34,25 @@ export default function CustomizationCenter({
 
   const commit = (next: CustomizationConfig, action: string, target: string, detail: string) => {
     if (!canManage) return;
+    const normalized = validateCustomization(next);
     try {
-      const normalized = validateCustomization(next);
       saveCustomization(normalized);
-      appendCustomizationAudit({ action, target, detail });
-      setConfig(normalized);
-      setAudit(readCustomizationAudit());
-      window.dispatchEvent(new CustomEvent<CustomizationConfig>('shuttle-customization-change', { detail: normalized }));
-      setMessage('Saved on this device. These preferences can be changed by anyone with access to this device.');
     } catch {
       setMessage('Could not save customization. Check local device storage.');
+      return;
     }
+    let auditSaved = true;
+    try {
+      appendCustomizationAudit({ action, target, detail });
+    } catch {
+      auditSaved = false;
+    }
+    setConfig(normalized);
+    setAudit(readCustomizationAudit());
+    window.dispatchEvent(new CustomEvent<CustomizationConfig>('shuttle-customization-change', { detail: normalized }));
+    setMessage(auditSaved
+      ? 'Saved on this device. These preferences can be changed by anyone with access to this device.'
+      : 'Preferences were saved, but the local audit log could not be updated because device storage is full.');
   };
 
   const reorder = <T extends { order: number }>(items: T[], index: number, delta: number): T[] => {
@@ -56,7 +64,7 @@ export default function CustomizationCenter({
   };
 
   const destinationOptions = useMemo(
-    () => config.modules.filter((module) => module.enabled && !PROTECTED_ROUTES.includes(module.id)),
+    () => config.modules.filter((module) => module.enabled),
     [config.modules]
   );
 
@@ -84,7 +92,11 @@ export default function CustomizationCenter({
       setMessage('Enable the destination module before creating an alias.');
       return;
     }
-    const id = `alias-${newRoute}-${Date.now()}`;
+    let id = `alias-${newRoute}-${Date.now()}`;
+    let suffix = 1;
+    while (config.navigation.some((item) => item.id === id)) {
+      id = `alias-${newRoute}-${Date.now()}-${suffix++}`;
+    }
     const alias: NavigationPreference = {
       id,
       route: newRoute,
