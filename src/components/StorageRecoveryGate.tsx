@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import './StorageRecoveryGate.css';
 import type { OperationalBootstrapResult, OperationalRecoveryItem, OperationalCollection, RecoverySource } from '../security/operationalStorage';
 import { bootstrapOperationalStorage, OPERATIONAL_PREFIX, resolveOperationalRecovery } from '../security/operationalStorage';
 import { AUDIT_STORAGE_KEY } from '../security/auditLog';
@@ -44,7 +45,7 @@ export default function StorageRecoveryGate({
   const [error, setError] = useState('');
   const [preview, setPreview] = useState<{ collection: OperationalCollection; source: RecoverySource } | null>(null);
   const ar = (() => {
-    try { return localStorage.getItem(`${OPERATIONAL_PREFIX}language`) === '"ar'; }
+    try { return localStorage.getItem(`${OPERATIONAL_PREFIX}language`) === '"ar"'; }
     catch { return false; }
   })();
 
