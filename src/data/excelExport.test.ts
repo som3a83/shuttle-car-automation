@@ -12,13 +12,19 @@ describe('multi-sheet Excel export', () => {
       jobs: initialMaintenance,
       shifts: [],
       dailyReports: [],
-      notifications: []
+      notifications: [],
+      connections: [{
+        name: 'Approved gateway register',
+        protocol: 'OPC UA',
+        mode: 'UNKNOWN',
+        notes: 'Local placeholder only'
+      }]
     }, 'en');
     const bytes = await createXlsxBuffer(sheets);
     const XLSX = await import('xlsx');
     const workbook = XLSX.read(bytes, { type: 'array' });
     expect(workbook.SheetNames).toEqual([
-      'Shuttles','Batteries','Battery movements','Faults','Maintenance','Shift handovers','Daily report history','Notifications'
+      'Shuttles','Batteries','Battery movements','Faults','Maintenance','Connections','Shift handovers','Daily report history','Notifications'
     ]);
     const rows = XLSX.utils.sheet_to_json(workbook.Sheets.Shuttles, { header: 1 }) as unknown[][];
     expect(rows[1]).toContain('SC-01');
