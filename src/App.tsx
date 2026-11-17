@@ -174,7 +174,7 @@ function readLocal<T>(key: string, fallback: T): T {
 function resolveInitialUser(): (typeof users)[number] {
   try {
     const session = readLocalSession(sessionStorage);
-    if (session) return { id: session.accountId, name: session.name, role: session.role, email: session.email, isAuthenticated: true };
+    if (session) return { id: session.accountId, name: session.name, role: session.role, email: session.email, isAuthenticated: true, mustChangePassword: session.mustChangePassword };
     if (listLocalAccounts(localStorage).length > 0) {
       return { id: 'local-guest', name: 'Local guest', role: 'Viewer', email: '', isAuthenticated: false };
     }
@@ -364,7 +364,9 @@ function App() {
     .filter((entry) => {
       const module = customization.modules.find((item) => item.id === entry.route);
       const identityEntry = entry.route === 'users';
-      return module !== undefined && module.enabled && !module.hiddenForRoles.includes(currentUser.role) && (identityEntry || canAccessRoute(currentUser.role, entry.route));
+      return module !== undefined && module.enabled && !module.hiddenForRoles.includes(currentUser.role) &&
+        (!currentUser.mustChangePassword || identityEntry) &&
+        (identityEntry || canAccessRoute(currentUser.role, entry.route));
     })
     .flatMap((entry) => {
       const base = navItems.find((item) => item.id === entry.route);
@@ -443,6 +445,10 @@ function App() {
   }, [activeTab]);
 
   const go = (tab: Tab) => {
+    if (currentUser.mustChangePassword && tab !== 'users') {
+      showToast(language === 'ar' ? 'يجب تغيير كلمة المرور المؤقتة قبل متابعة استخدام التطبيق' : 'Change the temporary password before using the rest of the application.');
+      return;
+    }
     if (tab !== 'users' && !canAccessRoute(currentUser.role, tab)) {
       showToast(language === 'ar' ? 'هذه الوجهة غير متاحة للدور الحالي' : 'This destination is not available to the current role.');
       return;
@@ -504,13 +510,19 @@ function App() {
   };
 
   useEffect(() => {
+    if (currentUser.mustChangePassword && activeTab !== 'users') {
+      routeStackRef.current = ['users'];
+      setActiveTab('users');
+      window.history.replaceState({ tab: 'users' }, '', '#/users');
+      return;
+    }
     if (canAccessRoute(currentUser.role, activeTab) || activeTab === 'users') return;
     routeStackRef.current = ['dashboard'];
     setActiveTab('dashboard');
     window.history.replaceState({ tab: 'dashboard' }, '', '#/dashboard');
     showToast(language === 'ar' ? 'تم منع فتح صفحة غير مسموح بها لهذا الدور' : 'Access to this destination is not allowed for the selected role.');
     recordAudit('ROUTE_ACCESS_DENIED', 'route', activeTab, `Role: ${currentUser.role}`);
-  }, [activeTab, currentUser.role, currentUser.isAuthenticated, language]);
+  }, [activeTab, currentUser.role, currentUser.isAuthenticated, currentUser.mustChangePassword, language]);
   const pushNotification = (title: string, detail: string, severity: NotificationItem['severity'] = 'info') => {
     if (!settings.notificationsEnabled) return;
     const item: NotificationItem = {
