@@ -75,7 +75,7 @@ describe('Shuttle Car Automation V10', () => {
     render(<App />);
     await user.click(screen.getAllByRole('button', { name: /Battery Management/i })[0]);
     await user.click(screen.getByRole('button', { name: /Set charging/i }));
-    expect(screen.getAllByText('Charging').length).toBeGreaterThan(0);
+    await waitFor(() => expect(screen.getAllByText('Charging').length).toBeGreaterThan(0));
   });
 
   it('does not allow a fault to be resolved without a corrective action', async () => {
@@ -373,10 +373,12 @@ describe('Shuttle Car Automation V10', () => {
     await user.clear(screen.getAllByLabelText(/Manufacturer serial/i)[0]);
     await user.type(screen.getAllByLabelText(/Manufacturer serial/i)[0], 'SERIAL-TEST-001');
     await user.click(screen.getByRole('button', { name: /Save changes/i }));
-    expect(screen.getByText('Verified test model')).toBeInTheDocument();
-    expect(screen.getByText('SERIAL-TEST-001')).toBeInTheDocument();
-    const saved = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:shuttles') || '[]') as Array<{id:string;model:string}>;
-    expect(saved.find(item => item.id === 'SC-01')?.model).toBe('Verified test model');
+    await waitFor(() => {
+      expect(screen.getByText('Verified test model')).toBeInTheDocument();
+      expect(screen.getByText('SERIAL-TEST-001')).toBeInTheDocument();
+      const saved = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:shuttles') || '[]') as Array<{id:string;model:string}>;
+      expect(saved.find(item => item.id === 'SC-01')?.model).toBe('Verified test model');
+    });
   });
 
   it('archives a shuttle without deleting its history and supports restoring it', async () => {
