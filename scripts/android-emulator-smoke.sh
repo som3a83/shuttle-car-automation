@@ -36,6 +36,13 @@ fi
 
 adb exec-out screencap -p > "$EVIDENCE/android-app-screen.png"
 test -s "$EVIDENCE/android-app-screen.png"
+
+# Exercise the Engineering Visualization destination from the visible mobile navigation.
+adb shell input tap 545 445
+sleep 8
+adb exec-out screencap -p > "$EVIDENCE/engineering-app-screen.png"
+test -s "$EVIDENCE/engineering-app-screen.png"
+
 adb shell uiautomator dump /sdcard/shuttle-window.xml >/dev/null 2>&1 || true
 adb pull /sdcard/shuttle-window.xml "$EVIDENCE/ui-hierarchy.xml" >/dev/null 2>&1 || true
 adb shell dumpsys activity activities > "$EVIDENCE/activities.txt"
