@@ -18,7 +18,8 @@ permissions:
 
 concurrency:
   group: shuttle-android-smoke-${{ github.ref }}
-  cancel-in-progress: true
+  # Emulator boots are expensive; queue newer commits instead of cancelling an active smoke test.
+  cancel-in-progress: false
 
 jobs:
   build-android:
