@@ -336,7 +336,7 @@ describe('Shuttle Car Automation V10', () => {
     await user.click(screen.getByRole('button', { name: /Set available/i }));
     await user.click(screen.getAllByRole('button', { name: /Notifications/i })[0]);
     await user.click(screen.getByRole('button', { name: /Clear all notifications/i }));
-    expect(screen.getByText(/No new local notifications/i)).toBeInTheDocument();
+    expect(await screen.findByText(/No new local notifications/i)).toBeInTheDocument();
   });
 
   it('creates and advances a maintenance work order with matching local event records', async () => {
