@@ -591,6 +591,7 @@ describe('Shuttle Car Automation V10', () => {
     await user.type(screen.getByLabelText(/Fault title/i), 'Test bearing inspection');
     await user.type(screen.getByLabelText(/Observed symptom/i), 'Newly observed vibration during manual inspection');
     await user.click(screen.getByRole('button', { name: /Register fault/i }));
+    await waitFor(() => expect(screen.getAllByRole('button', { name: /Edit report/i }).length).toBeGreaterThan(0));
 
     const editButtons = screen.getAllByRole('button', { name: /Edit report/i });
     await user.click(editButtons[0]);
@@ -598,26 +599,29 @@ describe('Shuttle Car Automation V10', () => {
     await user.clear(titleInputs[0]);
     await user.type(titleInputs[0], 'Updated bearing inspection');
     await user.click(screen.getByRole('button', { name: /Save changes/i }));
-    expect(screen.getByText('Updated bearing inspection')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText('Updated bearing inspection')).toBeInTheDocument());
 
     const actionFields = screen.getAllByPlaceholderText(/corrective action/i);
     await user.type(actionFields[0], 'Inspected bearing and recorded measured clearance; technician verification completed.');
     await user.click(screen.getAllByRole('button', { name: /Save corrective action/i })[0]);
     await user.click(screen.getAllByRole('button', { name: /Start investigation/i })[0]);
     await user.click(screen.getAllByRole('button', { name: /Resolve/i })[0]);
+    await waitFor(() => expect(screen.getAllByText('Resolved').length).toBeGreaterThan(0));
 
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
     await user.click(screen.getAllByRole('button', { name: /Archive/i })[0]);
     confirmSpy.mockRestore();
 
-    expect(screen.queryByText('Updated bearing inspection')).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText('Updated bearing inspection')).not.toBeInTheDocument());
     await user.click(screen.getByRole('button', { name: /Show archived faults/i }));
     expect(screen.getByText(/Updated bearing inspection/)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /Restore/i }));
-    const saved = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:faults') || '[]') as Array<{title:string;archivedAt?:string|null;correctiveAction?:string}>;
-    expect(saved.find(item => item.title === 'Updated bearing inspection')).toMatchObject({
-      archivedAt: null,
-      correctiveAction: 'Inspected bearing and recorded measured clearance; technician verification completed.'
+    await waitFor(() => {
+      const saved = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:faults') || '[]') as Array<{title:string;archivedAt?:string|null;correctiveAction?:string}>;
+      expect(saved.find(item => item.title === 'Updated bearing inspection')).toMatchObject({
+        archivedAt: null,
+        correctiveAction: 'Inspected bearing and recorded measured clearance; technician verification completed.'
+      });
     });
   });
 
@@ -628,19 +632,20 @@ describe('Shuttle Car Automation V10', () => {
     await user.type(screen.getByLabelText(/Work order title/i), 'Drive assembly inspection');
     await user.type(screen.getByLabelText(/Scheduled date/i), '2026-11-25');
     await user.click(screen.getByRole('button', { name: /Save work order/i }));
+    await waitFor(() => expect(screen.getByRole('button', { name: /Edit order/i })).toBeInTheDocument());
 
     await user.click(screen.getByRole('button', { name: /Edit order/i }));
     const title = screen.getAllByLabelText(/Work order title/i)[0];
     await user.clear(title);
     await user.type(title, 'Updated drive inspection');
     await user.click(screen.getByRole('button', { name: /Save changes/i }));
-    expect(screen.getByText('Updated drive inspection')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText('Updated drive inspection')).toBeInTheDocument());
 
     await user.click(screen.getAllByRole('button', { name: /Start job/i })[0]);
     await user.click(screen.getAllByRole('button', { name: /Complete job/i })[0]);
     await user.type(screen.getByLabelText(/Completion result \/ work performed/i), 'Inspected gearbox mount and verified fastener torque.');
     await user.click(screen.getByRole('button', { name: /Save result & complete/i }));
-    expect(screen.getByText(/Completion result: Inspected gearbox mount and verified fastener torque/i)).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText(/Completion result: Inspected gearbox mount and verified fastener torque/i)).toBeInTheDocument());
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
     await user.click(screen.getAllByRole('button', { name: /Archive/i })[0]);
     confirmSpy.mockRestore();
