@@ -303,6 +303,7 @@ function App() {
   const [newAsset, setNewAsset] = useState({ manufacturer: 'Cassioli', zone: '', model: '', serialNumber: '', hardwareVersion: '', firmwareVersion: '', assignedOperator: '', notes: '' });
   const [newBattery, setNewBattery] = useState({ manufacturer: 'Cassioli', model: '', chemistry: 'Lithium-ion (unverified)', nominalVoltage: '', capacity: '', assignment: '', notes: '' });
   const [editingShuttle, setEditingShuttle] = useState<Shuttle | null>(null);
+  const [editingBattery, setEditingBattery] = useState(false);
   const [pendingShuttleArchive, setPendingShuttleArchive] = useState<string | null>(null);
   const [pendingBatteryArchive, setPendingBatteryArchive] = useState<string | null>(null);
   const [showArchived, setShowArchived] = useState(false);
@@ -521,6 +522,34 @@ function App() {
     event.currentTarget.reset();
     pushNotification(language === 'ar' ? 'تم تسجيل بطارية جديدة' : 'New battery registered', `${id} · ${assignment}`);
     showToast(language === 'ar' ? 'تم تسجيل البطارية' : 'Battery registered');
+  };
+
+  const saveBatteryDetails = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!selectedBattery) return;
+    const form = new FormData(event.currentTarget);
+    const numberOrNull = (key: string) => {
+      const raw = String(form.get(key) ?? '').trim();
+      if (!raw) return null;
+      const value = Number(raw);
+      return Number.isFinite(value) ? value : null;
+    };
+    updateBattery(selectedBattery.id, {
+      manufacturer: String(form.get('manufacturer') || 'Not recorded').trim(),
+      model: String(form.get('model') || 'Not recorded').trim() || 'Not recorded',
+      chemistry: String(form.get('chemistry') || 'Not verified').trim() || 'Not verified',
+      nominalVoltage: String(form.get('nominalVoltage') || 'Not recorded').trim() || 'Not recorded',
+      capacity: String(form.get('capacity') || 'Not recorded').trim() || 'Not recorded',
+      soc: numberOrNull('soc'),
+      soh: numberOrNull('soh'),
+      temperature: numberOrNull('temperature'),
+      voltage: numberOrNull('voltage'),
+      current: numberOrNull('current'),
+      cycles: numberOrNull('cycles'),
+      notes: String(form.get('notes') || '').trim()
+    });
+    setEditingBattery(false);
+    showToast(language === 'ar' ? 'تم حفظ بيانات البطارية' : 'Battery details saved');
   };
 
   const archiveBattery = (id: string) => {
