@@ -1,5 +1,4 @@
 import type { Role } from '../types';
-import { LegacyFallbackEngine } from '../storage';
 
 export type CustomizableRoute = 'dashboard' | 'fleet' | 'shifts' | 'engineering' | 'batteries' | 'faults' | 'maintenance' | 'connections' | 'ai' | 'reports' | 'notifications' | 'users' | 'settings';
 
@@ -86,8 +85,19 @@ export const DEFAULT_CUSTOMIZATION: CustomizationConfig = {
 export const CUSTOMIZATION_STORAGE_KEY = 'shuttle-car-automation-v7:customization';
 export const CUSTOMIZATION_AUDIT_KEY = 'shuttle-car-automation-v7:customization-audit';
 // The async compatibility layer stays on legacy storage until 2B-3c bootstrap
-// can switch all application consumers together.
-const asyncCustomizationEngine = new LegacyFallbackEngine();
+// can switch all application consumers together. Load storage lazily so the
+// legacy synchronous functions remain usable from the native Node test runner.
+type AsyncCustomizationEngine = import('../storage/index.ts').StorageEngine;
+let asyncCustomizationEnginePromise: Promise<AsyncCustomizationEngine> | null = null;
+
+async function getAsyncCustomizationEngine(): Promise<AsyncCustomizationEngine> {
+  if (!asyncCustomizationEnginePromise) {
+    asyncCustomizationEnginePromise = import('../storage/index.ts').then(
+      ({ LegacyFallbackEngine }) => new LegacyFallbackEngine()
+    );
+  }
+  return asyncCustomizationEnginePromise;
+}
 
 function isRevisionConflict(reason: unknown): boolean {
   return Boolean(reason && typeof reason === 'object' &&
@@ -190,15 +200,17 @@ export function appendCustomizationAudit(entry: Omit<AuditEntry, 'id' | 'timesta
 
 /** Async load counterpart used by the backend-driven customization screen. */
 export async function loadCustomizationAsync(): Promise<CustomizationConfig> {
-  const stored = await asyncCustomizationEngine.read('customization.config');
+  const engine = await getAsyncCustomizationEngine();
+  const stored = await engine.read('customization.config');
   return validateCustomization(stored?.value ?? cloneDefaults());
 }
 
 /** Async save uses the revision sidecar and refuses to overwrite a newer edit. */
 export async function saveCustomizationAsync(config: CustomizationConfig): Promise<void> {
   const normalized = validateCustomization(config);
-  const current = await asyncCustomizationEngine.read('customization.config');
-  await asyncCustomizationEngine.write('customization.config', normalized, current?.revision ?? 0);
+  const engine = await getAsyncCustomizationEngine();
+  const current = await engine.read('customization.config');
+  await engine.write('customization.config', normalized, current?.revision ?? 0);
 }
 
 function validCustomizationAuditEntries(value: unknown): AuditEntry[] {
@@ -215,7 +227,8 @@ function validCustomizationAuditEntries(value: unknown): AuditEntry[] {
 
 /** Async audit read retains the existing entry validation and 500-item limit. */
 export async function readCustomizationAuditAsync(): Promise<AuditEntry[]> {
-  const stored = await asyncCustomizationEngine.read('customization.audit');
+  const engine = await getAsyncCustomizationEngine();
+  const stored = await engine.read('customization.audit');
   return validCustomizationAuditEntries(stored?.value ?? []);
 }
 
@@ -230,11 +243,12 @@ export async function appendCustomizationAuditAsync(
     timestamp: now.toISOString()
   };
 
+  const engine = await getAsyncCustomizationEngine();
   for (let attempt = 0; attempt < 3; attempt += 1) {
-    const current = await asyncCustomizationEngine.read('customization.audit');
+    const current = await engine.read('customization.audit');
     const existing = validCustomizationAuditEntries(current?.value ?? []);
     try {
-      await asyncCustomizationEngine.write(
+      await engine.write(
         'customization.audit',
         [audit, ...existing].slice(0, 500),
         current?.revision ?? 0

@@ -1,5 +1,4 @@
 import { sanitizeSpreadsheetCell } from '../data/csvSafety.ts';
-import { LegacyFallbackEngine } from '../storage/index.ts';
 
 export interface AuditRecordInput {
   actorId: string;
@@ -63,8 +62,20 @@ export const AUDIT_GENESIS_HASH = 'GENESIS';
 export const MAX_RECORDS = 5000;
 let appendQueue: Promise<unknown> = Promise.resolve();
 // Keep the async audit layer on legacy storage until the application bootstrap
-// switches the whole application from the compatibility mode.
-const asyncAuditEngine = new LegacyFallbackEngine();
+// switches the whole application from the compatibility mode. Load the engine
+// only when an async audit operation is invoked; sync node:test consumers stay
+// independent from the browser storage module graph.
+type AsyncAuditEngine = import('../storage/index.ts').StorageEngine;
+let asyncAuditEnginePromise: Promise<AsyncAuditEngine> | null = null;
+
+async function getAsyncAuditEngine(): Promise<AsyncAuditEngine> {
+  if (!asyncAuditEnginePromise) {
+    asyncAuditEnginePromise = import('../storage/index.ts').then(
+      ({ LegacyFallbackEngine }) => new LegacyFallbackEngine()
+    );
+  }
+  return asyncAuditEnginePromise;
+}
 
 function isRevisionConflict(reason: unknown): boolean {
   return Boolean(reason && typeof reason === 'object' &&
@@ -80,7 +91,8 @@ async function readAuditArrayWithRevision<T>(
   key: 'audit.active' | 'audit.archives',
   label: string
 ): Promise<{ records: T[]; revision: number }> {
-  const current = await asyncAuditEngine.read(key);
+  const engine = await getAsyncAuditEngine();
+  const current = await engine.read(key);
   if (!current) return { records: [], revision: 0 };
   if (!Array.isArray(current.value)) throw new Error(`${label} root is not an array; integrity cannot be established.`);
   return { records: current.value as T[], revision: current.revision };
@@ -432,10 +444,10 @@ export async function recoverPendingAuditArchiveAsync(
   // Archive first, then clear active. If either write is interrupted, the
   // pending marker makes this operation safely repeatable on the next read.
   if (!found) {
-    await asyncAuditEngine.write('audit.archives', nextArchives, archiveState.revision);
+    await (await getAsyncAuditEngine()).write('audit.archives', nextArchives, archiveState.revision);
   }
   if (activeState.records.length > 0) {
-    await asyncAuditEngine.write('audit.active', [], activeState.revision);
+    await (await getAsyncAuditEngine()).write('audit.active', [], activeState.revision);
   }
   if (!storage.removeItem) throw new Error('Storage removal is unavailable; pending archive marker remains for recovery.');
   storage.removeItem(AUDIT_ARCHIVE_PENDING_KEY);
@@ -599,7 +611,7 @@ export function appendAuditRecordAsync(
       const record: AuditRecord = { ...unsigned, hash: await sha256(canonical(unsigned), cryptoApi) };
 
       try {
-        await asyncAuditEngine.write('audit.active', [...activeState.records, record], activeState.revision);
+        await (await getAsyncAuditEngine()).write('audit.active', [...activeState.records, record], activeState.revision);
         return record;
       } catch (reason) {
         if (!isRevisionConflict(reason)) throw reason;
