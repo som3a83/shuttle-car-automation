@@ -14,6 +14,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function isOperationalValue(legacyKey: OperationalLegacyKey, value: unknown): boolean {
   const collection = OPERATIONAL_LEGACY_KEY_MAP.find((entry) => entry.legacyKey === legacyKey)?.legacyKey.split(':').pop();
   if (!collection) return false;
+  // Preservation-over-validation policy: legacy collections are preserved as-is once the root is confirmed to be an array.
+  // Do not validate individual entries here; stricter item checks could reject valid historical records.
   if (ARRAY_COLLECTIONS.has(collection)) return Array.isArray(value);
   if (collection === 'language') return value === 'ar' || value === 'en';
   if (collection === 'theme') return value === 'dark' || value === 'light';
