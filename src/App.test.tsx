@@ -124,6 +124,7 @@ beforeEach(async () => {
     const firstRender = renderApp();
     await user.click(screen.getByRole('button', { name: /Light mode/i }));
     expect(firstRender.container.querySelector('.app-shell')).toHaveClass('light');
+    await waitFor(() => expect(window.localStorage.getItem('shuttle-car-automation-v7:theme')).toBe('"light"'));
     firstRender.unmount();
 
     const secondRender = renderApp();
