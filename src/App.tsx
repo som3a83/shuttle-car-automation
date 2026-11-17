@@ -742,11 +742,12 @@ function App() {
       <header className="topbar">
         <div className="topbar-heading"><button className="mobile-menu" onClick={() => setMobileNav(true)} aria-label="Open navigation"><Icon name="grid" size={20}/></button><div className="breadcrumb">SHUTTLE OPS <span>/</span> {language === 'ar' ? header?.ar : header?.en}</div><h1>{language === 'ar' ? header?.ar : header?.en}</h1></div>
         <div className="topbar-actions">
+          <button className="topbar-route-button" type="button" onClick={goBack} disabled={!canGoBack} aria-label={language === 'ar' ? 'رجوع' : 'Go back'} title={language === 'ar' ? 'رجوع' : 'Go back'}><Icon name="chevron" size={17}/></button>
+          <button className="topbar-route-button" type="button" onClick={() => go('dashboard')} aria-label={language === 'ar' ? 'الرئيسية' : 'Home'} title={language === 'ar' ? 'الرئيسية' : 'Home'}><Icon name="grid" size={17}/></button>
+          <button className="topbar-route-button" type="button" onClick={() => go('settings')} aria-label={language === 'ar' ? 'الإعدادات' : 'Settings'} title={language === 'ar' ? 'الإعدادات' : 'Settings'}><Icon name="settings" size={17}/></button>
           <div className="system-chip"><i/> {language === 'ar' ? 'لا يوجد اتصال حي' : 'NO LIVE CONNECTION'}</div>
           <button className="language-toggle" onClick={() => setLanguage(language === 'en' ? 'ar' : 'en')}>{language === 'en' ? 'Arabic' : 'English'}</button>
           <button className="theme-toggle" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}><Icon name="settings" size={16}/><span>{theme === 'dark' ? 'Light mode' : 'Dark mode'}</span></button>
-        </div>
-      </header>
 
       <nav className="mobile-nav" aria-label={language === 'ar' ? 'التنقل السريع' : 'Quick navigation'}>
         {navItems.slice(0, 4).map((item) => <button key={item.id} type="button" className={activeTab === item.id ? 'active' : ''} aria-current={activeTab === item.id ? 'page' : undefined} onClick={() => go(item.id)}><Icon name={item.icon} size={16}/><span>{language === 'ar' ? item.ar : item.en}</span></button>)}
@@ -772,7 +773,7 @@ function App() {
         <div className="dashboard-grid">
           <div className="surface-card">
             <div className="card-head"><div><span className="eyebrow">ASSET REGISTER</span><h3>{t.fleet}</h3></div><button className="icon-button" onClick={() => go('fleet')}><Icon name="arrow"/></button></div>
-            <div className="mini-fleet">{shuttles.map(s => <button className="mini-asset" key={s.id} onClick={() => {setSelectedId(s.id);go('engineering');}}><div className={'mini-machine mini-' + s.manufacturer.toLowerCase()}><Icon name="truck" size={20}/></div><div className="mini-asset-info"><strong>{s.id}</strong><span>{s.manufacturer} · {s.model}</span></div><StatusPill status={s.status} language={language}/><Icon name="chevron" size={15}/></button>)}</div>
+            <div className="mini-fleet">{activeShuttles.map(s => <button className="mini-asset" key={s.id} onClick={() => {setSelectedId(s.id);go('engineering');}}><div className={'mini-machine mini-' + s.manufacturer.toLowerCase()}><Icon name="truck" size={20}/></div><div className="mini-asset-info"><strong>{s.id}</strong><span>{s.manufacturer} · {s.model}</span></div><StatusPill status={s.status} language={language}/><Icon name="chevron" size={15}/></button>)}</div>
           </div>
           <div className="surface-card">
             <div className="card-head"><div><span className="eyebrow">SYSTEM HEALTH</span><h3>{t.systemState}</h3></div><span className="status-pill status-unknown">OFFLINE</span></div>
@@ -792,17 +793,49 @@ function App() {
             <button className="btn-secondary full" onClick={() => {setSearch('');setStatusFilter('ALL');}}>{t.removeFilters}</button>
           </div>
           <div className="surface-card selected-asset-card">
-            {selected && <><div className="card-head"><div><span className="eyebrow">{t.selected}</span><h3>{selected.id}</h3></div><StatusPill status={selected.status} language={language}/></div><div className="selected-asset-visual"><ShuttleModel shuttle={selected} view="iso" exploded={false} animated={animated}/></div><div className="asset-detail-grid"><Detail label={t.manufacturer} value={selected.manufacturer}/><Detail label={t.model} value={selected.model}/><Detail label={t.serial} value={selected.serialNumber}/><Detail label={t.zone} value={selected.warehouseZone}/><Detail label={t.batteryPack} value={selected.installedBattery}/><Detail label={t.communication} value={selected.connectivity}/></div><div className="card-actions"><button className="btn-primary" onClick={() => go('engineering')}>{t.testView}<Icon name="arrow" size={15}/></button><select value={selected.status} onChange={e => updateShuttle(selected.id,{status:e.target.value as ShuttleStatus})}>{statusOptions.map(s=><option key={s} value={s}>{statusText(s)}</option>)}</select></div><p className="muted-text">{t.localChanges}</p></>}
+             {selected ? <><div className="card-head"><div><span className="eyebrow">{t.selected}</span><h3>{selected.id}</h3></div><StatusPill status={selected.status} language={language}/></div>
+               <div className="selected-asset-visual"><ShuttleModel shuttle={selected} view="iso" exploded={false} animated={animated}/></div>
+               {editingShuttle?.id === selected.id ? <form className="stack-form asset-edit-form" onSubmit={event => saveShuttleEdit(event, selected.id)}>
+                 <label>{t.manufacturer}<select name="manufacturer" defaultValue={selected.manufacturer}><option>Cassioli</option><option>Craftsman</option><option>ACME</option><option>Other</option></select></label>
+                 <label>{language==='ar'?'الموديل':'Model'}<input name="model" defaultValue={selected.model}/></label>
+                 <label>{language==='ar'?'الرقم المسلسل':'Manufacturer serial'}<input name="serialNumber" defaultValue={selected.serialNumber}/></label>
+                 <label>{language==='ar'?'إصدار الهاردوير':'Hardware revision'}<input name="hardwareVersion" defaultValue={selected.hardwareVersion}/></label>
+                 <label>{language==='ar'?'إصدار البرنامج':'Firmware version'}<input name="firmwareVersion" defaultValue={selected.firmwareVersion}/></label>
+                 <label>{t.zone}<input name="zone" defaultValue={selected.warehouseZone}/></label>
+                 <label>{language==='ar'?'المشغل المسؤول':'Assigned operator'}<input name="operator" defaultValue={selected.assignedOperator}/></label>
+                 <label>{t.status}<select name="status" defaultValue={selected.status}>{statusOptions.map(status=><option key={status} value={status}>{statusText(status)}</option>)}</select></label>
+                 <label>{t.notes}<textarea name="notes" defaultValue={selected.notes}/></label>
+                 <div className="record-actions"><button className="btn-primary" type="submit">{language==='ar'?'حفظ التعديلات':'Save changes'}</button><button className="btn-secondary" type="button" onClick={()=>setEditingShuttle(null)}>{t.cancel}</button></div>
+               </form> : <>
+                 <div className="asset-detail-grid"><Detail label={t.manufacturer} value={selected.manufacturer}/><Detail label={t.model} value={selected.model}/><Detail label={t.serial} value={selected.serialNumber}/><Detail label={t.zone} value={selected.warehouseZone}/><Detail label={t.batteryPack} value={selected.installedBattery}/><Detail label={t.communication} value={selected.connectivity}/><Detail label={language==='ar'?'ساعات التشغيل':'Operating hours'} value={selected.operatingHours ?? t.unknown}/><Detail label={language==='ar'?'دورات التشغيل':'Operating cycles'} value={selected.operatingCycles ?? t.unknown}/></div>
+                 <div className="card-actions"><button className="btn-primary" onClick={() => go('engineering')}>{t.testView}<Icon name="arrow" size={15}/></button><button className="btn-secondary" onClick={()=>setEditingShuttle(selected)}>{language==='ar'?'تعديل بيانات الجهاز':'Edit equipment'}</button><select aria-label={language==='ar'?'حالة الجهاز':'Device status'} value={selected.status} onChange={e => updateShuttle(selected.id,{status:e.target.value as ShuttleStatus})}>{statusOptions.map(status => <option key={status} value={status}>{statusText(status)}</option>)}</select></div>
+                 {pendingShuttleArchive===selected.id ? <div className="archive-confirm"><strong>{language==='ar'?'تأكيد أرشفة الجهاز؟ سيظل سجل الأعطال والصيانة محفوظًا.':'Archive this unit? Fault and maintenance history will be retained.'}</strong><button className="btn-danger" onClick={()=>archiveShuttle(selected.id)}>{language==='ar'?'تأكيد الأرشفة':'Confirm archive'}</button><button className="btn-secondary" onClick={()=>setPendingShuttleArchive(null)}>{t.cancel}</button></div> : <button className="btn-danger" type="button" onClick={()=>setPendingShuttleArchive(selected.id)}>{language==='ar'?'أرشفة الجهاز':'Archive device'}</button>}
+               </>}
+               <p className="muted-text">{t.localChanges}</p></>
+               : <div className="empty-state">{language==='ar'?'لا توجد أجهزة نشطة. أعد جهازًا من الأرشيف أو سجل جهازًا جديدًا.':'No active units. Restore one from the archive or register a new unit.'}</div>}
+           </div>
+        <div className="surface-card add-asset-card"><div className="card-head"><div><span className="eyebrow">REGISTER NEW EQUIPMENT</span><h3>{language==='ar'?'إضافة جهاز إلى الأسطول':'Register a shuttle unit'}</h3></div><Icon name="plus" size={20}/></div>
+          <form className="form-grid" onSubmit={addShuttle}>
+            <label>{t.manufacturer}<select value={newAsset.manufacturer} onChange={e=>setNewAsset({...newAsset,manufacturer:e.target.value})}><option>Cassioli</option><option>Craftsman</option><option>ACME</option><option>Other</option></select></label>
+            <label>{language==='ar'?'الموديل':'Model'}<input value={newAsset.model} onChange={e=>setNewAsset({...newAsset,model:e.target.value})} placeholder="Not recorded"/></label>
+            <label>{language==='ar'?'الرقم المسلسل':'Manufacturer serial'}<input value={newAsset.serialNumber} onChange={e=>setNewAsset({...newAsset,serialNumber:e.target.value})} placeholder="Not recorded"/></label>
+            <label>{language==='ar'?'منطقة التشغيل':'Operating zone'}<input value={newAsset.zone} onChange={e=>setNewAsset({...newAsset,zone:e.target.value})} placeholder={t.noData}/></label>
+            <label>{language==='ar'?'إصدار الهاردوير':'Hardware revision'}<input value={newAsset.hardwareVersion} onChange={e=>setNewAsset({...newAsset,hardwareVersion:e.target.value})} placeholder="Not recorded"/></label>
+            <label>{language==='ar'?'إصدار البرنامج':'Firmware version'}<input value={newAsset.firmwareVersion} onChange={e=>setNewAsset({...newAsset,firmwareVersion:e.target.value})} placeholder="Not recorded"/></label>
+            <label>{language==='ar'?'المشغل المسؤول':'Assigned operator'}<input value={newAsset.assignedOperator} onChange={e=>setNewAsset({...newAsset,assignedOperator:e.target.value})} placeholder="Not assigned"/></label>
+            <label>{t.notes}<input value={newAsset.notes} onChange={e=>setNewAsset({...newAsset,notes:e.target.value})} placeholder={t.noData}/></label>
+            <button className="btn-primary" type="submit">{language==='ar'?'حفظ الجهاز الجديد':'Save new device'}</button>
+          </form><p className="muted-text">{t.dataNotice}</p></div>
+          <div className="archive-panel"><button className="text-button" type="button" onClick={()=>setShowArchived(value=>!value)}>{showArchived?(language==='ar'?'إخفاء الأرشيف':'Hide archive'):(language==='ar'?'عرض الأجهزة المؤرشفة':'Show archived devices')} · {archivedShuttles.length}</button>
+            {showArchived && archivedShuttles.map(item=><div className="archive-row" key={item.id}><div><strong>{item.id}</strong><small>{item.manufacturer} · {item.model}</small></div><button className="btn-secondary" onClick={()=>restoreShuttle(item.id)}>{language==='ar'?'استعادة':'Restore'}</button></div>)}
           </div>
-        </div>
-        <div className="surface-card add-asset-card"><div className="card-head"><div><span className="eyebrow">REGISTER NEW EQUIPMENT</span><h3>{t.addShuttle}</h3></div><Icon name="plus" size={20}/></div><form className="inline-form" onSubmit={addShuttle}><label>{t.manufacturer}<select value={newAsset.manufacturer} onChange={e=>setNewAsset({...newAsset,manufacturer:e.target.value})}><option>Cassioli</option><option>Craftsman</option><option>ACME</option></select></label><label>{t.zone}<input value={newAsset.zone} onChange={e=>setNewAsset({...newAsset,zone:e.target.value})} placeholder={t.noData}/></label><label>{t.notes}<input value={newAsset.notes} onChange={e=>setNewAsset({...newAsset,notes:e.target.value})} placeholder={t.noData}/></label><button className="btn-primary" type="submit">{t.save}</button></form><p className="muted-text">{t.dataNotice}</p></div>
-      </section>}
+          </section>}
 
       {activeTab === 'engineering' && selected && <section className="page-content">
         <PageIntro eyebrow="MECHANICAL INTELLIGENCE / DIGITAL SCHEMATIC" title={t.engineering} subtitle={t.engineeringSub}/>
         <div className="engineering-workspace">
           <div className="surface-card model-stage">
-            <div className="model-toolbar"><div className="asset-select"><label>{t.selectAsset}</label><select value={selectedId} onChange={e=>setSelectedId(e.target.value)}>{shuttles.map(s=><option key={s.id} value={s.id}>{s.id} — {s.manufacturer}</option>)}</select></div><div className="model-tools"><button className={exploded?'tool-active':''} onClick={()=>setExploded(!exploded)}><Icon name="settings" size={15}/>{t.exploded}</button><button className={animated?'tool-active':''} onClick={()=>setAnimated(!animated)}><Icon name="grid" size={15}/>{animated?t.stop:t.animate}</button><button onClick={()=>{setModelView('iso');setModelZoom(1);setViewResetKey(value=>value+1);}}>{language==='ar'?'إعادة ضبط المنظور':'Reset view'}</button></div></div>
+            <div className="model-toolbar"><div className="asset-select"><label>{t.selectAsset}</label><select value={selectedId} onChange={e=>setSelectedId(e.target.value)}>{activeShuttles.map(s=><option key={s.id} value={s.id}>{s.id} — {s.manufacturer}</option>)}</select></div><div className="model-tools"><button className={exploded?'tool-active':''} onClick={()=>setExploded(!exploded)}><Icon name="settings" size={15}/>{t.exploded}</button><button className={animated?'tool-active':''} onClick={()=>setAnimated(!animated)}><Icon name="grid" size={15}/>{animated?t.stop:t.animate}</button><button onClick={()=>{setModelView('iso');setModelZoom(1);setViewResetKey(value=>value+1);}}>{language==='ar'?'إعادة ضبط المنظور':'Reset view'}</button></div></div>
             <div className="view-tabs">{(['iso','side','front','top'] as ModelView[]).map(v=><button key={v} className={modelView===v?'active':''} onClick={()=>setModelView(v)}>{t[v]}</button>)}</div>
             <div className="model-canvas three-model-canvas">
                <div className="canvas-topline"><span>3D ENGINEERING MODEL: {selected.manufacturer.toUpperCase()} / {selected.id}</span><span>CONCEPTUAL · NOT VENDOR CAD</span></div>
