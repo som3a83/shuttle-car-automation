@@ -94,9 +94,11 @@ describe('Shuttle Car Automation V10', () => {
     await user.type(actionFields[0], 'Replaced damaged sensor and verified detection in a controlled test.');
     const saveButtons = screen.getAllByRole('button', { name: /Save corrective action/i });
     await user.click(saveButtons[0]);
-    const resolveButtons = screen.getAllByRole('button', { name: /Resolve fault/i });
-    expect((resolveButtons[0] as HTMLButtonElement).disabled).toBe(false);
-    await user.click(resolveButtons[0]);
+    await waitFor(() => {
+      expect(screen.getAllByRole('button', { name: /Resolve fault/i })[0]).toBeEnabled();
+    });
+    expect(screen.getByText('Replaced damaged sensor and verified detection in a controlled test.')).toBeInTheDocument();
+    await user.click(screen.getAllByRole('button', { name: /Resolve fault/i })[0]);
     await waitFor(() => expect(screen.getAllByText('Resolved').length).toBeGreaterThan(0));
   });
 
