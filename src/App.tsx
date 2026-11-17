@@ -134,6 +134,12 @@ const copy = {
   }
 };
 
+let appPersistenceQueue: Promise<void> = Promise.resolve();
+
+export async function flushApplicationPersistence(): Promise<void> {
+  await appPersistenceQueue;
+}
+
 function tabFromLocation(): Tab {
   const hash = window.location.hash;
   const candidate = (hash.startsWith('#/') ? hash.slice(2) : hash.replace(/^#/, '')) as Tab;
@@ -410,7 +416,6 @@ function App({ initialData }: { initialData: AppInitialData }) {
   const [dailyReports, setDailyReports] = useState<DailyReportSnapshot[]>(initialData.dailyReports);
   const [shifts, setShifts] = useState<ShiftRecord[]>(initialData.shifts);
   const routeStackRef = useRef<Tab[]>([tabFromLocation()]);
-  const persistenceQueueRef = useRef<Promise<void>>(Promise.resolve());
 
   const t = copy[language];
   useEffect(() => {
@@ -476,7 +481,7 @@ function App({ initialData }: { initialData: AppInitialData }) {
       { storageKey: 'operational.shifts', collection: 'shifts', value: shifts }
     ];
 
-    const operation = persistenceQueueRef.current.then(async () => {
+    const operation = appPersistenceQueue.then(async () => {
       for (const entry of values) {
         try {
           await set(entry.storageKey, entry.value as never);
@@ -493,7 +498,7 @@ function App({ initialData }: { initialData: AppInitialData }) {
         }
       }
     });
-    persistenceQueueRef.current = operation.catch(() => undefined);
+    appPersistenceQueue = operation.catch(() => undefined);
 
     return () => { active = false; };
   }, [language, theme, sidebarCollapsed, shuttles, batteries, faults, jobs, connections, notifications, settings, dailyReports, shifts]);
