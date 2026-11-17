@@ -26,6 +26,9 @@ export interface LocalAccount {
   iterations: number;
   failedAttempts: number;
   lockedUntil: number;
+  disabledAt?: string | null;
+  mustChangePassword?: boolean;
+  credentialVersion?: number;
 }
 
 export interface LocalAccountSummary extends Omit<LocalAccount, 'passwordSalt' | 'passwordHash' | 'iterations' | 'failedAttempts' | 'lockedUntil'> {}
@@ -48,7 +51,19 @@ export interface AuthStorage {
 
 export type AuthResult =
   | { ok: true; account: LocalAccountSummary; session: LocalSession }
-  | { ok: false; reason: 'invalid-credentials' | 'locked' | 'not-found' };
+  | { ok: false; reason: 'invalid-credentials' | 'locked' | 'not-found' | 'disabled' };
+
+export interface LocalAccountPatch {
+  name?: string;
+  email?: string;
+  username?: string;
+  role?: Role;
+}
+
+export interface LocalAccountActor {
+  id: string;
+  role: Role;
+}
 
 function bytesToBase64(bytes: Uint8Array): string {
   let binary = '';
@@ -79,6 +94,9 @@ function readAccounts(storage: AuthStorage): LocalAccount[] {
     /^[A-Za-z0-9+/]{22}==$/.test(item.passwordSalt) && /^[A-Za-z0-9+/]{43}=$/.test(item.passwordHash) &&
     ALLOWED_ROLES.includes(item.role) && item.iterations === LOCAL_AUTH_ITERATIONS &&
     Number.isInteger(item.failedAttempts) && item.failedAttempts >= 0 && Number.isFinite(item.lockedUntil) &&
+    (item.disabledAt === undefined || item.disabledAt === null || (typeof item.disabledAt === 'string' && Number.isFinite(Date.parse(item.disabledAt)))) &&
+    (item.mustChangePassword === undefined || typeof item.mustChangePassword === 'boolean') &&
+    (item.credentialVersion === undefined || (Number.isInteger(item.credentialVersion) && item.credentialVersion >= 1)) &&
     typeof item.createdAt === 'string'));
   if (!valid) throw new Error('Local account registry contains invalid records. Account creation is disabled pending recovery.');
   const accounts = value as LocalAccount[];
@@ -133,7 +151,8 @@ export async function createLocalAccount(
   const account: LocalAccount = {
     id: `LOCAL-${randomId(cryptoApi)}`, name, email, username, role: input.role,
     createdAt: now.toISOString(), passwordSalt: bytesToBase64(salt), passwordHash: bytesToBase64(passwordHash),
-    iterations: LOCAL_AUTH_ITERATIONS, failedAttempts: 0, lockedUntil: 0
+    iterations: LOCAL_AUTH_ITERATIONS, failedAttempts: 0, lockedUntil: 0,
+    disabledAt: null, mustChangePassword: false, credentialVersion: 1
   };
   storage.setItem(LOCAL_AUTH_STORAGE_KEY, JSON.stringify([...readAccounts(storage), account]));
   return toSummary(account);
@@ -152,6 +171,7 @@ export async function authenticateLocalAccount(
   const index = accounts.findIndex((account) => account.username === normalized || account.email === normalized);
   if (index < 0) return { ok: false, reason: 'not-found' };
   const account = accounts[index];
+  if (account.disabledAt) return { ok: false, reason: 'disabled' };
   if (account.lockedUntil > now) return { ok: false, reason: 'locked' };
   const expected = base64ToBytes(account.passwordHash);
   const actual = await derive(password, base64ToBytes(account.passwordSalt), cryptoApi, account.iterations);
@@ -170,7 +190,8 @@ export async function authenticateLocalAccount(
   storage.setItem(LOCAL_AUTH_STORAGE_KEY, JSON.stringify(accounts));
   const session: LocalSession = {
     token: randomId(cryptoApi), accountId: account.id, name: account.name, email: account.email, role: account.role,
-    issuedAt: now, expiresAt: now + SESSION_TTL_MS
+    issuedAt: now, expiresAt: now + SESSION_TTL_MS,
+    mustChangePassword: Boolean(account.mustChangePassword), credentialVersion: account.credentialVersion ?? 1
   };
   sessionStorage.setItem(LOCAL_SESSION_STORAGE_KEY, JSON.stringify(session));
   return { ok: true, account: toSummary(account), session };
@@ -187,18 +208,138 @@ export function readLocalSession(
     if (!session || typeof session.token !== 'string' || session.token.length < 16 ||
       typeof session.accountId !== 'string' || !Number.isFinite(session.issuedAt) ||
       !Number.isFinite(session.expiresAt) || session.issuedAt > now + 60_000 ||
-      session.expiresAt <= now || session.expiresAt - session.issuedAt > SESSION_TTL_MS) return clear();
+      session.expiresAt <= now || session.expiresAt - session.issuedAt > SESSION_TTL_MS ||
+      !Number.isInteger(session.credentialVersion) || session.credentialVersion < 1) return clear();
     // Never trust the role or identity copied into sessionStorage. Resolve them
     // from the corresponding account record on every application startup.
     const account = readAccounts(accountStorage).find((candidate) => candidate.id === session.accountId);
-    if (!account) return clear();
+    if (!account || account.disabledAt || (account.credentialVersion ?? 1) !== session.credentialVersion) return clear();
     return {
       token: session.token, accountId: account.id, name: account.name, email: account.email,
-      role: account.role, issuedAt: session.issuedAt, expiresAt: session.expiresAt
+      role: account.role, issuedAt: session.issuedAt, expiresAt: session.expiresAt,
+      mustChangePassword: Boolean(account.mustChangePassword),
+      credentialVersion: account.credentialVersion ?? 1
     };
   } catch {
     return clear();
   }
+}
+
+export function updateLocalAccount(
+  accountId: string,
+  patch: LocalAccountPatch,
+  actor: LocalAccountActor,
+  storage: AuthStorage = localStorage,
+  now = new Date()
+): LocalAccountSummary {
+  if (actor.role !== 'Super Admin') throw new Error('Only the Super Admin can edit local accounts.');
+  const accounts = readAccounts(storage);
+  const index = accounts.findIndex(account => account.id === accountId);
+  if (index < 0) throw new Error('Local account was not found.');
+  const current = accounts[index];
+  if (actor.id === accountId && patch.role && patch.role !== current.role) {
+    throw new Error('Self-promotion or self-demotion is not permitted. Another Super Admin must change this role.');
+  }
+  const name = patch.name === undefined ? current.name : patch.name.trim();
+  const email = patch.email === undefined ? current.email : patch.email.trim().toLowerCase();
+  const username = patch.username === undefined ? current.username : normalizeUsername(patch.username);
+  const role = patch.role === undefined ? current.role : patch.role;
+  if (!name || !email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !/^[a-z0-9._-]{3,32}$/.test(username)) {
+    throw new Error('Enter a valid name, email and username.');
+  }
+  if (!ALLOWED_ROLES.includes(role)) throw new Error('The selected role is not supported.');
+  if (accounts.some((item, itemIndex) => itemIndex !== index &&
+      (item.username === username || item.email === email))) {
+    throw new Error('Another local account already uses this username or email.');
+  }
+  if (current.role === 'Super Admin' && role !== 'Super Admin' && !current.disabledAt) {
+    const activeAdmins = accounts.filter(item => item.role === 'Super Admin' && !item.disabledAt).length;
+    if (activeAdmins <= 1) throw new Error('The last active Super Admin cannot be demoted.');
+  }
+  const updated: LocalAccount = { ...current, name, email, username, role };
+  accounts[index] = updated;
+  storage.setItem(LOCAL_AUTH_STORAGE_KEY, JSON.stringify(accounts));
+  return toSummary(updated);
+}
+
+export function setLocalAccountDisabled(
+  accountId: string,
+  disabled: boolean,
+  actor: LocalAccountActor,
+  storage: AuthStorage = localStorage,
+  now = new Date()
+): LocalAccountSummary {
+  if (actor.role !== 'Super Admin') throw new Error('Only the Super Admin can disable or reactivate accounts.');
+  if (actor.id === accountId) throw new Error('You cannot disable your own active session.');
+  const accounts = readAccounts(storage);
+  const index = accounts.findIndex(account => account.id === accountId);
+  if (index < 0) throw new Error('Local account was not found.');
+  const current = accounts[index];
+  if (disabled && current.role === 'Super Admin' && !current.disabledAt) {
+    const activeAdmins = accounts.filter(item => item.role === 'Super Admin' && !item.disabledAt).length;
+    if (activeAdmins <= 1) throw new Error('The last active Super Admin cannot be disabled.');
+  }
+  const updated: LocalAccount = {
+    ...current,
+    disabledAt: disabled ? now.toISOString() : null,
+    credentialVersion: (current.credentialVersion ?? 1) + 1,
+    failedAttempts: 0,
+    lockedUntil: 0
+  };
+  accounts[index] = updated;
+  storage.setItem(LOCAL_AUTH_STORAGE_KEY, JSON.stringify(accounts));
+  return toSummary(updated);
+}
+
+async function verifyPassword(account: LocalAccount, password: string, cryptoApi: Crypto): Promise<boolean> {
+  const expected = base64ToBytes(account.passwordHash);
+  const actual = await derive(password, base64ToBytes(account.passwordSalt), cryptoApi, account.iterations);
+  return expected.length === actual.length &&
+    expected.reduce((difference, byte, position) => difference | (byte ^ actual[position]), 0) === 0;
+}
+
+export async function changeLocalAccountPassword(
+  accountId: string,
+  currentPassword: string,
+  newPassword: string,
+  actor: LocalAccountActor,
+  storage: AuthStorage = localStorage,
+  cryptoApi: Crypto = globalThis.crypto,
+  now = new Date()
+): Promise<LocalAccountSummary> {
+  const accounts = readAccounts(storage);
+  const index = accounts.findIndex(account => account.id === accountId);
+  if (index < 0) throw new Error('Local account was not found.');
+  const current = accounts[index];
+  const selfChange = actor.id === accountId;
+  if (!selfChange && actor.role !== 'Super Admin') throw new Error('Only the Super Admin can reset another local account password.');
+  if (selfChange && !await verifyPassword(current, currentPassword, cryptoApi)) {
+    throw new Error('The current password is incorrect.');
+  }
+  if (newPassword.length < 12 || newPassword.length > 128) throw new Error('Password must contain 12–128 characters.');
+  if (!cryptoApi?.subtle) throw new Error('Secure Web Crypto is unavailable. Use HTTPS or a secure local context.');
+  const salt = cryptoApi.getRandomValues(new Uint8Array(16));
+  const hash = await derive(newPassword, salt, cryptoApi);
+  const updated: LocalAccount = {
+    ...current,
+    passwordSalt: bytesToBase64(salt),
+    passwordHash: bytesToBase64(hash),
+    iterations: LOCAL_AUTH_ITERATIONS,
+    failedAttempts: 0,
+    lockedUntil: 0,
+    mustChangePassword: !selfChange,
+    credentialVersion: (current.credentialVersion ?? 1) + 1
+  };
+  accounts[index] = updated;
+  storage.setItem(LOCAL_AUTH_STORAGE_KEY, JSON.stringify(accounts));
+  return toSummary(updated);
+}
+
+export function generateTemporaryPassword(cryptoApi: Crypto = globalThis.crypto): string {
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%&*';
+  const random = cryptoApi.getRandomValues(new Uint8Array(24));
+  const body = Array.from(random, value => alphabet[value % alphabet.length]).join('');
+  return `A1!${body}z`;
 }
 
 export function endLocalSession(storage: AuthStorage = globalThis.sessionStorage): void {
