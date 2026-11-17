@@ -11,7 +11,7 @@ on:
       version_code:
         description: Android versionCode; must increase on every Play upload
         required: true
-        default: "1"
+        default: "1000000"
         type: string
   push:
     tags:
@@ -75,7 +75,7 @@ jobs:
       - name: Enforce Play release SDK, version and signing configuration
         env:
           APP_VERSION_INPUT: ${{ inputs.version_name }}
-          APP_VERSION_CODE_INPUT: ${{ inputs.version_code || '1' }}
+          APP_VERSION_CODE_INPUT: ${{ inputs.version_code || '1000000' }}
           ANDROID_KEYSTORE_FILE: upload-key.jks
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
