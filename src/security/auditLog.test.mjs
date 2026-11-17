@@ -117,7 +117,7 @@ test('audit archive and active records support search, filter and CSV export', a
   expectFilter(filterAuditRecords(all, { query: 'sc-04' }), ['created', 'fault-resolved']);
   expectFilter(filterAuditRecords(all, { action: 'battery-updated' }), ['battery-updated']);
   const csv = auditRecordsToCsv(all);
-  assert.match(csv, /id,timestamp,actorId/);
+  assert.match(csv, /"id","timestamp","actorId"/);
   assert.match(csv, /fault-resolved/);
 });
 
