@@ -55,6 +55,35 @@ export interface Shuttle {
   notes: string;
 }
 
+export type BatteryMovementAction = 'Registered' | 'Assigned' | 'Removed' | 'Reassigned' | 'Archived' | 'Restored';
+
+export interface BatteryMovement {
+  id: string;
+  timestamp: string;
+  action: BatteryMovementAction;
+  fromShuttleId: string;
+  toShuttleId: string;
+  note: string;
+  source: 'MANUAL';
+}
+
+export interface ShiftRecord {
+  id: string;
+  shiftType: 'Day' | 'Night';
+  startedAt: string;
+  endedAt: string | null;
+  supervisor: string;
+  operators: string;
+  openingNotes: string;
+  handoverNotes: string;
+  openingFleet: Array<{ id: string; manufacturer: string; status: ShuttleStatus; connectivity: ConnectivityStatus }>;
+  closingFleet: Array<{ id: string; manufacturer: string; status: ShuttleStatus; connectivity: ConnectivityStatus }>;
+  openingOpenFaults: number;
+  closingOpenFaults: number | null;
+  openingOpenMaintenance: number;
+  closingOpenMaintenance: number | null;
+}
+
 export interface Battery {
   id: string;
   /** Soft archive preserves battery history and prevents accidental permanent data loss. */
@@ -77,6 +106,8 @@ export interface Battery {
   notes: string;
   status: 'Installed' | 'Spare' | 'Charging' | 'Discharging' | 'Available' | 'Maintenance' | 'Fault';
   connectionMode: ConnectivityStatus;
+  /** Local manual movement history; does not represent BMS telemetry. */
+  movementHistory?: BatteryMovement[];
 }
 
 export interface Fault {
