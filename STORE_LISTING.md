@@ -24,12 +24,12 @@ Manage equipment registers, battery assignments and movement history, reported f
 - Create maintenance work orders and follow their status.
 - Open and close day/night shifts with fleet snapshots and handover notes.
 - Review an operational dashboard and export reports to XLSX, CSV and JSON.
-- Inspect interactive conceptual 3D shuttle and lithium-battery assemblies.
+- Inspect interactive parametric 3D shuttle and lithium-battery reference assemblies with orthographic views and exploded component inspection.
 - Use Arabic RTL or English LTR with dark and light themes.
 - Work with locally stored records without requiring an application account.
 
 **Important limitations**
-This release does not connect to physical shuttle cars, PLCs, manufacturer gateways or battery management systems. It does not issue machine-control commands. Device readings and operating states are manual or unverified unless clearly marked otherwise. 3D models are conceptual illustrations, not manufacturer CAD. Records are stored locally on the current device; there is no cloud backup, shared database or secure multi-user authentication.
+This release does not connect to physical shuttle cars, PLCs, manufacturer gateways or battery management systems. It does not issue machine-control commands. Device readings and operating states are manual or unverified unless clearly marked otherwise. 3D models are parametric reference assemblies, not manufacturer-supplied CAD files or certified physical dimensions. Records are stored locally on the current device; there is no cloud backup, shared database or secure multi-user authentication.
 
 Use the application as an operational recordkeeping aid, not as a safety system or replacement for manufacturer-approved procedures.
 
@@ -48,12 +48,12 @@ Use the application as an operational recordkeeping aid, not as a safety system 
 - إنشاء أوامر الصيانة ومتابعة حالتها.
 - تسجيل الورديات الصباحية والليلية مع لقطة لحالة الأسطول ومحضر التسليم.
 - لوحة متابعة وتقارير تشغيلية وتصدير XLSX وCSV ونسخ JSON احتياطية.
-- عرض هندسي ثلاثي الأبعاد تصوري للشاتل والبطاريات.
+- عرض هندسي ثلاثي الأبعاد بارامتري للشاتل والبطاريات مع إسقاطات متعامدة وتفكيك للمكونات.
 - واجهة عربية RTL وإنجليزية LTR مع الوضع الداكن والفاتح.
 - حفظ السجلات محليًا على الجهاز دون الحاجة إلى إنشاء حساب داخل التطبيق.
 
 **تنبيه مهم**
-هذا الإصدار لا يتصل فعليًا بعربات الشاتل أو وحدات PLC أو بوابات الشركات المصنعة أو أنظمة إدارة البطارية، ولا يرسل أوامر تحكم للمعدات. الحالات والقراءات يدوية أو غير مؤكدة ما لم يذكر خلاف ذلك بوضوح. الرسومات ثلاثية الأبعاد تصورية وليست ملفات CAD معتمدة من المصنع. البيانات محفوظة محليًا على الجهاز ولا توجد مزامنة سحابية أو قاعدة بيانات مشتركة أو صلاحيات دخول مؤمنة متعددة المستخدمين.
+هذا الإصدار لا يتصل فعليًا بعربات الشاتل أو وحدات PLC أو بوابات الشركات المصنعة أو أنظمة إدارة البطارية، ولا يرسل أوامر تحكم للمعدات. الحالات والقراءات يدوية أو غير مؤكدة ما لم يذكر خلاف ذلك بوضوح. النماذج ثلاثية الأبعاد تجميعات مرجعية بارامترية وليست ملفات CAD أصلية من المصنع أو أبعادًا فعلية معتمدة. البيانات محفوظة محليًا على الجهاز ولا توجد مزامنة سحابية أو قاعدة بيانات مشتركة أو صلاحيات دخول مؤمنة متعددة المستخدمين.
 
 التطبيق أداة لتوثيق ومتابعة السجلات التشغيلية، وليس نظام أمان أو بديلًا عن تعليمات المصنع والإجراءات الفنية المعتمدة.
 
