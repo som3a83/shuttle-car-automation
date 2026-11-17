@@ -359,6 +359,34 @@ describe('Shuttle Car Automation V10', () => {
     expect(window.localStorage.getItem('shuttle-car-automation-v7:shuttles')).toContain('"archivedAt":null');
   });
 
+  it('blocks shuttle archiving while a linked fault is unresolved', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getAllByRole('button', { name: /Fleet Control Center/i })[0]);
+    await user.click(screen.getByRole('button', { name: /SC-04 Craftsman/i }));
+    await user.click(screen.getByRole('button', { name: /Archive device/i }));
+    await user.click(screen.getByRole('button', { name: /Confirm archive/i }));
+    expect(screen.getByText(/Resolve open fault reports and complete active work orders/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /SC-04 Craftsman/i })).toBeInTheDocument();
+  });
+
+  it('does not restore a shuttle when its manufacturer serial is already used by an active unit', async () => {
+    const shuttles = initialShuttles.map(item => item.id === 'SC-01'
+      ? { ...item, serialNumber: 'SERIAL-DUPLICATE', archivedAt: '2026-11-17T00:00:00.000Z' }
+      : item.id === 'SC-02'
+        ? { ...item, serialNumber: 'SERIAL-DUPLICATE' }
+        : item);
+    window.localStorage.setItem('shuttle-car-automation-v7:shuttles', JSON.stringify(shuttles));
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getAllByRole('button', { name: /Fleet Control Center/i })[0]);
+    await user.click(screen.getByRole('button', { name: /Show archived devices/i }));
+    await user.click(screen.getAllByRole('button', { name: /Restore/i })[0]);
+    expect(screen.getByText(/Cannot restore: this manufacturer serial number belongs to another active shuttle/i)).toBeInTheDocument();
+    const saved = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:shuttles') || '[]') as Array<{id:string;archivedAt?:string|null}>;
+    expect(saved.find(item => item.id === 'SC-01')?.archivedAt).toBeTruthy();
+  });
+
   it('registers and assigns a new battery to an active shuttle', async () => {
     const user = userEvent.setup();
     render(<App />);
