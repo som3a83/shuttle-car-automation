@@ -113,3 +113,84 @@ test('rapid saves are serialized and get unique monotonic revisions', async () =
   ]);
   assert.deepEqual(results.map((result) => result.revision), [1, 2, 3]);
 });
+
+
+test('a verified primary and a different valid legacy copy require an explicit choice', async () => {
+  const storage = new MemoryStorage();
+  const primary = [{ id: 'SC-PRIMARY', status: 'Running' }];
+  const legacy = [{ id: 'SC-LEGACY', status: 'Idle' }];
+  await persistOperationalSnapshot('shuttles', primary, storage);
+  const legacyKey = `${OPERATIONAL_PREFIX}shuttles`;
+  storage.setItem(legacyKey, JSON.stringify(legacy));
+
+  const inspection = await bootstrapOperationalStorage(storage);
+  assert.equal(inspection.status, 'recovery-required');
+  if (inspection.status !== 'recovery-required') return;
+  const item = inspection.items.find(entry => entry.collection === 'shuttles');
+  assert.ok(item);
+  assert.deepEqual(item.primaryData, primary);
+  assert.deepEqual(item.legacyData, legacy);
+  assert.equal(storage.getItem(legacyKey), JSON.stringify(legacy));
+  assert.deepEqual(JSON.parse(storage.getItem(`${OPERATIONAL_PREFIX}verified:shuttles`)).payload, primary);
+
+  await resolveOperationalRecovery('shuttles', 'primary', storage);
+  const settled = await resolveOtherMissingCollections(storage, ['shuttles']);
+  assert.deepEqual(settled, { status: 'ready', issues: [] });
+  assert.deepEqual(JSON.parse(storage.getItem(legacyKey)), primary);
+  assert.deepEqual(JSON.parse(storage.getItem(`${OPERATIONAL_PREFIX}verified:shuttles`)).payload, primary);
+  assert.equal([...storage.values.entries()].some(([key, value]) =>
+    key.includes('shuttles:quarantine:') && value === JSON.stringify(legacy)
+  ), true);
+});
+
+test('a user may explicitly migrate a legacy copy over a verified primary without losing the old primary', async () => {
+  const storage = new MemoryStorage();
+  const primary = [{ id: 'SC-PRIMARY', status: 'Running' }];
+  const legacy = [{ id: 'SC-LEGACY', status: 'Idle' }];
+  await persistOperationalSnapshot('shuttles', primary, storage);
+  const primaryRaw = storage.getItem(`${OPERATIONAL_PREFIX}verified:shuttles`);
+  const legacyKey = `${OPERATIONAL_PREFIX}shuttles`;
+  storage.setItem(legacyKey, JSON.stringify(legacy));
+
+  const inspection = await bootstrapOperationalStorage(storage);
+  assert.equal(inspection.status, 'recovery-required');
+  if (inspection.status !== 'recovery-required') return;
+  const item = inspection.items.find(entry => entry.collection === 'shuttles');
+  assert.ok(item);
+  assert.deepEqual(item.primaryData, primary);
+  assert.deepEqual(item.legacyData, legacy);
+
+  await resolveOperationalRecovery('shuttles', 'legacy', storage);
+  const settled = await resolveOtherMissingCollections(storage, ['shuttles']);
+  assert.deepEqual(settled, { status: 'ready', issues: [] });
+  assert.deepEqual(JSON.parse(storage.getItem(legacyKey)), legacy);
+  assert.deepEqual(JSON.parse(storage.getItem(`${OPERATIONAL_PREFIX}verified:shuttles`)).payload, legacy);
+  assert.equal([...storage.values.entries()].some(([key, value]) =>
+    key.includes('verified:shuttles:quarantine:') && value === primaryRaw
+  ), true);
+});
+
+test('a verified primary with corrupt legacy bytes preserves both until an explicit primary choice', async () => {
+  const storage = new MemoryStorage();
+  const primary = [{ id: 'SC-PRIMARY' }];
+  const legacyKey = `${OPERATIONAL_PREFIX}shuttles`;
+  await persistOperationalSnapshot('shuttles', primary, storage);
+  storage.setItem(legacyKey, '{legacy-corrupt');
+
+  const inspection = await bootstrapOperationalStorage(storage);
+  assert.equal(inspection.status, 'recovery-required');
+  if (inspection.status !== 'recovery-required') return;
+  const item = inspection.items.find(entry => entry.collection === 'shuttles');
+  assert.ok(item);
+  assert.equal(item.legacy.status, 'invalid');
+  assert.deepEqual(item.primaryData, primary);
+  assert.equal(storage.getItem(legacyKey), '{legacy-corrupt');
+
+  await resolveOperationalRecovery('shuttles', 'primary', storage);
+  const settled = await resolveOtherMissingCollections(storage, ['shuttles']);
+  assert.deepEqual(settled, { status: 'ready', issues: [] });
+  assert.deepEqual(JSON.parse(storage.getItem(legacyKey)), primary);
+  assert.equal([...storage.values.entries()].some(([key, value]) =>
+    key.includes('shuttles:quarantine:') && value === '{legacy-corrupt'
+  ), true);
+});
