@@ -7,6 +7,10 @@ import {
   endLocalSession,
   listLocalAccounts,
   localAccountRegistryError,
+  updateLocalAccount,
+  setLocalAccountDisabled,
+  changeLocalAccountPassword,
+  generateTemporaryPassword,
   type LocalAccountSummary
 } from '../security/localAuth';
 
@@ -40,6 +44,10 @@ export default function SecurityCenter({
   const [auditBusy, setAuditBusy] = useState(false);
   const [login, setLogin] = useState({ identity: '', password: '' });
   const [newAccount, setNewAccount] = useState({ name: '', email: '', username: '', role: 'Maintenance Engineer' as Role, password: '', confirm: '' });
+  const [editingAccountId, setEditingAccountId] = useState<string | null>(null);
+  const [accountDraft, setAccountDraft] = useState({ name: '', email: '', username: '', role: 'Viewer' as Role });
+  const [temporaryPasswordNotice, setTemporaryPasswordNotice] = useState<{ username: string; password: string } | null>(null);
+  const [passwordForm, setPasswordForm] = useState({ current: '', next: '', confirm: '' });
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const isAuthenticated = currentUser.isAuthenticated;
@@ -157,23 +165,25 @@ export default function SecurityCenter({
       if (!result.ok) {
         const message = result.reason === 'locked'
           ? (ar ? 'تم إيقاف المحاولات مؤقتًا لمدة دقيقة.' : 'Sign-in is temporarily locked for one minute.')
-          : (ar ? 'اسم المستخدم أو كلمة المرور غير صحيحة.' : 'The username/email or password is incorrect.');
+          : result.reason === 'disabled'
+            ? (ar ? 'هذا الحساب معطل. اطلب من المسؤول الأعلى إعادة تفعيله.' : 'This account is disabled. Ask the Super Admin to reactivate it.')
+            : (ar ? 'اسم المستخدم أو كلمة المرور غير صحيحة.' : 'The username/email or password is incorrect.');
         setError(message);
         return;
       }
-      let auditWarning = '';
-      try {
-        await appendAuditRecord({
-          actorId: result.account.id, actorRole: result.account.role, action: 'LOCAL_LOGIN',
-          entityType: 'account', entityId: result.account.id, detail: 'Local device session started.'
-        });
-      } catch { auditWarning = ar ? 'تحذير: تعذر التحقق أو تحديث سجل التدقيق.' : 'Warning: the audit log could not be verified or updated.'; }
+      await appendAuditRecord({
+        actorId: result.account.id, actorRole: result.account.role, action: 'LOCAL_LOGIN',
+        entityType: 'account', entityId: result.account.id,
+        detail: result.session.mustChangePassword ? 'Local device session started; password change is required.' : 'Local device session started.'
+      });
       onSessionChange({
         id: result.account.id, name: result.account.name, email: result.account.email,
-        role: result.account.role, isAuthenticated: true
+        role: result.account.role, isAuthenticated: true, mustChangePassword: result.session.mustChangePassword
       });
       setLogin({ identity: '', password: '' });
-      setError(auditWarning);
+      setError(result.session.mustChangePassword
+        ? (ar ? 'كلمة المرور مؤقتة. غيّرها الآن قبل استخدام بقية التطبيق.' : 'This is a temporary password. Change it now before using the rest of the application.')
+        : '');
       await refresh();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : (ar ? 'تعذر تسجيل الدخول.' : 'Sign-in failed.'));
@@ -195,29 +205,167 @@ export default function SecurityCenter({
     }
     setBusy(true);
     try {
+      const actor = canBootstrap ? undefined : { id: currentUser.id, role: currentUser.role };
+      await appendAuditRecord({
+        actorId: canBootstrap ? 'LOCAL-BOOTSTRAP' : currentUser.id,
+        actorRole: canBootstrap ? 'Super Admin' : currentUser.role,
+        action: canBootstrap ? 'LOCAL_ADMIN_BOOTSTRAP_REQUESTED' : 'LOCAL_ACCOUNT_CREATE_REQUESTED',
+        entityType: 'account', entityId: newAccount.username.trim().toLowerCase(),
+        detail: `Local account provisioning requested for ${newAccount.username}.`
+      });
       const account = await createLocalAccount({
         name: newAccount.name, email: newAccount.email, username: newAccount.username,
         role: canBootstrap ? 'Super Admin' : newAccount.role, password: newAccount.password
-      });
-      let auditWarning = '';
-      try { await appendAuditRecord({
-        actorId: isAuthenticated ? currentUser.id : account.id,
-        actorRole: isAuthenticated ? currentUser.role : 'Super Admin',
+      }, localStorage, globalThis.crypto, new Date(), actor);
+      await appendAuditRecord({
+        actorId: canBootstrap ? account.id : currentUser.id,
+        actorRole: canBootstrap ? 'Super Admin' : currentUser.role,
         action: canBootstrap ? 'LOCAL_ADMIN_BOOTSTRAPPED' : 'LOCAL_ACCOUNT_CREATED',
         entityType: 'account', entityId: account.id, detail: `Created local account ${account.username}.`
-      }); } catch { auditWarning = ar ? 'تحذير: تم إنشاء الحساب لكن سجل التدقيق يحتاج مراجعة.' : 'Warning: the account was created, but the audit log needs review.'; }
-      const signedIn = await authenticateLocalAccount(account.username, newAccount.password);
-      if (signedIn.ok) {
-        onSessionChange({
-          id: signedIn.account.id, name: signedIn.account.name, email: signedIn.account.email,
-          role: signedIn.account.role, isAuthenticated: true
-        });
+      });
+      if (canBootstrap) {
+        const signedIn = await authenticateLocalAccount(account.username, newAccount.password);
+        if (signedIn.ok) {
+          onSessionChange({
+            id: signedIn.account.id, name: signedIn.account.name, email: signedIn.account.email,
+            role: signedIn.account.role, isAuthenticated: true, mustChangePassword: false
+          });
+        }
       }
       setNewAccount({ name: '', email: '', username: '', role: 'Maintenance Engineer', password: '', confirm: '' });
-      setError(auditWarning);
+      setError('');
       await refresh();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : (ar ? 'تعذر إنشاء الحساب.' : 'Account creation failed.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const beginAccountEdit = (account: LocalAccountSummary) => {
+    setEditingAccountId(account.id);
+    setAccountDraft({ name: account.name, email: account.email, username: account.username, role: account.role });
+    setTemporaryPasswordNotice(null);
+  };
+
+  const saveAccountEdit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!editingAccountId || currentUser.role !== 'Super Admin' || !isAuthenticated) return;
+    setBusy(true);
+    setError('');
+    try {
+      await appendAuditRecord({
+        actorId: currentUser.id, actorRole: currentUser.role, action: 'LOCAL_ACCOUNT_UPDATE_REQUESTED',
+        entityType: 'account', entityId: editingAccountId, detail: 'Local account identity/role update requested.'
+      });
+      updateLocalAccount(editingAccountId, accountDraft, { id: currentUser.id, role: currentUser.role });
+      await appendAuditRecord({
+        actorId: currentUser.id, actorRole: currentUser.role, action: 'LOCAL_ACCOUNT_UPDATED',
+        entityType: 'account', entityId: editingAccountId, detail: 'Local account identity/role updated.'
+      });
+      setEditingAccountId(null);
+      await refresh();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Account update failed.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const toggleAccountStatus = async (account: LocalAccountSummary) => {
+    if (!isAuthenticated || currentUser.role !== 'Super Admin') return;
+    const disabling = !account.disabledAt;
+    const accepted = window.confirm(ar
+      ? (disabling ? `هل تريد تعطيل الحساب ${account.username}؟ سيتم إلغاء جلساته الحالية.` : `هل تريد إعادة تفعيل الحساب ${account.username}؟`)
+      : (disabling ? `Disable local account ${account.username}? Existing local sessions will be invalidated.` : `Reactivate local account ${account.username}?`));
+    if (!accepted) return;
+    setBusy(true);
+    setError('');
+    try {
+      await appendAuditRecord({
+        actorId: currentUser.id, actorRole: currentUser.role,
+        action: disabling ? 'LOCAL_ACCOUNT_DISABLE_REQUESTED' : 'LOCAL_ACCOUNT_REACTIVATE_REQUESTED',
+        entityType: 'account', entityId: account.id, detail: 'Account status change requested.'
+      });
+      setLocalAccountDisabled(account.id, disabling, { id: currentUser.id, role: currentUser.role });
+      await appendAuditRecord({
+        actorId: currentUser.id, actorRole: currentUser.role,
+        action: disabling ? 'LOCAL_ACCOUNT_DISABLED' : 'LOCAL_ACCOUNT_REACTIVATED',
+        entityType: 'account', entityId: account.id, detail: 'Account status updated; credential version incremented.'
+      });
+      await refresh();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Account status update failed.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const resetAccountPassword = async (account: LocalAccountSummary) => {
+    if (!isAuthenticated || currentUser.role !== 'Super Admin' || account.id === currentUser.id) return;
+    const accepted = window.confirm(ar
+      ? `هل تريد إصدار كلمة مرور مؤقتة جديدة للحساب ${account.username}؟ ستُلغى الجلسات السابقة ويجب على المستخدم تغييرها عند الدخول.`
+      : `Issue a temporary password for ${account.username}? Existing sessions will be invalidated and the user must change it at next sign-in.`);
+    if (!accepted) return;
+    setBusy(true);
+    setError('');
+    try {
+      const temporaryPassword = generateTemporaryPassword();
+      await appendAuditRecord({
+        actorId: currentUser.id, actorRole: currentUser.role, action: 'LOCAL_PASSWORD_RESET_REQUESTED',
+        entityType: 'account', entityId: account.id, detail: 'Super Admin requested a temporary password reset.'
+      });
+      await changeLocalAccountPassword(account.id, '', temporaryPassword, { id: currentUser.id, role: currentUser.role });
+      await appendAuditRecord({
+        actorId: currentUser.id, actorRole: currentUser.role, action: 'LOCAL_PASSWORD_RESET',
+        entityType: 'account', entityId: account.id, detail: 'Temporary password issued; password change is required on next login.'
+      });
+      setTemporaryPasswordNotice({ username: account.username, password: temporaryPassword });
+      await refresh();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Password reset failed.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const submitPasswordChange = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!isAuthenticated) return;
+    setError('');
+    if (passwordForm.next !== passwordForm.confirm) {
+      setError(ar ? 'تأكيد كلمة المرور الجديدة غير مطابق.' : 'New password confirmation does not match.');
+      return;
+    }
+    if (passwordForm.next.length < 12 || passwordForm.next.length > 128) {
+      setError(ar ? 'يجب أن تتكون كلمة المرور من 12 إلى 128 حرفًا.' : 'Password must contain 12–128 characters.');
+      return;
+    }
+    setBusy(true);
+    try {
+      await appendAuditRecord({
+        actorId: currentUser.id, actorRole: currentUser.role, action: 'LOCAL_PASSWORD_CHANGE_REQUESTED',
+        entityType: 'account', entityId: currentUser.id, detail: 'User initiated a password change.'
+      });
+      await changeLocalAccountPassword(
+        currentUser.id, passwordForm.current, passwordForm.next,
+        { id: currentUser.id, role: currentUser.role }
+      );
+      const signedIn = await authenticateLocalAccount(currentUser.email, passwordForm.next);
+      if (!signedIn.ok) throw new Error('Password changed, but a new local session could not be established. Sign in again.');
+      await appendAuditRecord({
+        actorId: currentUser.id, actorRole: currentUser.role, action: 'LOCAL_PASSWORD_CHANGED',
+        entityType: 'account', entityId: currentUser.id, detail: 'Password updated; previous local sessions invalidated.'
+      });
+      setPasswordForm({ current: '', next: '', confirm: '' });
+      setError('');
+      onSessionChange({
+        id: signedIn.account.id, name: signedIn.account.name, email: signedIn.account.email,
+        role: signedIn.account.role, isAuthenticated: true, mustChangePassword: false
+      });
+      await refresh();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Password change failed.');
     } finally {
       setBusy(false);
     }
