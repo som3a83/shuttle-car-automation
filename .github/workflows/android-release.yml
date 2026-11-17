@@ -49,7 +49,7 @@ jobs:
 
       - name: Install and validate web application
         run: |
-          npm install --no-audit --no-fund
+          npm ci --no-audit --no-fund
           npx tsc -b
           npm test
           npm run check:release
