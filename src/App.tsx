@@ -11,6 +11,7 @@ import {
 } from './data/mockData';
 import Shuttle3DViewer from './components/Shuttle3DViewer';
 import Battery3DViewer from './components/Battery3DViewer';
+import { getManufacturerReference } from './data/manufacturerReferences';
 import type {
   AppSettings,
   Battery,
@@ -316,6 +317,7 @@ function App() {
   const archivedBatteries = batteries.filter(b => Boolean(b.archivedAt));
   const selected = activeShuttles.find(s => s.id === selectedId) || activeShuttles[0] || null;
   const selectedBattery = activeBatteries.find(b => b.id === selectedBatteryId) || activeBatteries[0] || null;
+  const selectedManufacturerReference = selected ? getManufacturerReference(selected.manufacturer) : null;
   const filteredShuttles = useMemo(() => activeShuttles.filter(s => {
     const q = search.toLowerCase();
     const matchText = [s.id, s.manufacturer, s.warehouseZone].some(v => v.toLowerCase().includes(q));
@@ -916,6 +918,17 @@ function App() {
               </div>
             </div>
           </div>
+          {selectedManufacturerReference && <div className="surface-card vendor-reference-card">
+            <div className="card-head">
+              <div><span className="eyebrow">{language==='ar'?'مرجع الشركة المصنعة':'MANUFACTURER SOURCE REFERENCE'}</span><h3>{selectedManufacturerReference.productFamily[language]}</h3></div>
+              <span className="reference-tag">{selectedManufacturerReference.manufacturer}</span>
+            </div>
+            <p className="vendor-reference-scope">{selectedManufacturerReference.scopeLabel[language]}</p>
+            <p className="vendor-reference-description">{selectedManufacturerReference.description[language]}</p>
+            <ul className="vendor-reference-facts">{selectedManufacturerReference.facts.map((fact,index)=><li key={index}>{fact[language]}</li>)}</ul>
+            <div className="cold-store-reference-note"><strong>{language==='ar'?'ملاحظة التخزين البارد':'COLD-STORE VERIFICATION'}</strong><p>{selectedManufacturerReference.coldStoreNote[language]}</p></div>
+            <a className="vendor-source-link" href={selectedManufacturerReference.sourceUrl} target="_blank" rel="noreferrer">{selectedManufacturerReference.sourceLabel[language]} ↗</a>
+          </div>}
         </div>
       </section>}
 
