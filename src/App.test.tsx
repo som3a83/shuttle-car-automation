@@ -562,6 +562,10 @@ beforeEach(async () => {
     await user.type(screen.getByLabelText(/SOC %/i), '12.5');
     await user.click(screen.getByRole('button', { name: /Save battery data/i }));
     await waitFor(() => expect(screen.getByText('12.5% (manual / reported)')).toBeInTheDocument());
+    await waitFor(() => {
+      const persisted = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:batteries') || '[]') as Array<{id:string;soc:number|null;connectionMode:string}>;
+      expect(persisted.find(item => item.id === 'BAT-ACME-01')?.soc).toBe(12.5);
+    });
     const saved = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:batteries') || '[]') as Array<{id:string;soc:number|null;connectionMode:string}>;
     expect(saved.find(item => item.id === 'BAT-ACME-01')).toMatchObject({soc:12.5,connectionMode:'UNKNOWN'});
   });
@@ -592,8 +596,12 @@ beforeEach(async () => {
     await user.click(screen.getByRole('button', { name: /Generate today.s report/i }));
     await waitFor(() => expect(screen.getByText(/LATEST SAVED DAILY REPORT/i)).toBeInTheDocument());
 
+    await waitFor(() => {
+      const persisted = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:dailyReports') || '[]') as Array<{id:string}>;
+      expect(persisted).toHaveLength(1);
+    });
     const cancelSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
-    await user.click(screen.getByRole('button', { name: /^Delete$/i }));
+    await user.click(screen.getAllByRole('button', { name: /^Delete$/i })[0]);
     cancelSpy.mockRestore();
     let saved = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:dailyReports') || '[]') as Array<{id:string}>;
     expect(saved).toHaveLength(1);
@@ -628,11 +636,11 @@ beforeEach(async () => {
     await user.click(screen.getByRole('button', { name: /Collapse sidebar/i }));
     expect(shell).toHaveClass('sidebar-collapsed');
     expect(screen.getByRole('button', { name: /Expand sidebar/i })).toBeInTheDocument();
-    expect(window.localStorage.getItem('shuttle-car-automation-v7:sidebarCollapsed')).toBe('true');
+    await waitFor(() => expect(window.localStorage.getItem('shuttle-car-automation-v7:sidebarCollapsed')).toBe('true'));
 
     await user.click(screen.getByRole('button', { name: /Expand sidebar/i }));
     expect(shell).not.toHaveClass('sidebar-collapsed');
-    expect(window.localStorage.getItem('shuttle-car-automation-v7:sidebarCollapsed')).toBe('false');
+    await waitFor(() => expect(window.localStorage.getItem('shuttle-car-automation-v7:sidebarCollapsed')).toBe('false'));
   });
 
   it('opens system settings directly from the fixed workspace controls', async () => {
