@@ -9,7 +9,8 @@
     "test": "vitest run",
     "preview": "vite preview --host 0.0.0.0",
     "check": "tsc -b",
-    "validate": "npm run check && npm test && npm run build"
+    "validate": "npm run check && npm test && npm run build",
+    "assets:render": "node scripts/render-store-assets.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",
@@ -31,6 +32,8 @@
     "vite": "^5.4.10",
     "vitest": "^2.1.3",
     "@capacitor/cli": "^8.6.2",
-    "@types/three": "^0.180.0"
+    "@types/three": "^0.180.0",
+    "@capacitor/assets": "4.0.0",
+    "@resvg/resvg-js": "2.6.2"
   }
 }
