@@ -1,90 +1,91 @@
-# Technical Audit — repository-access stage
+# Technical Audit — current main baseline
 
-Date: 2026-11-15  
-Repository: `som3a83/shuttle-car-automation`  
-Working branch: `development/v4-industrial-upgrade`
+**Audit date:** 17 November 2026  
+**Repository:** `som3a83/shuttle-car-automation`  
+**Official branch:** `main`  
+**Audited commit:** `f7574cf5db3cfa636d0dae957e1b254cea68b369`  
+**Status:** Engineering baseline is integrated; production release and physical commissioning are not complete.
 
-## Scope and evidence
+## 1. Scope and evidence
 
-Inspected repository metadata, the recursive Git tree at baseline commit `5ad2a89d87947301eb399494236e479369d9d978`, the README, archive metadata, and the limited binary preview returned by the GitHub file viewer.
+This audit snapshot supersedes the repository-access-stage report dated 15 November 2026. It is based on the current GitHub main tree, current pull-request and branch metadata, the main-branch CI/security workflow results, and targeted source review of the application entry point, local authentication, permission checks, operational storage, audit ledger, Security Center, Android workflow, and industrial gateway.
 
-The tracked repository tree contains exactly `README.md` and `shuttle-control-v4.0.0.zip`. The README is a single heading. The archive is 1,066,026 bytes. The viewer preview begins with ZIP (`PK`) signatures and shows embedded path strings including `shuttle-control-v4.0.0/README.md`, `VERSION`, and a `dist/assets` path. This is only a partial binary preview: it is not a complete central-directory listing, cannot verify every member name, and cannot validate the archive or its contents.
+The recursive main tree returned 118 entries including directories, with `truncated=false`. The default branch is `main`. The repository is currently public. This is a targeted engineering audit of the current source and workflows, not a claim that every visible UI control has been manually exercised on physical devices.
 
-## Extraction attempt and limitation
+## 2. Repository integration state
 
-This session has GitHub read/write API tools only. It has no shell, terminal, local workspace, ZIP utility, or binary-download/extract tool. GitHub's contents response for the ZIP reports `encoding: none` and empty content. The file viewer renders a limited binary preview rather than providing the raw bytes. Therefore **the archive has not been fully listed, validated, extracted, or copied into the repository**. No source was changed or represented as extracted.
+- PR #23 — local identity, permission gates, audit integrity and recoverable storage — **merged** into `main` at `f7574cf5db3cfa636d0dae957e1b254cea68b369`.
+- PR #22 — read-only industrial telemetry gateway and app client — merged.
+- PR #21 — industrial UI customization — merged.
+- PR #20 — commissioning baseline and five-asset register — merged.
+- Earlier application foundation PRs #1 and #2 are also merged.
+- `main` is the official source of truth. No old development branch should be merged wholesale: several branches are divergent or duplicate already-integrated content.
+- The repository ruleset named `main` exists but its enforcement is **disabled**. No branch in the current branch listing reports protected status.
+- Eight Dependabot PRs remain open (#10, #13–#19 excluding #11/#12). They are not approved for blanket merging. In particular, the React and React DOM upgrades are split across separate PRs, and TypeScript 7 is a major-version change; compatibility must be validated as a coordinated dependency update.
 
-## Verified baseline and protection
+## 3. Validation evidence
 
-- Default branch: `main`.
-- Baseline commit: `5ad2a89d87947301eb399494236e479369d9d978`.
-- Recovery branch: `backup/v4-original-2026-11-15` (baseline snapshot).
-- Development branch: `development/v4-industrial-upgrade`.
-- Original ZIP remains unchanged; no work was made on `main`.
+On the audited main commit:
 
-## Audit classification
+| Check | Observed result |
+|---|---|
+| TypeScript, automated tests, dependency audit and production web build (run 44070837675) | Passed |
+| Industrial gateway security/validation workflow (run 44070837474) | Passed |
+| Secret leak scan (run 44070837435) | Passed |
+| CodeQL security scan (run 44070837417) | Passed |
+| Android debug APK build (run 44070837434) | APK build step passed |
+| Android emulator install/launch smoke test (run 44070837434) | Still in progress at the latest observed status; no pass claimed |
 
-| Area | Finding | Classification |
-|---|---|---|
-| Repository inventory | Two tracked paths verified | IMPLEMENTED & TESTED (inventory only) |
-| Archive format | ZIP signature visible in a partial preview only; full integrity not checked | IMPLEMENTED BUT NOT FULLY TESTED |
-| ZIP member paths / traversal safety | No complete member listing available | BLOCKED — archive bytes and terminal needed |
-| V4 source / actual release version | Name indicates V4.0.0; internal version file cannot be read | BLOCKED — archive extraction needed |
-| Frontend / backend / database / APIs | Source tree not present in Git; archive inaccessible as bytes | BLOCKED — source required |
-| Authentication / permissions / tenant isolation | Cannot inspect implementation | BLOCKED — source required |
-| Fleet, battery, faults, maintenance, operations | Cannot inspect or test | BLOCKED — source required |
-| AI integration | Cannot determine whether provider exists | BLOCKED — source/config required |
-| PLC / IoT connectivity | Cannot inspect; no hardware protocol documents supplied | BLOCKED — source and vendor/device specifications required |
-| Android / Google Play readiness | Cannot inspect native project, SDK config, assets, permissions, or build | BLOCKED — source/build environment required |
-| Dependencies / CI / tests | No manifests, workflow files, or test files exposed in Git | BLOCKED — source required |
-| Production build / APK / AAB / release ZIP | Not built or asserted | NOT IMPLEMENTED |
+The Android workflow had completed SDK setup, dependency installation, web validation, Capacitor generation/sync and APK assembly. Its emulator install/launch step had not yet completed. A debug build is not a signed Google Play release.
 
-## Security and safety
+## 4. Application capabilities present in source
 
-No secrets or customer data were exposed or changed. No production system or physical device was accessed. No PLC commands, external integrations, payments, or publication actions were performed. The archive has not been extracted, so no claims about its safety, contents, or integrity are made.
+The current application includes fleet records, shuttle engineering views, battery register and assignment lifecycle, fault reports and corrective actions, maintenance work orders, shift handover, connection register, read-only gateway client, reports/exports, notifications, user/security center, local customization and recovery UI.
 
-## Practical unblock: validate and extract locally
+The app has Arabic/English UI, responsive navigation, conceptual SVG engineering views for shuttle and battery assemblies, and local operational persistence. The main source contains explicit demo/local/unverified disclosures.
 
-On a trusted workstation with Python 3 and authenticated access to this private repository, clone the development branch so the ZIP is downloaded as a normal Git-tracked file:
+## 5. Security and data boundaries
 
-```bash
-git clone --branch development/v4-industrial-upgrade https://github.com/som3a83/shuttle-car-automation.git
-cd shuttle-car-automation
-```
+Implemented:
+- Device-local first-admin bootstrap and local account sign-in.
+- PBKDF2-SHA-256 password derivation with per-account salt.
+- Eight-hour local sessions, failed-login lockout and session identity/role re-resolution from the local account registry.
+- Central role/permission matrix and application-level mutation authorization.
+- SHA-256 chained audit records, archive verification and JSON/CSV export.
+- Versioned/checksummed operational snapshots, previous-snapshot recovery, startup inspection and explicit recovery choices.
 
-Before extraction, use Python to list and validate every member path and check archive integrity. This command rejects absolute paths, `..` traversal, and symlinks, and extracts only into a fresh temporary directory:
+Limitations that must remain visible:
+- Authentication and authorization are device-local/client-side. They are not server-enforced RBAC, enterprise identity, multi-device account revocation or tenant isolation.
+- Operational records and audit archives reside in browser/WebView local storage. Checksums and hash chains detect some accidental/tampered changes but are not encryption-at-rest or a remotely anchored immutable audit service. A person controlling the device or app can alter local storage or client code.
+- The active audit ledger has a 5,000-record cap. The UI provides manual archiving; appends stop at the cap until the active ledger is archived. This is a continuity/operations risk if an administrator does not monitor and archive it.
+- Browser/WebView storage is quota-limited. Snapshot recovery improves recoverability but does not replace a transactional server database or independent backups.
 
-```bash
-python3 - <<'PY'
-from pathlib import Path, PurePosixPath
-from zipfile import ZipFile
-import stat
+## 6. Industrial connectivity and model accuracy
 
-archive = Path("shuttle-control-v4.0.0.zip")
-target = Path("/tmp/shuttle-v4-validated")
-if target.exists():
-    raise SystemExit(f"Refusing to overwrite existing directory: {target}")
-target.mkdir(mode=0o700, parents=True)
-with ZipFile(archive) as zf:
-    bad = zf.testzip()
-    if bad:
-        raise SystemExit(f"CRC failure in archive member: {bad}")
-    for info in zf.infolist():
-        name = info.filename
-        path = PurePosixPath(name)
-        mode = info.external_attr >> 16
-        if path.is_absolute() or ".." in path.parts or not path.parts:
-            raise SystemExit(f"Unsafe archive path: {name!r}")
-        if "\\" in name or (len(name) > 1 and name[1] == ":"):
-            raise SystemExit(f"Non-portable / rooted archive path: {name!r}")
-        if stat.S_ISLNK(mode):
-            raise SystemExit(f"Symlink member rejected: {name!r}")
-        print(name)
-    zf.extractall(target)
-print(f"Validated extraction completed in {target}")
-PY
-```
+- The gateway is read-only by design. No movement, charging, reset or PLC-write command is implemented.
+- No exact controller model, vendor adapter, approved register/tag map, IP address or physical telemetry path has been verified for the five listed shuttle assets.
+- Cassioli, Craftsman and ACME identities in the commissioning register are application placeholders pending physical nameplate/vendor confirmation.
+- Battery SOC/SOH, voltage, current, temperature and cycle values must remain unknown/manual unless sourced from fresh, good-quality data from a commissioned adapter.
+- Shuttle and battery 3D views are illustrative assemblies, not OEM CAD, dimensionally validated models or service drawings.
+- The AI technical-assistant screen is not a connected AI inference service. Do not present it as an automated diagnostic engine.
 
-Inspect `/tmp/shuttle-v4-validated` and identify its project root. Then copy only reviewed source, static assets, manifests, tests, and documentation into the cloned checkout. Do **not** copy `node_modules`, caches, temporary directories, secrets, or generated `dist`/build output unless review confirms an artifact is intentionally required. Preserve the ZIP and use a distinct path if existing repository files would collide. Review `git status` and the diff before committing, then push the extracted, reviewed source to `development/v4-industrial-upgrade`.
+## 7. Android and store readiness
 
-For this private repository, GitHub authentication must be configured on the workstation (for example via Git Credential Manager or SSH). Do not put a personal access token into shell history or commit credentials. After the source-bearing branch is pushed, the code can be inspected and built with the available GitHub tools/CI; hardware tests still require the relevant device and vendor protocol documentation.
+- A reproducible Android debug APK build path exists and APK assembly succeeded in the observed main run.
+- Emulator launch verification is not yet confirmed.
+- Production signing credentials, a signed AAB, Play Console validation, store review, privacy disclosures in the published listing and physical-device acceptance have not been established by this audit.
+- Therefore the project is **not yet certified as Google Play production-ready**.
+
+## 8. Required next actions
+
+1. Complete and verify the emulator smoke test; retain its screenshot/log evidence and uploaded debug APK artifact.
+2. Add a reviewed, enforced branch-protection/ruleset policy for `main`; do not rely on the currently disabled ruleset.
+3. Review the eight open Dependabot PRs individually. Upgrade React/React DOM/types as one coordinated set only after CI passes; do not merge TypeScript 7 without a compatibility plan.
+4. Improve audit-ledger capacity handling and provide an operational warning before the 5,000 active-record threshold. Preserve the current fail-closed behavior until a tested retention/backup design exists.
+5. Complete manual UI acceptance testing across Arabic RTL, English LTR, mobile and tablet layouts, including every form, destructive action, navigation/back behavior and recovery path.
+6. Obtain vendor documents and physical nameplate details before commissioning any live telemetry adapter.
+7. Complete production signing and Play Store checks separately from the debug build.
+
+## 9. Audit conclusion
+
+The project has a substantial, tested local industrial recordkeeping application and its security foundation has been merged into `main`. The current evidence supports successful web build/tests and several security checks. It does **not** support claims of commissioned live shuttle telemetry, manufacturer-accurate CAD, server-backed multi-user operation, successful emulator acceptance, or signed Google Play release readiness.
