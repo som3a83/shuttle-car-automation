@@ -1376,6 +1376,7 @@ function App() {
             <p className="disclaimer">{t.modelDisclaimer}</p>
             <a
               className="cad-source-link"
+              style={{ display: 'inline-flex', marginTop: 10, color: 'var(--copper-2)', fontSize: 10, fontWeight: 800, textDecoration: 'none', borderBottom: '1px solid var(--line-strong)', paddingBottom: 3 }}
               href="https://github.com/som3a83/shuttle-car-automation/tree/main/cad"
               target="_blank"
               rel="noreferrer"
