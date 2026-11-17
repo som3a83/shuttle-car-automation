@@ -166,16 +166,18 @@ describe('legacy key resolver and fallback engine', () => {
     expect(sessionStorage.getItem(EXCLUDED_SESSION_STORAGE_KEY)).toBe('session-bytes');
   });
 
-  it('RES-011 removes only the mapped legacy record and its unified-key revision sidecar', async () => {
+  it('RES-011 removes both known representations and the revision sidecar without touching unrelated keys', async () => {
     setLegacyValue('shuttle-car-automation-v7:theme', 'dark');
     storage.setItem('shuttle.storage.revision.operational.theme', '4');
-    storage.setItem('operational.theme', 'unrelated-raw-value');
+    storage.setItem('operational.theme', '"legacy-compat-value"');
+    storage.setItem('operational.unrelated', 'unrelated-raw-value');
 
     await remove('operational.theme');
 
     expect(storage.getItem('shuttle-car-automation-v7:theme')).toBeNull();
+    expect(storage.getItem('operational.theme')).toBeNull();
     expect(storage.getItem('shuttle.storage.revision.operational.theme')).toBeNull();
-    expect(storage.getItem('operational.theme')).toBe('unrelated-raw-value');
+    expect(storage.getItem('operational.unrelated')).toBe('unrelated-raw-value');
   });
 
   it('RES-012 does not normalize account, audit or customization payloads in the resolver', async () => {
