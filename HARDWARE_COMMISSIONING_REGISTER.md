@@ -6,11 +6,13 @@ Use this register during a supervised site survey. Do not guess missing values. 
 
 | Local ID | Manufacturer | Physical serial | Exact model | Controller / PLC | Firmware | Radio / gateway | Status |
 |---|---|---|---|---|---|---|---|
-| CAS-01 | Cassioli | Pending | Pending | Pending | Pending | Pending | Not commissioned |
-| CAS-02 | Cassioli | Pending | Pending | Pending | Pending | Pending | Not commissioned |
-| CAS-03 | Cassioli | Pending | Pending | Pending | Pending | Pending | Not commissioned |
+| SC-01 | Cassioli | Pending | Pending | Pending | Pending | Pending | Not commissioned |
+| SC-02 | Cassioli | Pending | Pending | Pending | Pending | Pending | Not commissioned |
+| SC-03 | Cassioli | Pending | Pending | Pending | Pending | Pending | Not commissioned |
 | CRAFT-01 | Craftsman | Pending | Pending | Pending | Pending | Pending | Not commissioned |
 | ACME-01 | ACME | Pending | Pending | Pending | Pending | Pending | Not commissioned |
+
+The application and edge-gateway local asset IDs are SC-01 through SC-05. These are internal IDs only; they are not manufacturer serial numbers.
 
 ## Per-asset inspection checklist
 
@@ -29,6 +31,9 @@ Use this register during a supervised site survey. Do not guess missing values. 
 - [ ] Baseline HMI readings captured with timestamp for comparison.
 - [ ] Fault history and current known defects reviewed with maintenance.
 - [ ] Site automation engineer approves the read-only commissioning test.
+- [ ] Edge-gateway asset entry matches the app ID, exact manufacturer/model/firmware and unique adapter ID.
+- [ ] Approved telemetry tags, polling interval, stale timeout and allowed data quality are signed off.
+- [ ] A read-only ingest adapter and separate viewer credential are provisioned; neither credential is stored in this repository.
 
 ## Battery and charger register
 
