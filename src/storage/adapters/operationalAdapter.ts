@@ -27,8 +27,8 @@ function isAppSettings(value: unknown): value is AppSettings {
     return false;
   }
 
-  return (value.language === 'ar' || value.language === 'en') &&
-    (value.theme === 'dark' || value.theme === 'light') &&
+  return isLanguage(value.language) &&
+    isTheme(value.theme) &&
     typeof value.notificationsEnabled === 'boolean' &&
     typeof value.maintenanceReminders === 'boolean' &&
     typeof value.batteryAlerts === 'boolean' &&
@@ -39,14 +39,22 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
 }
 
+function isLanguage(value: unknown): value is Language {
+  return value === 'en' || value === 'ar';
+}
+
+function isTheme(value: unknown): value is Theme {
+  return value === 'dark' || value === 'light';
+}
+
 function isOperationalValue(legacyKey: OperationalLegacyKey, value: unknown): boolean {
   const collection = OPERATIONAL_LEGACY_KEY_MAP.find((entry) => entry.legacyKey === legacyKey)?.legacyKey.split(':').pop();
   if (!collection) return false;
   // Preservation-over-validation policy: legacy collections are preserved as-is once the root is confirmed to be an array.
   // Do not validate individual entries here; stricter item checks could reject valid historical records.
   if (ARRAY_COLLECTIONS.has(collection)) return Array.isArray(value);
-  if (collection === 'language') return value === 'ar' || value === 'en';
-  if (collection === 'theme') return value === 'dark' || value === 'light';
+  if (collection === 'language') return isLanguage(value);
+  if (collection === 'theme') return isTheme(value);
   if (collection === 'sidebarCollapsed') return typeof value === 'boolean';
   if (collection === 'settings') return isAppSettings(value);
   return false;
