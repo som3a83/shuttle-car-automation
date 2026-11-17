@@ -21,16 +21,34 @@ test('versioned storage saves checksummed data and increments revisions', async 
   });
 });
 
-test('corrupt primary data is recovered from the previous verified snapshot', async () => {
+test('corrupt primary is reported without silently restoring the previous snapshot', async () => {
+  const storage = new MemoryStorage();
+  const engine = new VersionedStorageEngine({ key: 'operational-state', schemaVersion: 3, storage });
+  await engine.save({ count: 5 }, new Date('2026-11-17T08:00:00.000Z'));
+  await engine.save({ count: 6 }, new Date('2026-11-17T08:01:00.000Z'));
+  const previousRaw = storage.getItem('operational-state:previous');
+  storage.setItem('operational-state', '{broken');
+  const inspection = await engine.inspect();
+  assert.equal(inspection.primary.status, 'invalid');
+  assert.equal(inspection.previous.status, 'valid');
+  assert.equal(storage.getItem('operational-state:previous'), previousRaw);
+  assert.equal((await engine.load()).status, 'corrupt');
+  assert.equal(storage.getItem('operational-state'), '{broken');
+});
+
+test('explicit recovery restores the previewed verified previous snapshot', async () => {
   const storage = new MemoryStorage();
   const engine = new VersionedStorageEngine({ key: 'operational-state', schemaVersion: 3, storage });
   await engine.save({ count: 5 }, new Date('2026-11-17T08:00:00.000Z'));
   await engine.save({ count: 6 }, new Date('2026-11-17T08:01:00.000Z'));
   storage.setItem('operational-state', '{broken');
-  const result = await engine.load();
+  const result = await engine.restorePrevious();
   assert.equal(result.status, 'recovered');
   assert.deepEqual(result.data, { count: 5 });
   assert.equal(result.revision, 1);
+  const loaded = await engine.load();
+  assert.equal(loaded.status, 'loaded');
+  assert.deepEqual(loaded.data, { count: 5 });
 });
 
 test('checksum mismatch is not silently accepted', async () => {
@@ -43,18 +61,16 @@ test('checksum mismatch is not silently accepted', async () => {
   assert.equal((await engine.load()).status, 'corrupt');
 });
 
-
-test('saving after primary corruption preserves the last valid revision', async () => {
+test('normal save refuses to overwrite damaged primary bytes even when a previous copy survives', async () => {
   const storage = new MemoryStorage();
   const engine = new VersionedStorageEngine({ key: 'operational-state', schemaVersion: 1, storage });
-  await engine.save({ count: 1 }, new Date('2026-11-17T08:00:00.000Z'));
-  await engine.save({ count: 2 }, new Date('2026-11-17T08:01:00.000Z'));
+  await engine.save({ count: 1 });
+  await engine.save({ count: 2 });
+  const previous = storage.getItem('operational-state:previous');
   storage.setItem('operational-state', '{broken');
-  const saved = await engine.save({ count: 3 }, new Date('2026-11-17T08:02:00.000Z'));
-  assert.equal(saved.revision, 2); // The newest surviving verified snapshot was revision 1.
-  const loaded = await engine.load();
-  assert.equal(loaded.status, 'loaded');
-  assert.deepEqual(loaded.data, { count: 3 });
+  await assert.rejects(() => engine.save({ count: 3 }), /Recovery Mode/);
+  assert.equal(storage.getItem('operational-state'), '{broken');
+  assert.equal(storage.getItem('operational-state:previous'), previous);
 });
 
 test('saving refuses to overwrite a schema version it does not understand', async () => {
@@ -63,4 +79,12 @@ test('saving refuses to overwrite a schema version it does not understand', asyn
   await oldEngine.save({ preserve: true });
   const newEngine = new VersionedStorageEngine({ key: 'operational-state', schemaVersion: 1, storage });
   await assert.rejects(() => newEngine.save({ preserve: false }), /different schema version/);
+});
+
+test('invalid empty-string storage is treated as corrupt, not missing', async () => {
+  const storage = new MemoryStorage();
+  storage.setItem('operational-state', '');
+  const engine = new VersionedStorageEngine({ key: 'operational-state', schemaVersion: 1, storage });
+  assert.equal((await engine.inspect()).primary.status, 'invalid');
+  assert.equal((await engine.load()).status, 'corrupt');
 });
