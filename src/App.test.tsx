@@ -444,7 +444,7 @@ describe('Shuttle Car Automation V10', () => {
     await user.clear(screen.getByLabelText(/SOC %/i));
     await user.type(screen.getByLabelText(/SOC %/i), '12.5');
     await user.click(screen.getByRole('button', { name: /Save battery data/i }));
-    expect(screen.getByText('12.5% (manual / reported)')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText('12.5% (manual / reported)')).toBeInTheDocument());
     const saved = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:batteries') || '[]') as Array<{id:string;soc:number|null;connectionMode:string}>;
     expect(saved.find(item => item.id === 'BAT-ACME-01')).toMatchObject({soc:12.5,connectionMode:'UNKNOWN'});
   });
@@ -666,7 +666,7 @@ describe('Shuttle Car Automation V10', () => {
     await user.type(screen.getByLabelText(/Technical notes/i), 'Vendor approved read-only interface reference pending');
     await user.click(screen.getByRole('button', { name: /Save connection record/i }));
 
-    expect(screen.getByText('Test vendor gateway')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText('Test vendor gateway')).toBeInTheDocument());
     expect(screen.getAllByText(/Not configured · read-only after commissioning/i).length).toBeGreaterThan(0);
 
     await user.click(screen.getAllByRole('button', { name: /Edit record/i }).find(button => button.closest('article')?.textContent?.includes('Test vendor gateway'))!);
@@ -675,7 +675,7 @@ describe('Shuttle Car Automation V10', () => {
     await user.clear(editName!);
     await user.type(editName!, 'Approved test gateway');
     await user.click(screen.getByRole('button', { name: /^Save$/i }));
-    expect(screen.getByText('Approved test gateway')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText('Approved test gateway')).toBeInTheDocument());
 
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
     const card = screen.getByText('Approved test gateway').closest('article');
