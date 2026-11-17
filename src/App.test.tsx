@@ -235,7 +235,7 @@ describe('Shuttle Car Automation V9', () => {
     const user = userEvent.setup();
     render(<App />);
     await user.click(screen.getAllByRole('button', { name: /Fleet Control Center/i })[0]);
-    await user.selectOptions(screen.getByLabelText(/Manufacturer/i), 'Craftsman');
+    await user.selectOptions(screen.getByLabelText(/^Manufacturer$/i), 'Craftsman');
     await user.type(screen.getByLabelText(/Operating zone/i), 'Cold room test zone');
     await user.click(screen.getByRole('button', { name: /Save new device/i }));
     expect(screen.getAllByText('SC-06').length).toBeGreaterThan(0);
@@ -301,8 +301,8 @@ describe('Shuttle Car Automation V9', () => {
     render(<App />);
     await user.click(screen.getAllByRole('button', { name: /Fleet Control Center/i })[0]);
     await user.click(screen.getByRole('button', { name: /Edit equipment/i }));
-    await user.clear(screen.getByLabelText(/^Model$/i));
-    await user.type(screen.getByLabelText(/^Model$/i), 'Verified test model');
+    await user.clear(screen.getAllByLabelText(/^Model$/i)[0]);
+    await user.type(screen.getAllByLabelText(/^Model$/i)[0], 'Verified test model');
     await user.clear(screen.getByLabelText(/Manufacturer serial/i));
     await user.type(screen.getByLabelText(/Manufacturer serial/i), 'SERIAL-TEST-001');
     await user.click(screen.getByRole('button', { name: /Save changes/i }));
