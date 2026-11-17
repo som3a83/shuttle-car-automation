@@ -1,3 +1,5 @@
+> **Historical audit — 15 November 2026.** This report describes the repository before the V6/V10 source application was added. Its statements that no source tree or Android build existed are historical and no longer describe the current branch. For the current implementation, scope and release gate, see [README.md](README.md), [INSTALLATION_GUIDE.md](INSTALLATION_GUIDE.md) and current GitHub Actions results.
+
 # FINAL AUDIT REPORT — SHUTTLE CAR AUTOMATION SYSTEM
 
 **تاريخ المراجعة:** 2026-11-15  
