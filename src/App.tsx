@@ -903,11 +903,80 @@ function App() {
       </section>}
 
       {activeTab === 'batteries' && <section className="page-content">
-        <PageIntro eyebrow="ENERGY SYSTEMS / BATTERY REGISTER" title={language==='ar'?'منظومة البطاريات':'Battery systems'} subtitle={language==='ar'?'عرض ميكانيكي لحزمة الليثيوم وسجل الحالة والتخصيص.':'Lithium pack visualization, status register and assignment history.'}/>
-        {batteries.length === 0 ? <div className="surface-card empty-state">{t.noBattery}</div> : <div className="battery-layout">
-          <div className="surface-card battery-stage"><div className="card-head"><div><span className="eyebrow">BATTERY MODULE / {selectedBattery?.id}</span><h3>{t.batteryIllustration}</h3></div><StatusPill status={selectedBattery?.status || 'Unknown'} language={language}/></div><Battery3DViewer battery={selectedBattery} fallback={<BatteryPack battery={selectedBattery}/>} /><div className="battery-stat-grid"><Detail label={t.charge} value={selectedBattery?.soc === null ? t.unknown : selectedBattery?.soc + '% (reported)'}/><Detail label={t.health} value={selectedBattery?.soh === null ? t.noData : selectedBattery?.soh + '%'}/><Detail label={t.temperature} value={selectedBattery?.temperature === null ? t.noData : selectedBattery?.temperature + '°C'}/><Detail label={t.voltage} value={selectedBattery?.voltage === null ? t.noData : selectedBattery?.voltage + ' V'}/></div><div className="notice-inline"><Icon name="alert"/>{t.batteryNote}</div></div>
-          <div className="surface-card battery-detail"><div className="card-head"><div><span className="eyebrow">BATTERY REGISTER</span><h3>{language==='ar'?'سجل البطاريات':'Battery assets'}</h3></div></div>{batteries.map(b=><button key={b.id} className={'battery-row '+(selectedBattery?.id===b.id?'selected':'')} onClick={()=>setSelectedBatteryId(b.id)}><div className="battery-row-icon"><Icon name="battery"/></div><div><strong>{b.id}</strong><small>{b.manufacturer} · {b.assignment}</small></div><StatusPill status={b.status} language={language}/></button>)}<div className="status-actions"><button className="btn-secondary" onClick={()=>updateBattery(selectedBattery.id,{status:'Charging'})}>{t.setCharging}</button><button className="btn-secondary" onClick={()=>updateBattery(selectedBattery.id,{status:'Available'})}>{t.setAvailable}</button><button className="btn-secondary" onClick={()=>updateBattery(selectedBattery.id,{status:'Maintenance'})}>{t.setMaintenance}</button><button className="btn-danger" onClick={()=>updateBattery(selectedBattery.id,{status:'Fault'})}>{t.setFault}</button></div><p className="muted-text">{t.localChanges}</p></div>
-        </div>}
+        <PageIntro eyebrow="ENERGY SYSTEMS / BATTERY REGISTER" title={language==='ar'?'منظومة البطاريات':'Battery systems'} subtitle={language==='ar'?'إدارة سجل البطاريات وتخصيصها وحالتها وبيانات القياس المسجلة.':'Manage battery records, assignment, status and recorded readings.'}/>
+        <div className="battery-layout">
+          <div className="surface-card battery-stage">
+            {selectedBattery ? <>
+              <div className="card-head"><div><span className="eyebrow">BATTERY MODULE / {selectedBattery.id}</span><h3>{t.batteryIllustration}</h3></div><StatusPill status={selectedBattery.status} language={language}/></div>
+              <Battery3DViewer battery={selectedBattery} fallback={<BatteryPack battery={selectedBattery}/>} />
+              <div className="battery-stat-grid">
+                <Detail label={t.charge} value={selectedBattery.soc === null ? t.unknown : selectedBattery.soc + '% (manual / reported)'}/>
+                <Detail label={t.health} value={selectedBattery.soh === null ? t.noData : selectedBattery.soh + '%'}/>
+                <Detail label={t.temperature} value={selectedBattery.temperature === null ? t.noData : selectedBattery.temperature + '°C'}/>
+                <Detail label={t.voltage} value={selectedBattery.voltage === null ? t.noData : selectedBattery.voltage + ' V'}/>
+                <Detail label={language==='ar'?'التيار':'Current'} value={selectedBattery.current === null ? t.noData : selectedBattery.current + ' A'}/>
+                <Detail label={language==='ar'?'السعة':'Capacity'} value={selectedBattery.capacity}/>
+                <Detail label={language==='ar'?'الجهد الاسمي':'Nominal voltage'} value={selectedBattery.nominalVoltage}/>
+                <Detail label={language==='ar'?'دورات الشحن':'Charge cycles'} value={selectedBattery.cycles ?? t.noData}/>
+              </div>
+              <div className="notice-inline"><Icon name="alert"/>{language==='ar'?'القراءات التي تدخلها هنا يدوية/مبلغ عنها. لن تظهر كقراءات حية إلا بعد ربط مصدر موثوق والتحقق منه.':'Values entered here are manual/reported. They are not live telemetry until a verified source is connected.'}</div>
+            </> : <div className="empty-state"><Icon name="battery" size={34}/><h3>{language==='ar'?'لا توجد بطاريات نشطة':'No active battery records'}</h3><p>{language==='ar'?'سجل بطارية جديدة من النموذج المجاور لبدء الإدارة.':'Register a battery using the form beside this panel.'}</p></div>}
+          </div>
+          <div className="surface-card battery-detail">
+            <div className="card-head"><div><span className="eyebrow">BATTERY REGISTER</span><h3>{language==='ar'?'سجل البطاريات':'Battery assets'}</h3></div><span className="counter">{activeBatteries.length}</span></div>
+            {activeBatteries.map(b=><button key={b.id} className={'battery-row '+(selectedBattery?.id===b.id?'selected':'')} onClick={()=>{setSelectedBatteryId(b.id);setEditingBattery(false);}}><div className="battery-row-icon"><Icon name="battery"/></div><div><strong>{b.id}</strong><small>{b.manufacturer} · {b.assignment}</small></div><StatusPill status={b.status} language={language}/></button>)}
+            {selectedBattery && <>
+              <div className="battery-assignment">
+                <label>{language==='ar'?'تخصيص البطارية إلى جهاز':'Assign battery to shuttle'}</label>
+                <select aria-label={language==='ar'?'تخصيص البطارية إلى جهاز':'Assign battery to shuttle'} value={selectedBattery.assignment === 'Unassigned' ? '' : selectedBattery.assignment} onChange={event=>assignSelectedBattery(event.target.value)}>
+                  <option value="">{language==='ar'?'بدون تخصيص / احتياطي':'Unassigned / spare'}</option>
+                  {activeShuttles.map(item=><option value={item.id} key={item.id}>{item.id} · {item.manufacturer}</option>)}
+                </select>
+              </div>
+              <div className="status-actions">
+                <button className="btn-secondary" onClick={()=>updateBattery(selectedBattery.id,{status:'Charging'})}>{t.setCharging}</button>
+                <button className="btn-secondary" onClick={()=>updateBattery(selectedBattery.id,{status:'Available'})}>{t.setAvailable}</button>
+                <button className="btn-secondary" onClick={()=>updateBattery(selectedBattery.id,{status:'Maintenance'})}>{t.setMaintenance}</button>
+                <button className="btn-danger" onClick={()=>updateBattery(selectedBattery.id,{status:'Fault'})}>{t.setFault}</button>
+              </div>
+              {editingBattery ? <form className="stack-form battery-edit-form" onSubmit={saveBatteryDetails}>
+                <strong>{language==='ar'?'تعديل المواصفات والقراءات المسجلة':'Edit specifications and recorded readings'}</strong>
+                <label>{t.manufacturer}<input name="manufacturer" defaultValue={selectedBattery.manufacturer}/></label>
+                <label>{language==='ar'?'الموديل':'Model'}<input name="model" defaultValue={selectedBattery.model}/></label>
+                <label>{language==='ar'?'كيمياء الخلية':'Chemistry'}<input name="chemistry" defaultValue={selectedBattery.chemistry}/></label>
+                <label>{language==='ar'?'الجهد الاسمي':'Nominal voltage'}<input name="nominalVoltage" defaultValue={selectedBattery.nominalVoltage}/></label>
+                <label>{language==='ar'?'السعة':'Capacity'}<input name="capacity" defaultValue={selectedBattery.capacity}/></label>
+                <div className="form-grid compact">
+                  <label>SOC %<input name="soc" type="number" min="0" max="100" step="0.1" defaultValue={selectedBattery.soc ?? ''}/></label>
+                  <label>SOH %<input name="soh" type="number" min="0" max="100" step="0.1" defaultValue={selectedBattery.soh ?? ''}/></label>
+                  <label>{language==='ar'?'الحرارة °C':'Temperature °C'}<input name="temperature" type="number" step="0.1" defaultValue={selectedBattery.temperature ?? ''}/></label>
+                  <label>{language==='ar'?'الجهد المقاس V':'Measured voltage V'}<input name="voltage" type="number" step="0.1" defaultValue={selectedBattery.voltage ?? ''}/></label>
+                  <label>{language==='ar'?'التيار A':'Current A'}<input name="current" type="number" step="0.1" defaultValue={selectedBattery.current ?? ''}/></label>
+                  <label>{language==='ar'?'عدد الدورات':'Cycles'}<input name="cycles" type="number" min="0" step="1" defaultValue={selectedBattery.cycles ?? ''}/></label>
+                </div>
+                <label>{t.notes}<textarea name="notes" defaultValue={selectedBattery.notes}/></label>
+                <div className="record-actions"><button className="btn-primary" type="submit">{language==='ar'?'حفظ البيانات':'Save battery data'}</button><button className="btn-secondary" type="button" onClick={()=>setEditingBattery(false)}>{t.cancel}</button></div>
+              </form> : <button className="btn-secondary full" onClick={()=>setEditingBattery(true)}>{language==='ar'?'تعديل بيانات البطارية':'Edit battery details'}</button>}
+              {pendingBatteryArchive===selectedBattery.id ? <div className="archive-confirm"><strong>{language==='ar'?'تأكيد أرشفة البطارية؟':'Archive this battery record?'}</strong><button className="btn-danger" onClick={()=>archiveBattery(selectedBattery.id)}>{language==='ar'?'تأكيد الأرشفة':'Confirm archive'}</button><button className="btn-secondary" onClick={()=>setPendingBatteryArchive(null)}>{t.cancel}</button></div> : <button className="btn-danger full" onClick={()=>setPendingBatteryArchive(selectedBattery.id)}>{language==='ar'?'أرشفة البطارية':'Archive battery'}</button>}
+            </>}
+            <p className="muted-text">{t.localChanges}</p>
+          </div>
+        </div>
+        <div className="surface-card add-asset-card"><div className="card-head"><div><span className="eyebrow">REGISTER BATTERY / NEW MODULE</span><h3>{language==='ar'?'إضافة بطارية جديدة':'Register a new battery'}</h3></div><Icon name="plus" size={20}/></div>
+          <form className="form-grid" onSubmit={addBattery}>
+            <label>{t.manufacturer}<input name="manufacturer" required placeholder="Cassioli / Craftsman / ACME"/></label>
+            <label>{language==='ar'?'الموديل':'Model'}<input name="model" placeholder="Not recorded"/></label>
+            <label>{language==='ar'?'نوع الخلايا':'Chemistry'}<input name="chemistry" defaultValue="Lithium-ion (unverified)"/></label>
+            <label>{language==='ar'?'الجهد الاسمي':'Nominal voltage'}<input name="voltage" placeholder="Not recorded"/></label>
+            <label>{language==='ar'?'السعة':'Capacity'}<input name="capacity" placeholder="Not recorded"/></label>
+            <label>{language==='ar'?'تخصيص إلى جهاز':'Assign to shuttle'}<select name="assignment" defaultValue=""><option value="">{language==='ar'?'بطارية احتياطية':'Unassigned / spare'}</option>{activeShuttles.map(item=><option key={item.id} value={item.id}>{item.id} · {item.manufacturer}</option>)}</select></label>
+            <label>{t.notes}<input name="notes" placeholder={t.noData}/></label>
+            <button className="btn-primary" type="submit">{language==='ar'?'حفظ البطارية':'Save battery'}</button>
+          </form>
+        </div>
+        <div className="archive-panel"><button className="text-button" type="button" onClick={()=>setShowArchived(value=>!value)}>{showArchived?(language==='ar'?'إخفاء أرشيف البطاريات':'Hide battery archive'):(language==='ar'?'عرض البطاريات المؤرشفة':'Show archived batteries')} · {archivedBatteries.length}</button>
+          {showArchived && archivedBatteries.map(item=><div className="archive-row" key={item.id}><div><strong>{item.id}</strong><small>{item.manufacturer} · {item.assignment}</small></div><button className="btn-secondary" onClick={()=>restoreBattery(item.id)}>{language==='ar'?'استعادة':'Restore'}</button></div>)}
+        </div>
       </section>}
 
       {activeTab === 'faults' && <section className="page-content">
