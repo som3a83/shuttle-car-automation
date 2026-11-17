@@ -56,7 +56,7 @@ const navItems: { id: Tab; en: string; ar: string; icon: string; group: string }
 
 const copy = {
   en: {
-    appName: 'SHUTTLE OPERATIONS', subtitle: 'Industrial control & engineering suite',
+    appName: 'SHUTTLE CAR AUTOMATION', subtitle: 'Industrial control & engineering suite',
     demo: 'DEMO MODE · LOCAL RECORDS', demoText: 'No live equipment connection: no shuttle is connected to live PLC or manufacturer telemetry. Values marked unverified are not machine readings.',
     total: 'Total shuttle cars', running: 'Running shuttles', idle: 'Idle / Ready', faulted: 'Fault records', disconnected: 'Offline / unknown', battery: 'Verified battery SOC',
     fleet: 'Fleet overview', fleetSub: 'Manage equipment identity, operating condition, assignment and service history.',
@@ -408,7 +408,7 @@ function App() {
 
   useEffect(() => {
     const page = navItems.find((item) => item.id === activeTab);
-    document.title = page ? `${page.en} · ShuttleOps` : 'ShuttleOps';
+    document.title = page ? `${page.en} · Shuttle Car Automation` : 'Shuttle Car Automation';
     document.documentElement.scrollTop = 0;
     document.body.scrollTop = 0;
   }, [activeTab]);
@@ -691,7 +691,7 @@ function App() {
 
   const downloadDailyReport = (report: DailyReportSnapshot) => {
     const rows: Array<Array<string | number>> = [
-      ['SHUTTLE OPERATIONS · DAILY DEVICE STATUS', report.reportDate],
+      ['SHUTTLE CAR AUTOMATION · DAILY DEVICE STATUS', report.reportDate],
       ['Generated at', report.generatedAt],
       ['Active shuttle units', report.shuttleCount],
       ['Running', report.runningCount],
@@ -1023,7 +1023,7 @@ function App() {
     <aside className={'sidebar ' + (mobileNav ? 'mobile-open' : '')}>
       <div className="brand-block">
         <div className="brand-symbol"><span/><span/><span/></div>
-        <div className="brand-copy"><strong>SHUTTLE<span>OPS</span></strong><small>ENGINEERING PLATFORM</small></div>
+        <div className="brand-copy"><strong>SHUTTLE CAR</strong><small>AUTOMATION · ENGINEERING PLATFORM</small></div>
         <button className="mobile-close" onClick={() => setMobileNav(false)} aria-label="Close navigation">×</button>
       </div>
       <div className="sidebar-caption">{t.appName}</div>
@@ -1038,7 +1038,7 @@ function App() {
 
     <main className="workspace">
       <header className="topbar">
-        <div className="topbar-heading"><button className="mobile-menu" onClick={() => setMobileNav(true)} aria-label="Open navigation"><Icon name="grid" size={20}/></button><div className="breadcrumb">SHUTTLE OPS <span>/</span> {language === 'ar' ? (headerPreference?.ar || header?.ar) : (headerPreference?.en || header?.en)}</div><h1>{language === 'ar' ? (headerPreference?.ar || header?.ar) : (headerPreference?.en || header?.en)}</h1></div>
+        <div className="topbar-heading"><button className="mobile-menu" onClick={() => setMobileNav(true)} aria-label="Open navigation"><Icon name="grid" size={20}/></button><div className="breadcrumb">SHUTTLE CAR AUTOMATION <span>/</span> {language === 'ar' ? (headerPreference?.ar || header?.ar) : (headerPreference?.en || header?.en)}</div><h1>{language === 'ar' ? (headerPreference?.ar || header?.ar) : (headerPreference?.en || header?.en)}</h1></div>
         <div className="topbar-actions">
           <button className="topbar-route-button" type="button" onClick={goBack} disabled={!canGoBack} aria-label={language === 'ar' ? 'رجوع' : 'Go back'} title={language === 'ar' ? 'رجوع' : 'Go back'}><Icon name="chevron" size={17}/></button>
           <button className="topbar-route-button" type="button" onClick={() => go('dashboard')} aria-label={language === 'ar' ? 'الرئيسية' : 'Home'} title={language === 'ar' ? 'الرئيسية' : 'Home'}><Icon name="grid" size={17}/></button>
@@ -1224,13 +1224,13 @@ function App() {
               </Suspense>
               <div className="battery-stat-grid">
                 <Detail label={t.charge} value={selectedBattery.soc === null ? t.unknown : selectedBattery.soc + '% (manual / reported)'}/>
-                <Detail label={t.health} value={selectedBattery.soh === null ? t.noData : selectedBattery.soh + '%'}/>
-                <Detail label={t.temperature} value={selectedBattery.temperature === null ? t.noData : selectedBattery.temperature + '°C'}/>
-                <Detail label={t.voltage} value={selectedBattery.voltage === null ? t.noData : selectedBattery.voltage + ' V'}/>
-                <Detail label={language==='ar'?'التيار':'Current'} value={selectedBattery.current === null ? t.noData : selectedBattery.current + ' A'}/>
+                <Detail label={t.health} value={selectedBattery.soh === null ? t.noData : selectedBattery.soh + '% (manual)'}/>
+                <Detail label={t.temperature} value={selectedBattery.temperature === null ? t.noData : selectedBattery.temperature + '°C (manual)'}/>
+                <Detail label={t.voltage} value={selectedBattery.voltage === null ? t.noData : selectedBattery.voltage + ' V (manual)'}/>
+                <Detail label={language==='ar'?'التيار':'Current'} value={selectedBattery.current === null ? t.noData : selectedBattery.current + ' A (manual)'}/>
                 <Detail label={language==='ar'?'السعة':'Capacity'} value={selectedBattery.capacity}/>
                 <Detail label={language==='ar'?'الجهد الاسمي':'Nominal voltage'} value={selectedBattery.nominalVoltage}/>
-                <Detail label={language==='ar'?'دورات الشحن':'Charge cycles'} value={selectedBattery.cycles ?? t.noData}/>
+                <Detail label={language==='ar'?'دورات الشحن':'Charge cycles'} value={selectedBattery.cycles === null ? t.noData : selectedBattery.cycles + ' (manual)'}/>
               </div>
               <div className="notice-inline"><Icon name="alert"/>{language==='ar'?'القراءات التي تدخلها هنا يدوية/مبلغ عنها. لن تظهر كقراءات حية إلا بعد ربط مصدر موثوق والتحقق منه.':'Values entered here are manual/reported. They are not live telemetry until a verified source is connected.'}</div>
             </> : <div className="empty-state"><Icon name="battery" size={34}/><h3>{language==='ar'?'لا توجد بطاريات نشطة':'No active battery records'}</h3><p>{language==='ar'?'سجل بطارية جديدة من النموذج المجاور لبدء الإدارة.':'Register a battery using the form beside this panel.'}</p></div>}
@@ -1517,11 +1517,11 @@ function App() {
         </div>
         <div className="surface-card"><h3>{language==='ar'?'النسخ الاحتياطي واستعادة البيانات':'Backup and restore'}</h3><p className="muted-text">{language==='ar'?'صدّر كل سجلات الأجهزة والبطاريات والأعطال والصيانة والتقارير. يمكن استيراد ملف JSON صادر من التطبيق.':'Export shuttle, battery, fault, maintenance and daily report data. Restore a JSON backup previously exported by this app.'}</p><div className="settings-action-row"><button className="btn-primary" onClick={exportBackup}>{t.backup}</button><label className="file-import-button">{language==='ar'?'استعادة من ملف JSON':'Restore from JSON'}<input aria-label={language==='ar'?'استعادة نسخة احتياطية':'Restore backup'} type="file" accept="application/json,.json" onChange={importBackup}/></label></div></div>
         <div className="surface-card"><h3>{language==='ar'?'حالة قاعدة البيانات المحلية':'Local data store'}</h3><div className="spec-list"><Detail label={language==='ar'?'أجهزة نشطة':'Active shuttles'} value={activeShuttles.length}/><Detail label={language==='ar'?'أجهزة مؤرشفة':'Archived shuttles'} value={archivedShuttles.length}/><Detail label={language==='ar'?'بطاريات نشطة':'Active batteries'} value={activeBatteries.length}/><Detail label={language==='ar'?'تقارير يومية محفوظة':'Saved daily reports'} value={dailyReports.length}/><Detail label={language==='ar'?'مكان التخزين':'Storage'} value="This device · Local browser storage"/></div><p className="muted-text">{language==='ar'?'لا توجد مزامنة سحابية أو قاعدة بيانات مشتركة حاليًا. احتفظ بنسخة احتياطية على وسيط خارجي.':'There is no cloud sync or shared database yet. Keep a backup on a separate storage location.'}</p></div>
-        <div className="surface-card privacy-policy-card"><h3>{language==='ar'?'الخصوصية والتعامل مع البيانات':'Privacy & data handling'}</h3><p>{language==='ar'?'يعمل الإصدار الحالي محليًا على هذا الجهاز. لا توجد حسابات أو مزامنة سحابية أو خادم للتطبيق، ولا يتم إرسال سجلات المعدات أو أسماء المشغلين أو الملاحظات إلى ناشر التطبيق.':'This release stores records locally on this device. There are no app accounts, cloud sync or app backend, and equipment records, operator names and notes are not sent to the publisher.'}</p><p>{language==='ar'?'قد تتضمن السجلات أسماء العاملين وبيانات تشغيلية. التخزين المحلي ليس تشفيرًا متخصصًا؛ لا تدخل كلمات مرور أو مفاتيح أو أسرارًا حساسة. ملفات النسخ الاحتياطي والتصدير تكون تحت سيطرتك وقد تحتوي على البيانات نفسها.':'Records may include staff names and operational details. Local storage is not application-level encryption; do not enter passwords, keys or sensitive secrets. Exported backups remain under your control and may contain the same information.'}</p><p>{language==='ar'?'لحذف البيانات المحلية استخدم إعدادات Android لمسح بيانات التطبيق. زر إعادة الضبط هنا يعيد بيانات البداية ولا يضمن المسح الآمن.':'To remove local data, clear this app’s storage in Android settings. The reset button restores starter records and does not perform secure erasure.'}</p><p><a href="https://github.com/som3a83/shuttle-car-automation/blob/copilot/complete-shuttle-automation-v6/PRIVACY_POLICY.md" target="_blank" rel="noreferrer">{language==='ar'?'قراءة سياسة الخصوصية الكاملة':'Read the full privacy policy'}</a> · <a href="https://github.com/som3a83/shuttle-car-automation/blob/copilot/complete-shuttle-automation-v6/TERMS_OF_USE.md" target="_blank" rel="noreferrer">{language==='ar'?'شروط الاستخدام':'Terms of use'}</a></p></div>
+        <div className="surface-card privacy-policy-card"><h3>{language==='ar'?'الخصوصية والتعامل مع البيانات':'Privacy & data handling'}</h3><p>{language==='ar'?'يعمل الإصدار الحالي محليًا على هذا الجهاز. لا توجد حسابات أو مزامنة سحابية أو خادم للتطبيق، ولا يتم إرسال سجلات المعدات أو أسماء المشغلين أو الملاحظات إلى ناشر التطبيق.':'This release stores records locally on this device. There are no app accounts, cloud sync or app backend, and equipment records, operator names and notes are not sent to the publisher.'}</p><p>{language==='ar'?'قد تتضمن السجلات أسماء العاملين وبيانات تشغيلية. التخزين المحلي ليس تشفيرًا متخصصًا؛ لا تدخل كلمات مرور أو مفاتيح أو أسرارًا حساسة. ملفات النسخ الاحتياطي والتصدير تكون تحت سيطرتك وقد تحتوي على البيانات نفسها.':'Records may include staff names and operational details. Local storage is not application-level encryption; do not enter passwords, keys or sensitive secrets. Exported backups remain under your control and may contain the same information.'}</p><p>{language==='ar'?'لحذف البيانات المحلية استخدم إعدادات Android لمسح بيانات التطبيق. زر إعادة الضبط هنا يعيد بيانات البداية ولا يضمن المسح الآمن.':'To remove local data, clear this app’s storage in Android settings. The reset button restores starter records and does not perform secure erasure.'}</p><p><a href="https://github.com/som3a83/shuttle-car-automation/blob/main/PRIVACY_POLICY.md" target="_blank" rel="noreferrer">{language==='ar'?'قراءة سياسة الخصوصية الكاملة':'Read the full privacy policy'}</a> · <a href="https://github.com/som3a83/shuttle-car-automation/blob/main/TERMS_OF_USE.md" target="_blank" rel="noreferrer">{language==='ar'?'شروط الاستخدام':'Terms of use'}</a></p></div>
         <div className="surface-card danger-settings"><h3>{language==='ar'?'إعادة بيانات التطبيق':'Reset local records'}</h3><p className="muted-text">{language==='ar'?'إعادة السجلات المحلية إلى بيانات البداية. لا يمكن التراجع عن ذلك دون نسخة احتياطية.':'Restore local records to the original seed data. This cannot be undone without a backup.'}</p><button className="btn-danger" onClick={resetLocalData}>{language==='ar'?'إعادة بيانات البداية':'Reset local records'}</button></div>
       </div></section>}
 
-      <footer className="app-footer"><span>SHUTTLE OPS · V1.0.0</span><span>{t.dataNotice}</span></footer>
+      <footer className="app-footer"><span>SHUTTLE CAR AUTOMATION · V1.0.0</span><span>{t.dataNotice}</span></footer>
     </main>
     {mobileNav && <button className="nav-scrim" onClick={()=>setMobileNav(false)} aria-label="Close navigation overlay"/>}
     {toast && <div className="toast"><Icon name="check"/>{toast}</div>}
