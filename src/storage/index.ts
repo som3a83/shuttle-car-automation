@@ -392,7 +392,11 @@ export class LegacyFallbackEngine implements StorageEngine {
     // The sidecar remains keyed by the unified StorageKey, exactly as in 2B-1.
     const actual = revisionRaw === null ? 0 : Number(revisionRaw);
     if (!Number.isSafeInteger(actual) || actual < 0) {
-      await quarantineWithoutMasking(key, raw, 'Legacy fallback revision sidecar is invalid.');
+      const moved = await quarantineWithoutMasking(key, raw, 'Legacy fallback revision sidecar is invalid.');
+      if (moved) {
+        storage.removeItem(targetKey);
+        storage.removeItem(LEGACY_REVISION_PREFIX + key);
+      }
       fail('STORAGE_CORRUPT', 'Stored revision metadata is invalid.', { key });
     }
     if (expectedRevision !== undefined && actual !== expectedRevision) {

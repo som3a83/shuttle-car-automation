@@ -93,7 +93,9 @@ describe('legacy key resolver and fallback engine', () => {
     for (const definition of importableDefinitions) {
       const key = definition.targetKey as StorageKey;
       await set(key, valuesByKey[key] as never);
-      expect(storage.getItem(definition.legacyKey)).not.toBeNull();
+      const raw = storage.getItem(definition.legacyKey);
+      expect(raw).not.toBeNull();
+      expect(JSON.parse(raw as string)).toEqual(valuesByKey[key]);
       expect(storage.getItem(key)).toBeNull();
     }
   });
@@ -139,6 +141,18 @@ describe('legacy key resolver and fallback engine', () => {
     await expect(get('operational.theme')).rejects.toMatchObject({
       name: 'StorageError', code: 'STORAGE_CORRUPT'
     });
+  });
+
+  it('RES-008b quarantines a corrupt revision sidecar and removes the active raw record only after quarantine succeeds', async () => {
+    setLegacyValue('shuttle-car-automation-v7:theme', 'dark');
+    storage.setItem('shuttle.storage.revision.operational.theme', 'not-a-revision');
+
+    await expect(set('operational.theme', 'light')).rejects.toMatchObject({
+      name: 'StorageError', code: 'STORAGE_CORRUPT'
+    });
+
+    expect(storage.getItem('shuttle-car-automation-v7:theme')).toBeNull();
+    expect(storage.getItem('shuttle.storage.revision.operational.theme')).toBeNull();
   });
 
   it('RES-009 returns null for unknown keys, session storage and the pending audit marker', async () => {
