@@ -12,6 +12,8 @@ import {
 import Shuttle3DViewer from './components/Shuttle3DViewer';
 import Battery3DViewer from './components/Battery3DViewer';
 import { getManufacturerReference } from './data/manufacturerReferences';
+import ShiftOperations from './components/ShiftOperations';
+import { archiveBatteryAndDetach, assignBatteryToShuttle, restoreBatteryRecord } from './data/batteryLifecycle';
 import type {
   AppSettings,
   Battery,
@@ -23,16 +25,18 @@ import type {
   Shuttle,
   ShuttleStatus,
   Theme,
-  DailyReportSnapshot
+  DailyReportSnapshot,
+  ShiftRecord
 } from './types';
 
-type Tab = 'dashboard' | 'fleet' | 'engineering' | 'batteries' | 'faults' | 'maintenance' | 'connections' | 'ai' | 'reports' | 'notifications' | 'users' | 'settings';
+type Tab = 'dashboard' | 'fleet' | 'shifts' | 'engineering' | 'batteries' | 'faults' | 'maintenance' | 'connections' | 'ai' | 'reports' | 'notifications' | 'users' | 'settings';
 type ModelView = 'iso' | 'side' | 'front' | 'top';
 type EngineeringPart = 'chassis' | 'drive' | 'wheels' | 'battery' | 'sensors';
 
 const navItems: { id: Tab; en: string; ar: string; icon: string; group: string }[] = [
   { id: 'dashboard', en: 'Dashboard', ar: 'لوحة القيادة', icon: 'grid', group: 'OPERATIONS' },
   { id: 'fleet', en: 'Fleet Control Center', ar: 'إدارة الأسطول', icon: 'truck', group: 'OPERATIONS' },
+  { id: 'shifts', en: 'Shift Operations & Handover', ar: 'الورديات وتسليم التشغيل', icon: 'clock', group: 'OPERATIONS' },
   { id: 'engineering', en: 'Engineering Visualization', ar: 'التصور الهندسي', icon: 'blueprint', group: 'ENGINEERING' },
   { id: 'batteries', en: 'Battery Management', ar: 'إدارة البطاريات', icon: 'battery', group: 'ENGINEERING' },
   { id: 'faults', en: 'Fault & Diagnostics', ar: 'الأعطال والتشخيص', icon: 'alert', group: 'ENGINEERING' },
@@ -174,7 +178,8 @@ function Icon({ name, size = 18 }: { name: string; size?: number }) {
     chevron: <path d="m9 18 6-6-6-6"/>,
     arrow: <path d="M5 12h14M13 6l6 6-6 6"/>,
     plus: <path d="M12 5v14M5 12h14"/>,
-    check: <path d="m5 12 4 4L19 6"/>
+    check: <path d="m5 12 4 4L19 6"/>,
+    clock: <><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></>
   };
   return <svg width={size} height={size} viewBox="0 0 24 24" {...common}>{paths[name] || paths.grid}</svg>;
 }
@@ -308,6 +313,7 @@ function App() {
   const [pendingBatteryArchive, setPendingBatteryArchive] = useState<string | null>(null);
   const [showArchived, setShowArchived] = useState(false);
   const [dailyReports, setDailyReports] = useState<DailyReportSnapshot[]>(() => readLocal('dailyReports', []));
+  const [shifts, setShifts] = useState<ShiftRecord[]>(() => readLocal('shifts', []));
   const routeStackRef = useRef<Tab[]>([tabFromLocation()]);
 
   const t = copy[language];
@@ -325,9 +331,9 @@ function App() {
   }), [activeShuttles, search, statusFilter]);
 
   useEffect(() => {
-    const values: Record<string, unknown> = { language, theme, shuttles, batteries, faults, maintenance: jobs, notifications, settings, dailyReports };
+    const values: Record<string, unknown> = { language, theme, shuttles, batteries, faults, maintenance: jobs, notifications, settings, dailyReports, shifts };
     try { Object.entries(values).forEach(([key, value]) => localStorage.setItem(PREFIX + key, JSON.stringify(value))); } catch { /* local storage is optional */ }
-  }, [language, theme, shuttles, batteries, faults, jobs, notifications, settings, dailyReports]);
+  }, [language, theme, shuttles, batteries, faults, jobs, notifications, settings, dailyReports, shifts]);
 
   const metrics = {
     total: activeShuttles.length,
@@ -503,9 +509,10 @@ function App() {
   const addBattery = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    const seq = Math.max(0, ...batteries.map(b => Number(b.id.match(/^BAT-(\d+)$/)?.[1]) || 0)) + 1;
+    const seq = Math.max(0, ...batteries.map(b => Number(b.id.match(/^BAT-(\\d+)$/)?.[1]) || 0)) + 1;
     const id = 'BAT-' + String(seq).padStart(3, '0');
-    const assignment = String(form.get('assignment') || '').trim() || 'Unassigned';
+    const requestedAssignment = String(form.get('assignment') || '').trim();
+    const now = new Date().toISOString();
     const record: Battery = {
       id,
       manufacturer: String(form.get('manufacturer') || 'Not recorded').trim(),
@@ -514,26 +521,30 @@ function App() {
       nominalVoltage: String(form.get('voltage') || 'Not recorded').trim() || 'Not recorded',
       capacity: String(form.get('capacity') || 'Not recorded').trim() || 'Not recorded',
       soc: null, soh: null, temperature: null, voltage: null, current: null, cycles: null,
-      installationDate: 'Not recorded', lastMaintenance: 'Not recorded', assignment, 
+      installationDate: 'Not recorded', lastMaintenance: 'Not recorded', assignment: 'Unassigned',
       notes: String(form.get('notes') || '').trim() || 'New local battery register entry. Technical specifications and telemetry are not verified.',
-      status: assignment === 'Unassigned' ? 'Spare' : 'Installed',
-      connectionMode: 'UNKNOWN'
+      status: 'Available', connectionMode: 'UNKNOWN',
+      movementHistory: [{
+        id: id + '-MOV-REGISTERED',
+        timestamp: now,
+        action: 'Registered',
+        fromShuttleId: 'Unassigned',
+        toShuttleId: 'Unassigned',
+        note: 'Battery registered in the local asset register; no physical machine command was sent.',
+        source: 'MANUAL'
+      }]
     };
-    const previouslyInstalled = assignment !== 'Unassigned'
-      ? shuttles.find(item => item.id === assignment)?.installedBattery
-      : undefined;
-    setBatteries(prev => [
-      ...prev.map(item => previouslyInstalled && item.id === previouslyInstalled
-        ? { ...item, assignment: 'Unassigned', status: 'Available' as const }
-        : item),
-      record
-    ]);
-    setSelectedBatteryId(id);
-    if (assignment !== 'Unassigned') {
-      setShuttles(prev => prev.map(shuttle => shuttle.id === assignment ? { ...shuttle, installedBattery: id } : shuttle));
+    const result = assignBatteryToShuttle([...batteries, record], shuttles, id, requestedAssignment, now);
+    if (!result.changed && requestedAssignment) {
+      showToast(language === 'ar' ? 'الجهاز المستهدف غير موجود أو غير نشط' : 'Target shuttle is unavailable; battery saved as spare');
+      setBatteries([...batteries, record]);
+    } else {
+      setBatteries(result.batteries);
+      setShuttles(result.shuttles);
     }
+    setSelectedBatteryId(id);
     event.currentTarget.reset();
-    pushNotification(language === 'ar' ? 'تم تسجيل بطارية جديدة' : 'New battery registered', `${id} · ${assignment}`);
+    pushNotification(language === 'ar' ? 'تم تسجيل بطارية جديدة' : 'New battery registered', `${id} · ${requestedAssignment || 'Unassigned'}`);
     showToast(language === 'ar' ? 'تم تسجيل البطارية' : 'Battery registered');
   };
 
@@ -566,16 +577,18 @@ function App() {
   };
 
   const archiveBattery = (id: string) => {
-    setBatteries(prev => prev.map(item => item.id === id ? { ...item, archivedAt: new Date().toISOString() } : item));
-    setShuttles(prev => prev.map(item => item.installedBattery === id ? { ...item, installedBattery: 'Not recorded' } : item));
+    const result = archiveBatteryAndDetach(batteries, shuttles, id);
+    if (!result.changed) return;
+    setBatteries(result.batteries);
+    setShuttles(result.shuttles);
     setSelectedBatteryId(activeBatteries.find(item => item.id !== id)?.id || '');
     setPendingBatteryArchive(null);
     pushNotification(language === 'ar' ? 'تمت أرشفة بطارية' : 'Battery archived', id, 'warning');
-    showToast(language === 'ar' ? 'تمت أرشفة البطارية' : 'Battery archived');
+    showToast(language === 'ar' ? 'تمت أرشفة البطارية مع الاحتفاظ بسجل الحركة' : 'Battery archived; movement history retained');
   };
 
   const restoreBattery = (id: string) => {
-    setBatteries(prev => prev.map(item => item.id === id ? { ...item, archivedAt: null } : item));
+    setBatteries(prev => restoreBatteryRecord(prev, id));
     setSelectedBatteryId(id);
     pushNotification(language === 'ar' ? 'تمت استعادة بطارية' : 'Battery restored', id);
   };
@@ -635,19 +648,15 @@ function App() {
 
   const assignSelectedBattery = (shuttleId: string) => {
     if (!selectedBattery) return;
-    const previousAssignment = selectedBattery.assignment;
-    const targetBatteryId = shuttles.find(item => item.id === shuttleId)?.installedBattery;
-    setBatteries(prev => prev.map(item => {
-      if (item.id === selectedBattery.id) return { ...item, assignment: shuttleId || 'Unassigned', status: shuttleId ? 'Installed' : 'Spare' };
-      if (targetBatteryId && item.id === targetBatteryId && item.assignment === shuttleId) return { ...item, assignment: 'Unassigned', status: 'Available' };
-      return item;
-    }));
-    setShuttles(prev => prev.map(item => {
-      if (item.id === shuttleId) return { ...item, installedBattery: selectedBattery.id };
-      if (item.id === previousAssignment && item.installedBattery === selectedBattery.id) return { ...item, installedBattery: 'Not recorded' };
-      return item;
-    }));
+    const result = assignBatteryToShuttle(batteries, shuttles, selectedBattery.id, shuttleId);
+    if (!result.changed) {
+      if (result.message) showToast(language === 'ar' ? 'تعذر تحديث تخصيص البطارية' : result.message);
+      return;
+    }
+    setBatteries(result.batteries);
+    setShuttles(result.shuttles);
     pushNotification(language === 'ar' ? 'تم تحديث تخصيص البطارية' : 'Battery assignment updated', `${selectedBattery.id} → ${shuttleId || 'Unassigned'}`);
+    showToast(language === 'ar' ? 'تم حفظ حركة البطارية' : 'Battery movement saved');
   };
 
   const addFault = (event: React.FormEvent<HTMLFormElement>) => {
@@ -717,7 +726,7 @@ function App() {
     const link = document.createElement('a'); link.href = url; link.download = 'shuttle-register.csv'; link.click(); URL.revokeObjectURL(url);
   };
   const exportBackup = () => {
-    const data = { schemaVersion: 9, exportedAt: new Date().toISOString(), warning: 'Local demo/record data only. Not a live PLC telemetry export.', shuttles, batteries, faults, jobs, notifications, settings, dailyReports };
+    const data = { schemaVersion: 10, exportedAt: new Date().toISOString(), warning: 'Local demo/record data only. Not a live PLC telemetry export.', shuttles, batteries, faults, jobs, notifications, settings, dailyReports, shifts };
     const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
     const link = document.createElement('a'); link.href = url; link.download = 'shuttle-local-backup.json'; link.click(); URL.revokeObjectURL(url);
   };
@@ -738,6 +747,7 @@ function App() {
         setJobs(data.jobs as MaintenanceJob[]);
         setNotifications(Array.isArray(data.notifications) ? data.notifications as NotificationItem[] : []);
         setDailyReports(Array.isArray(data.dailyReports) ? data.dailyReports as DailyReportSnapshot[] : []);
+        setShifts(Array.isArray(data.shifts) ? data.shifts as ShiftRecord[] : []);
         if (data.settings && typeof data.settings === 'object') setSettings(data.settings as AppSettings);
         setSelectedId((data.shuttles as Shuttle[]).find(item => !item.archivedAt)?.id || '');
         setSelectedBatteryId((data.batteries as Battery[]).find(item => !item.archivedAt)?.id || '');
@@ -758,6 +768,7 @@ function App() {
     setJobs(initialMaintenance);
     setNotifications(initialNotifications);
     setDailyReports([]);
+    setShifts([]);
     setSelectedId('SC-01');
     setSelectedBatteryId('BAT-ACME-01');
     showToast(language === 'ar' ? 'تمت إعادة بيانات البداية' : 'Seed data restored');
@@ -879,6 +890,8 @@ function App() {
           </div>
           </section>}
 
+      {activeTab === 'shifts' && <ShiftOperations language={language} shifts={shifts} shuttles={shuttles} faults={faults} jobs={jobs} onChange={setShifts}/>}
+
       {activeTab === 'engineering' && selected && <section className="page-content">
         <PageIntro eyebrow="MECHANICAL INTELLIGENCE / DIGITAL SCHEMATIC" title={t.engineering} subtitle={t.engineeringSub}/>
         <div className="engineering-workspace">
@@ -962,6 +975,13 @@ function App() {
                   <option value="">{language==='ar'?'بدون تخصيص / احتياطي':'Unassigned / spare'}</option>
                   {activeShuttles.map(item=><option value={item.id} key={item.id}>{item.id} · {item.manufacturer}</option>)}
                 </select>
+              </div>
+              <div className="battery-movement-history">
+                <div className="card-head"><div><span className="eyebrow">{language==='ar'?'تتبع دورة حياة البطارية':'BATTERY LIFECYCLE JOURNAL'}</span><h4>{language==='ar'?'سجل التركيب والفك والنقل':'Installation, removal & transfer history'}</h4></div><span className="counter">{selectedBattery.movementHistory?.length || 0}</span></div>
+                {(selectedBattery.movementHistory || []).length === 0
+                  ? <p className="muted-text">{language==='ar'?'لا توجد حركات مسجلة لهذه البطارية القديمة. ستظهر الحركات الجديدة هنا.':'No movements were recorded for this legacy battery. New movements will appear here.'}</p>
+                  : <div className="battery-movement-list">{selectedBattery.movementHistory!.slice(0,8).map(item=><div className="battery-movement-row" key={item.id}><i/><div><strong>{language==='ar'?({Registered:'تسجيل',Assigned:'تركيب',Removed:'فك',Reassigned:'نقل',Archived:'أرشفة',Restored:'استعادة'} as Record<string,string>)[item.action]:item.action}</strong><small>{item.fromShuttleId} → {item.toShuttleId} · {new Intl.DateTimeFormat(language==='ar'?'ar-EG':'en-GB',{dateStyle:'short',timeStyle:'short'}).format(new Date(item.timestamp))}</small><p>{item.note}</p></div></div>)}</div>}
+                <small className="muted-text">{language==='ar'?'كل الحركات يدوية ومحلية، ولا تثبت أن البطارية نُقلت ماديًا إلا بعد تنفيذ الإجراء على أرض الواقع وتوثيقه.':'All movements are manual local records; they do not prove a physical battery transfer until the work is performed and recorded on site.'}</small>
               </div>
               <div className="status-actions">
                 <button className="btn-secondary" onClick={()=>updateBattery(selectedBattery.id,{status:'Charging'})}>{t.setCharging}</button>
