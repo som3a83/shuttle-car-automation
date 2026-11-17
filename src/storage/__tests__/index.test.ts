@@ -167,6 +167,7 @@ describe('real IndexedDB storage behavior', () => {
     });
     expect(quarantined).toHaveLength(1);
     expect(quarantined[0]).toMatchObject({ key: KEY, rawValue: { invalid: true }, reason: expect.any(String) });
+    await expect(get(KEY)).resolves.toBeNull();
     db.close();
   });
 
