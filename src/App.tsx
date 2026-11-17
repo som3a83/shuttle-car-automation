@@ -13,6 +13,7 @@ const Shuttle3DViewer = lazy(() => import('./components/Shuttle3DViewer'));
 const Battery3DViewer = lazy(() => import('./components/Battery3DViewer'));
 import { getManufacturerReference } from './data/manufacturerReferences';
 import ShiftOperations from './components/ShiftOperations';
+import LiveGatewayPanel from './components/LiveGatewayPanel';
 import { loadCustomization, validateCustomization, type CustomizationConfig } from './data/applicationCustomization';
 import { archiveBatteryAndDetach, assignBatteryToShuttle, restoreBatteryRecord } from './data/batteryLifecycle';
 import { validateOperationalBackup } from './data/backupValidation';
@@ -1466,7 +1467,8 @@ function App() {
       </section>}
 
       {activeTab === 'connections' && <section className="page-content">
-        <PageIntro eyebrow="INDUSTRIAL NETWORK / INTEGRATION REGISTER" title={language==='ar'?'سجل واجهات الاتصال':'Device integration register'} subtitle={language==='ar'?'إدارة سجلات واجهات الاتصال والبروتوكولات المطلوبة قبل التكليف الفني. لا يتم إنشاء اتصال فعلي من هذه الشاشة.':'Maintain the interface and protocol register required before engineering commissioning. This screen does not create a live connection.'}/>
+        <PageIntro eyebrow="INDUSTRIAL NETWORK / READ-ONLY GATEWAY" title={language==='ar'?'بوابة الاتصال الصناعي وسجل الواجهات':'Industrial gateway & interface register'} subtitle={language==='ar'?'اختبار بوابة OT واستقبال قراءات موثقة للقراءة فقط، ثم إدارة سجلات واجهات المصنع.':'Connect to an approved OT gateway for verified read-only telemetry, then manage the vendor interface register.'}/>
+        <LiveGatewayPanel language={language}/>
         <div className="protocol-grid">
           {activeConnections.map((endpoint,index)=><article className="surface-card protocol-card" key={endpoint.name}>
             <div className="protocol-icon"><Icon name="network" size={23}/></div>
