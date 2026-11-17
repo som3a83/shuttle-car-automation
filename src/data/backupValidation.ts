@@ -2,6 +2,7 @@ import type {
   AppSettings,
   Battery,
   ConnectivityStatus,
+  CommunicationEndpoint,
   DailyReportSnapshot,
   Fault,
   MaintenanceJob,
@@ -22,6 +23,7 @@ export interface OperationalBackup {
   settings?: AppSettings;
   dailyReports: DailyReportSnapshot[];
   shifts: ShiftRecord[];
+  connections?: CommunicationEndpoint[];
 }
 
 export type BackupValidationResult =
@@ -99,7 +101,8 @@ function isBattery(value: unknown): value is Battery {
 
 function isFault(value: unknown): value is Fault {
   if (!isRecord(value)) return false;
-  return isString(value.id) && isString(value.shuttleId) && isString(value.title) &&
+  return isString(value.id) && isOptionalArchive(value.archivedAt) &&
+    isString(value.shuttleId) && isString(value.title) &&
     FAULT_SEVERITIES.includes(value.severity as Fault['severity']) &&
     FAULT_STATUSES.includes(value.status as Fault['status']) &&
     isString(value.timestamp) && isString(value.description) &&
@@ -110,7 +113,8 @@ function isFault(value: unknown): value is Fault {
 
 function isMaintenance(value: unknown): value is MaintenanceJob {
   if (!isRecord(value)) return false;
-  return isString(value.id) && isString(value.shuttleId) && isString(value.title) &&
+  return isString(value.id) && isOptionalArchive(value.archivedAt) &&
+    isString(value.shuttleId) && isString(value.title) &&
     MAINTENANCE_TYPES.includes(value.type as MaintenanceJob['type']) &&
     MAINTENANCE_STATUSES.includes(value.status as MaintenanceJob['status']) &&
     isString(value.scheduledDate) && isString(value.technician) && isString(value.notes);
@@ -130,6 +134,15 @@ function isSettings(value: unknown): value is AppSettings {
     typeof value.maintenanceReminders === 'boolean' &&
     typeof value.batteryAlerts === 'boolean' &&
     typeof value.communicationAlerts === 'boolean';
+}
+
+function isConnectionEndpoint(value: unknown): value is CommunicationEndpoint {
+  if (!isRecord(value)) return false;
+  return isOptionalArchive(value.archivedAt) &&
+    isString(value.name) && value.name.trim().length > 0 &&
+    ['Modbus TCP', 'OPC UA', 'MQTT', 'REST API', 'WebSocket', 'BLE'].includes(String(value.protocol)) &&
+    CONNECTIVITY.includes(value.mode as ConnectivityStatus) &&
+    isString(value.notes);
 }
 
 function isDailyReport(value: unknown): value is DailyReportSnapshot {
@@ -227,7 +240,8 @@ export function validateOperationalBackup(input: unknown): BackupValidationResul
   const optionalArrays: Array<[string, (item: unknown) => boolean]> = [
     ['notifications', isNotification],
     ['dailyReports', isDailyReport],
-    ['shifts', isShift]
+    ['shifts', isShift],
+    ['connections', isConnectionEndpoint]
   ];
   for (const [key, validator] of optionalArrays) {
     if (input[key] !== undefined && (!Array.isArray(input[key]) || !(input[key] as unknown[]).every(validator))) {
@@ -251,7 +265,8 @@ export function validateOperationalBackup(input: unknown): BackupValidationResul
     notifications: (input.notifications as NotificationItem[] | undefined) || [],
     settings: input.settings as AppSettings | undefined,
     dailyReports: (input.dailyReports as DailyReportSnapshot[] | undefined) || [],
-    shifts: (input.shifts as ShiftRecord[] | undefined) || []
+    shifts: (input.shifts as ShiftRecord[] | undefined) || [],
+    connections: (input.connections as CommunicationEndpoint[] | undefined) || []
   };
 
   return { ok: true, data: result };
