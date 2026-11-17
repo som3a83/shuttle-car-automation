@@ -60,11 +60,15 @@ describe('local application customization center', () => {
     expect(alias.id).not.toBe('reports');
     expect(saved.navigation.some((item: { id: string; labelAr: string }) => item.id === alias.id && item.labelAr === 'تقارير الخدمة')).toBe(true);
 
+    const removeButtonName = new RegExp(`Remove alias ${alias.id}`);
+    await waitFor(() => expect(screen.getByRole('button', { name: removeButtonName })).toBeInTheDocument());
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
-    fireEvent.click(screen.getByRole('button', { name: new RegExp(`Remove alias ${alias.id}`) }));
+    fireEvent.click(screen.getByRole('button', { name: removeButtonName }));
     confirmSpy.mockRestore();
-    const afterRemoval = JSON.parse(localStorage.getItem(CUSTOMIZATION_STORAGE_KEY) || '{}');
-    expect(afterRemoval.navigation.some((item: { id: string }) => item.id === alias.id)).toBe(false);
+    await waitFor(() => {
+      const afterRemoval = JSON.parse(localStorage.getItem(CUSTOMIZATION_STORAGE_KEY) || '{}');
+      expect(afterRemoval.navigation.some((item: { id: string }) => item.id === alias.id)).toBe(false);
+    });
   });
 
   it('recovers malformed preferences and retains protected routes', () => {
@@ -98,8 +102,10 @@ describe('local application customization center', () => {
     await renderReady(true);
     const toggle = screen.getByRole('checkbox', { name: 'Enable AI Technical Assistant' });
     fireEvent.click(toggle);
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Enable AI Technical Assistant' }));
-
+    await waitFor(() => expect(toggle).not.toBeChecked());
+    await waitFor(() => expect(JSON.parse(localStorage.getItem(CUSTOMIZATION_STORAGE_KEY) || '{}').modules.find((item: { id: string }) => item.id === 'ai').enabled).toBe(false));
+    fireEvent.click(toggle);
+    await waitFor(() => expect(toggle).toBeChecked());
     await waitFor(() => expect(JSON.parse(localStorage.getItem(CUSTOMIZATION_STORAGE_KEY) || '{}').modules.find((item: { id: string }) => item.id === 'ai').enabled).toBe(true));
     const saved = JSON.parse(localStorage.getItem(CUSTOMIZATION_STORAGE_KEY) || '{}');
     expect(saved.modules.find((item: { id: string }) => item.id === 'ai').enabled).toBe(true);

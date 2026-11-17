@@ -62,6 +62,13 @@ export default function CustomizationCenter({
       setMessage(reason instanceof Error ? reason.message : 'Could not save customization. Check local device storage.');
       return;
     }
+
+    // Commit the visible UI as soon as the durable preference save succeeds.
+    // Audit persistence is secondary and must not leave controlled inputs on
+    // stale state while the audit write is still pending.
+    setConfig(normalized);
+    window.dispatchEvent(new CustomEvent<CustomizationConfig>('shuttle-customization-change', { detail: normalized }));
+
     let auditSaved = true;
     try {
       await appendCustomizationAuditAsync({ action, target, detail });
@@ -69,8 +76,6 @@ export default function CustomizationCenter({
     } catch {
       auditSaved = false;
     }
-    setConfig(normalized);
-    window.dispatchEvent(new CustomEvent<CustomizationConfig>('shuttle-customization-change', { detail: normalized }));
     setMessage(auditSaved
       ? 'Saved on this device. These preferences can be changed by anyone with access to this device.'
       : 'Preferences were saved, but the local audit log could not be updated. Check device storage and try again.');
