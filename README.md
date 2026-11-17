@@ -134,8 +134,12 @@ See [PRIVACY_POLICY.md](PRIVACY_POLICY.md) for the current data handling notice.
 
 ## Industrial connectivity and safety boundaries
 
-- No live PLC, manufacturer API, gateway or telemetry endpoint is configured.
-- Battery SOC/SOH, voltage, current, temperature, cycles and shuttle status are manual, simulated or unknown unless a verified source is explicitly identified.
+- The Connections workspace now includes an optional HTTPS client for a separate read-only OT edge gateway. The app does not itself open PLC sockets or scan plant networks.
+- The Python standard-library gateway is in [industrial-gateway](industrial-gateway/README.md). It exposes authenticated status/read APIs and a separate authenticated telemetry-ingest route for vendor-approved adapters.
+- The gateway ships with the five known asset identities, but every asset is disabled and uncommissioned. Exact model, controller/firmware, adapter identity and the manufacturer-approved tag map must be documented before readings are accepted.
+- No Cassioli, Craftsman or ACME driver is supplied yet: the manufacturers' exact interface documents and hardware details have not been provided. Therefore no physical shuttle is connected by this code change alone.
+- The app accepts a gateway read token for the current screen session only; it is not persisted to localStorage. Plant access must use HTTPS, network segmentation and the approved VPN/identity layer.
+- Battery SOC/SOH, voltage, current, temperature, cycles and shuttle status remain manual, simulated or unknown unless a fresh, good-quality sample comes from a commissioned vendor adapter.
 - Do not invent register maps, device addresses, network parameters or vendor credentials.
 - The 3D shuttle and battery assemblies are conceptual engineering illustrations, not manufacturer CAD, service drawings or dimensionally verified models.
 - The application does not send movement, charging, PLC-write or machine-control commands.
