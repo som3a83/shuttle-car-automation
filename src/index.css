@@ -1024,6 +1024,12 @@ button,select,input,textarea { touch-action:manipulation; }
 .local-account-row,.audit-event-row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:9px 0; border-top:1px solid var(--line); }
 .local-account-row strong,.audit-event-row strong { display:block; font-size:10px; }
 .local-account-row span,.audit-event-row span,.audit-event-row time { color:var(--muted); font-size:8px; }
+.local-account-managed-row { align-items:flex-start; }
+.local-account-actions { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:6px; }
+.local-account-actions .btn-secondary { min-height:28px; padding:5px 8px; font-size:8px; }
+.security-account-editor { display:grid; gap:12px; }
+.security-account-editor > p { color:var(--muted); font-size:10px; line-height:1.6; }
+.temporary-password-value { display:block; width:100%; overflow-wrap:anywhere; padding:12px; border:1px solid var(--line); border-radius:8px; background:var(--panel-strong); color:var(--copper-2); font-size:13px; letter-spacing:.04em; }
 .audit-event-row > div { min-width:0; display:grid; gap:4px; }
 .audit-event-row time { white-space:nowrap; }
 .security-error { padding:10px 12px; border:1px solid rgba(230,120,120,.35); border-radius:7px; color:var(--red); background:rgba(230,120,120,.07); font-size:10px; }
