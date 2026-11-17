@@ -54,8 +54,10 @@ export default function Shuttle3DViewer({
     }
 
     setWebglAvailable(true);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
     renderer.setClearColor(0x0b121a, 0);
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.12;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     host.appendChild(renderer.domElement);
     renderer.domElement.className = 'shuttle-webgl-canvas';
@@ -70,6 +72,7 @@ export default function Shuttle3DViewer({
     scene.add(root);
     rootRef.current = root;
 
+    scene.fog = new THREE.FogExp2(0x0b121a, 0.018);
     scene.add(new THREE.HemisphereLight(0xdcecff, 0x26313b, 2.1));
     const keyLight = new THREE.DirectionalLight(0xffe0bd, 3.0);
     keyLight.position.set(7, 10, 6);
@@ -96,10 +99,23 @@ export default function Shuttle3DViewer({
     const batteryMaterial = new THREE.MeshStandardMaterial({ color: 0x243b3b, metalness: 0.45, roughness: 0.45 });
     const cellMaterial = new THREE.MeshStandardMaterial({ color: 0x4e9c82, metalness: 0.25, roughness: 0.48 });
     const sensorMaterial = new THREE.MeshStandardMaterial({ color: 0x7bd5ef, emissive: 0x17485c, emissiveIntensity: 0.65, metalness: 0.4 });
+    const fastenerMaterial = new THREE.MeshStandardMaterial({ color: 0xb5c2ca, metalness: 0.92, roughness: 0.22 });
+    const rubberDetail = new THREE.MeshStandardMaterial({ color: 0x28343d, metalness: 0.1, roughness: 0.72 });
+    const safetyMaterial = new THREE.MeshStandardMaterial({ color: 0xf0ad47, emissive: 0x75400d, emissiveIntensity: 0.42, metalness: 0.35 });
 
     const addBox = (parent: THREE.Object3D, size: [number, number, number], position: [number, number, number], material: THREE.Material) => {
       const mesh = new THREE.Mesh(new THREE.BoxGeometry(...size), material.clone());
       mesh.position.set(...position);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      parent.add(mesh);
+      return mesh;
+    };
+    const addCylinder = (parent: THREE.Object3D, radiusTop: number, radiusBottom: number, height: number, position: [number, number, number], material: THREE.Material, axis: 'x' | 'y' | 'z' = 'y') => {
+      const mesh = new THREE.Mesh(new THREE.CylinderGeometry(radiusTop, radiusBottom, height, 24), material.clone());
+      mesh.position.set(...position);
+      if (axis === 'x') mesh.rotation.z = Math.PI / 2;
+      if (axis === 'z') mesh.rotation.x = Math.PI / 2;
       mesh.castShadow = true;
       mesh.receiveShadow = true;
       parent.add(mesh);
@@ -117,6 +133,33 @@ export default function Shuttle3DViewer({
     addBox(chassis, [6.6, 0.48, 3.1], [0, -0.34, 0], darkMetal);
     addBox(chassis, [6.25, 0.12, 2.78], [0, -0.04, 0], deckMaterial);
     [-1.28, 1.28].forEach((z) => addBox(chassis, [6.45, 0.24, 0.16], [0, 0.12, z], accentMaterial));
+    // Reinforced longitudinal box-section rails and cross-members.
+    [-1.48, 1.48].forEach(z => {
+      addBox(chassis, [6.65, 0.22, 0.24], [0, -0.55, z], metal);
+      addBox(chassis, [6.2, 0.075, 0.08], [0, -0.4, z], accentMaterial);
+      for (let x = -2.8; x <= 2.81; x += 0.7) {
+        addCylinder(chassis, 0.055, 0.055, 0.045, [x, -0.39, z], fastenerMaterial);
+      }
+    });
+    [-2.55, -0.85, 0.85, 2.55].forEach(x => {
+      addBox(chassis, [0.2, 0.24, 2.9], [x, -0.54, 0], metal);
+      addBox(chassis, [0.08, 0.08, 2.72], [x, -0.38, 0], accentMaterial);
+    });
+    // Load-deck reinforcement ribs and captive fasteners.
+    for (let x = -2.85; x <= 2.86; x += 0.38) {
+      addBox(chassis, [0.045, 0.055, 2.45], [x, 0.12, 0], metal);
+    }
+    [-2.8, 2.8].forEach(x => [-1.15, 1.15].forEach(z => {
+      addCylinder(chassis, 0.075, 0.075, 0.035, [x, 0.16, z], fastenerMaterial);
+      addCylinder(chassis, 0.022, 0.022, 0.04, [x, 0.185, z], darkMetal);
+    }));
+    // Low-profile guide rollers along both sides of the chassis.
+    [-1, 1].forEach(side => {
+      for (let x = -2.35; x <= 2.36; x += 1.18) {
+        addCylinder(chassis, 0.19, 0.19, 0.28, [x, -0.44, side * 1.68], rubberDetail, 'z');
+        addCylinder(chassis, 0.08, 0.08, 0.3, [x, -0.44, side * 1.68], fastenerMaterial, 'z');
+      }
+    });
     [-2.45, -0.85, 0.85, 2.45].forEach((x) => addBox(chassis, [0.12, 0.34, 2.65], [x, -0.12, 0], metal));
     for (let x = -2.7; x <= 2.7; x += 0.45) {
       addBox(chassis, [0.035, 0.018, 2.55], [x, 0.035, 0], darkMetal);
@@ -131,6 +174,17 @@ export default function Shuttle3DViewer({
       motor.position.set(side * 2.15, -0.2, side * 0.88);
       drive.add(motor);
       addBox(drive, [0.42, 0.12, 0.55], [side * 1.55, -0.48, side * 0.9], darkMetal);
+      addCylinder(drive, 0.31, 0.31, 0.11, [side * 2.15, -0.2, side * 0.88], fastenerMaterial, 'x');
+      addCylinder(drive, 0.17, 0.17, 0.8, [side * 1.55, -0.2, side * 0.88], darkMetal, 'x');
+      for (let fin = 0; fin < 7; fin += 1) {
+        addCylinder(drive, 0.32, 0.32, 0.045, [side * (1.82 + fin * 0.11), -0.2, side * 0.88], metal, 'x');
+      }
+      // Gearbox inspection cover and mounting bolts.
+      const cover = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.035, 8, 24), fastenerMaterial.clone());
+      cover.position.set(side * 2.66, -0.18, side * 0.88);
+      cover.rotation.y = Math.PI / 2;
+      drive.add(cover);
+      [-0.13, 0.13].forEach(y => [-0.13, 0.13].forEach(z => addCylinder(drive, 0.035, 0.035, 0.05, [side * 2.7, -0.18 + y, side * 0.88 + z], fastenerMaterial, 'x')));
     });
 
     const wheels = addPart('wheels');
@@ -152,6 +206,22 @@ export default function Shuttle3DViewer({
       cap.rotation.z = Math.PI / 2;
       cap.position.set(...position);
       wheels.add(cap);
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(0.34, 0.045, 8, 32), fastenerMaterial.clone());
+      rim.rotation.y = Math.PI / 2;
+      rim.position.set(position[0] + (position[0] > 0 ? 0.18 : -0.18), position[1], position[2]);
+      wheels.add(rim);
+      // Molded tread blocks and hub bolts give the wheels a serviceable mechanical profile.
+      for (let tread = 0; tread < 20; tread += 1) {
+        const angle = (tread / 20) * Math.PI * 2;
+        const pad = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.13, 0.09), rubberDetail.clone());
+        pad.position.set(position[0], position[1] + Math.cos(angle) * 0.54, position[2] + Math.sin(angle) * 0.54);
+        pad.rotation.x = -angle;
+        wheels.add(pad);
+      }
+      for (let bolt = 0; bolt < 8; bolt += 1) {
+        const angle = (bolt / 8) * Math.PI * 2;
+        addCylinder(wheels, 0.035, 0.035, 0.045, [position[0] + 0.2, position[1] + Math.cos(angle) * 0.22, position[2] + Math.sin(angle) * 0.22], fastenerMaterial, 'x');
+      }
     });
 
     const battery = addPart('battery');
@@ -163,6 +233,13 @@ export default function Shuttle3DViewer({
       }
     }
     addBox(battery, [0.38, 0.12, 0.18], [0.72, 0.62, 0.72], sensorMaterial);
+    // Removable tray rails, locking lugs and electrical service points.
+    [-0.82, 0.82].forEach(z => {
+      addBox(battery, [2.05, 0.12, 0.12], [0, 0.32, z], fastenerMaterial);
+      [-0.72, 0.72].forEach(x => addCylinder(battery, 0.08, 0.08, 0.1, [x, 0.38, z], safetyMaterial));
+    });
+    addBox(battery, [0.35, 0.22, 0.28], [-0.88, 0.64, 0.42], darkMetal);
+    addCylinder(battery, 0.09, 0.09, 0.18, [-0.88, 0.76, 0.42], fastenerMaterial);
 
     const sensors = addPart('sensors');
     [[-3.12, 0.2, -1.28], [-3.12, 0.2, 1.28], [3.12, 0.2, -1.28], [3.12, 0.2, 1.28]].forEach((p) => {
@@ -174,6 +251,14 @@ export default function Shuttle3DViewer({
       sensors.add(lens);
     });
     addBox(sensors, [0.22, 0.16, 0.22], [0, 0.34, -1.45], sensorMaterial);
+    // Protected corner bumpers and an amber status beacon; all are illustrative.
+    [[-3.18, 0.05, -1.42], [-3.18, 0.05, 1.42], [3.18, 0.05, -1.42], [3.18, 0.05, 1.42]].forEach(p => {
+      addCylinder(sensors, 0.18, 0.18, 0.32, [p[0], p[1], p[2]], rubberDetail, 'z');
+    });
+    addCylinder(sensors, 0.12, 0.12, 0.3, [0, 0.48, 0], safetyMaterial);
+    const beacon = new THREE.Mesh(new THREE.SphereGeometry(0.14, 18, 12), safetyMaterial.clone());
+    beacon.position.set(0, 0.66, 0);
+    sensors.add(beacon);
 
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
@@ -334,6 +419,10 @@ export default function Shuttle3DViewer({
       {webglAvailable === false && <div className="three-fallback">{fallback}</div>}
       <div className="three-viewer-badge"><span className="three-live-dot" />{animated ? 'SIMULATION PREVIEW' : 'STATIC ENGINEERING VIEW'}</div>
       <div className="three-viewer-id">{manufacturer.toUpperCase()} / {shuttleId}</div>
+      <div className="shuttle-cad-overlay" aria-hidden="true">
+        <span><i/>LOAD DECK / FRAME</span><span><i/>DRIVE TRAIN</span><span><i/>TRACTION SET</span><span><i/>ENERGY TRAY</span><span><i/>SAFETY SENSORS</span>
+      </div>
+      <div className="shuttle-cad-crosshair" aria-hidden="true">+</div>
       {status === 'Unknown' && <div className="three-viewer-unknown">EQUIPMENT STATE · UNKNOWN</div>}
     </div>
   );
