@@ -4,6 +4,7 @@ import App from './App';
 import { initialShuttles } from './data/mockData';
 import { beforeEach, describe, it, expect } from 'vitest';
 import '@testing-library/jest-dom/vitest';
+import { DEFAULT_CUSTOMIZATION } from './data/applicationCustomization';
 
 describe('Shuttle Car Automation V10', () => {
   beforeEach(() => {
@@ -428,6 +429,46 @@ describe('Shuttle Car Automation V10', () => {
       'href',
       'https://github.com/som3a83/shuttle-car-automation/blob/copilot/complete-shuttle-automation-v6/PRIVACY_POLICY.md'
     );
+  });
+
+
+  it('applies saved navigation labels and dashboard widget visibility to the live application', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    const customization = JSON.parse(JSON.stringify(DEFAULT_CUSTOMIZATION)) as typeof DEFAULT_CUSTOMIZATION;
+    const reportsEntry = customization.navigation.find((item) => item.id === 'reports');
+    const batteryWidget = customization.dashboard.find((item) => item.id === 'battery-status');
+    if (!reportsEntry || !batteryWidget) throw new Error('Expected default customization entries are missing.');
+    reportsEntry.label = 'Service reports';
+    reportsEntry.labelAr = 'تقارير الخدمات';
+    reportsEntry.group = 'CUSTOM OPERATIONS';
+    batteryWidget.visible = false;
+
+    act(() => {
+      window.dispatchEvent(new CustomEvent('shuttle-customization-change', { detail: customization }));
+    });
+
+    const reportsButton = screen.getByRole('button', { name: 'Service reports' });
+    expect(reportsButton).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Battery overview' })).not.toBeInTheDocument();
+    await user.click(reportsButton);
+    expect(window.location.hash).toBe('#/reports');
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Service reports');
+  });
+
+  it('removes disabled modules from navigation without deleting application records', () => {
+    render(<App />);
+    const customization = JSON.parse(JSON.stringify(DEFAULT_CUSTOMIZATION)) as typeof DEFAULT_CUSTOMIZATION;
+    const aiModule = customization.modules.find((item) => item.id === 'ai');
+    if (!aiModule) throw new Error('Expected AI module preference is missing.');
+    aiModule.enabled = false;
+
+    act(() => {
+      window.dispatchEvent(new CustomEvent('shuttle-customization-change', { detail: customization }));
+    });
+
+    expect(screen.queryByRole('button', { name: 'AI Technical Assistant' })).not.toBeInTheDocument();
+    expect(window.localStorage.getItem('shuttle-car-automation-v7:shuttles')).toBeTruthy();
   });
 
 });
