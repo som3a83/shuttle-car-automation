@@ -137,6 +137,24 @@ describe('Shuttle Car Automation V9', () => {
     );
   });
 
+  it('opens the shift workspace and persists completed handover records in local storage', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getAllByRole('button', { name: /Shift Operations & Handover/i })[0]);
+    expect(window.location.hash).toBe('#/shifts');
+    await user.type(screen.getByLabelText(/Shift supervisor/i), 'Operations Supervisor');
+    await user.type(screen.getByLabelText(/Operators \/ technicians/i), 'Operator One, Technician Two');
+    await user.click(screen.getByRole('button', { name: /Start shift now/i }));
+    const openRecords = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:shifts') || '[]');
+    expect(openRecords).toHaveLength(1);
+    expect(openRecords[0]).toMatchObject({ supervisor: 'Operations Supervisor', endedAt: null, openingFleet: expect.arrayContaining([expect.objectContaining({ id: 'SC-01' })]) });
+    await user.type(screen.getByLabelText(/Handover notes for the next shift/i), 'Check SC-04 wheel grip and inspect battery status.');
+    await user.click(screen.getByRole('button', { name: /Close shift & save handover/i }));
+    const closedRecords = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:shifts') || '[]');
+    expect(closedRecords[0].endedAt).toBeTruthy();
+    expect(closedRecords[0].handoverNotes).toContain('SC-04 wheel grip');
+  });
+
   it('opens a module directly from its URL hash', () => {
     window.history.replaceState({ tab: 'batteries' }, '', '#/batteries');
     render(<App />);
@@ -286,12 +304,13 @@ describe('Shuttle Car Automation V9', () => {
     expect(saved[5]).toMatchObject({ id: 'SC-VERIFIED', operatingHours: 0, operatingCycles: 0 });
   });
 
-  it('keeps all twelve named application destinations reachable from the main navigation', async () => {
+  it('keeps all thirteen named application destinations reachable from the main navigation', async () => {
     const user = userEvent.setup();
     render(<App />);
     const destinations = [
       ['Dashboard', 'Dashboard'],
       ['Fleet Control Center', 'Fleet Control Center'],
+      ['Shift Operations & Handover', 'Shift Operations & Handover'],
       ['Engineering Visualization', 'Engineering Visualization'],
       ['Battery Management', 'Battery Management'],
       ['Fault & Diagnostics', 'Fault & Diagnostics'],
