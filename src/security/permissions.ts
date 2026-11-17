@@ -72,8 +72,10 @@ export function canAccessRoute(role: Role, route: ApplicationRoute): boolean {
 }
 
 /** Mutations require both an authenticated local identity and an allowed role. */
-export function canPerformAction(user: Pick<User, 'role' | 'isAuthenticated'>, permission: Permission): boolean {
-  return user.isAuthenticated === true && can(user.role, permission);
+export function canPerformAction(user: Pick<User, 'role' | 'isAuthenticated' | 'mustChangePassword'>, permission: Permission): boolean {
+  if (user.isAuthenticated !== true) return false;
+  if (user.mustChangePassword && permission !== 'users.manage') return false;
+  return can(user.role, permission);
 }
 
 export function permissionsFor(role: Role): readonly Permission[] {
