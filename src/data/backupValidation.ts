@@ -23,7 +23,7 @@ export interface OperationalBackup {
   settings?: AppSettings;
   dailyReports: DailyReportSnapshot[];
   shifts: ShiftRecord[];
-  connections?: CommunicationEndpoint[];
+  connections: CommunicationEndpoint[];
 }
 
 export type BackupValidationResult =
