@@ -15,6 +15,7 @@ import { getManufacturerReference } from './data/manufacturerReferences';
 import ShiftOperations from './components/ShiftOperations';
 import { loadCustomization, validateCustomization, type CustomizationConfig } from './data/applicationCustomization';
 import { archiveBatteryAndDetach, assignBatteryToShuttle, restoreBatteryRecord } from './data/batteryLifecycle';
+import { validateOperationalBackup } from './data/backupValidation';
 import { buildDailyReportSheets, buildRegisterSheets, downloadXlsx } from './data/excelExport';
 import type {
   AppSettings,
@@ -808,23 +809,27 @@ function App() {
     const reader = new FileReader();
     reader.onload = () => {
       try {
-        const data = JSON.parse(String(reader.result)) as Record<string, unknown>;
-        if (!Array.isArray(data.shuttles) || !Array.isArray(data.batteries) || !Array.isArray(data.faults) || !Array.isArray(data.jobs)) {
-          throw new Error('Backup structure is incomplete');
+        const parsed: unknown = JSON.parse(String(reader.result));
+        const validation = validateOperationalBackup(parsed);
+        if (!validation.ok) {
+          showToast(language === 'ar' ? 'رفض استيراد النسخة الاحتياطية: بنية البيانات غير سليمة' : `Backup rejected: ${validation.error}`);
+          event.target.value = '';
+          return;
         }
-        setShuttles(data.shuttles as Shuttle[]);
-        setBatteries(data.batteries as Battery[]);
-        setFaults(data.faults as Fault[]);
-        setJobs(data.jobs as MaintenanceJob[]);
-        setNotifications(Array.isArray(data.notifications) ? data.notifications as NotificationItem[] : []);
-        setDailyReports(Array.isArray(data.dailyReports) ? data.dailyReports as DailyReportSnapshot[] : []);
-        setShifts(Array.isArray(data.shifts) ? data.shifts as ShiftRecord[] : []);
-        if (data.settings && typeof data.settings === 'object') setSettings(data.settings as AppSettings);
-        setSelectedId((data.shuttles as Shuttle[]).find(item => !item.archivedAt)?.id || '');
-        setSelectedBatteryId((data.batteries as Battery[]).find(item => !item.archivedAt)?.id || '');
-        showToast(language === 'ar' ? 'تم استيراد النسخة الاحتياطية' : 'Backup restored');
+        const data = validation.data;
+        setShuttles(data.shuttles);
+        setBatteries(data.batteries);
+        setFaults(data.faults);
+        setJobs(data.jobs);
+        setNotifications(data.notifications);
+        setDailyReports(data.dailyReports);
+        setShifts(data.shifts);
+        if (data.settings) setSettings(data.settings);
+        setSelectedId(data.shuttles.find(item => !item.archivedAt)?.id || '');
+        setSelectedBatteryId(data.batteries.find(item => !item.archivedAt)?.id || '');
+        showToast(language === 'ar' ? 'تم التحقق من النسخة الاحتياطية واستيرادها' : 'Backup validated and restored');
       } catch {
-        showToast(language === 'ar' ? 'ملف النسخة الاحتياطية غير صالح' : 'Backup file is invalid');
+        showToast(language === 'ar' ? 'ملف النسخة الاحتياطية غير صالح أو تالف' : 'Backup file is invalid or corrupted');
       }
       event.target.value = '';
     };
