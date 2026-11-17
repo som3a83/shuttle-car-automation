@@ -12,13 +12,13 @@ const requiredSecrets = [
 ];
 
 if (!/^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(versionName)) {
-  throw new Error(\`Invalid APP_VERSION: \${versionName}\`);
+  throw new Error('Invalid APP_VERSION: ' + versionName);
 }
 if (!Number.isSafeInteger(versionCode) || versionCode < 1) {
   throw new Error('APP_VERSION_CODE must be a positive integer.');
 }
 for (const name of requiredSecrets) {
-  if (!process.env[name]) throw new Error(\`Missing required release signing variable: \${name}\`);
+  if (!process.env[name]) throw new Error('Missing required release signing variable: ' + name);
 }
 
 const variablesPath = path.join(root, 'android', 'variables.gradle');
@@ -41,7 +41,7 @@ function setGradleInteger(source, name, value) {
       break;
     }
   }
-  if (!changed) throw new Error(\`Could not locate \${name} in android/variables.gradle; inspect the Capacitor Android template before releasing.\`);
+  if (!changed) throw new Error('Could not locate ' + name + ' in android/variables.gradle; inspect the Capacitor Android template before releasing.');
   return source;
 }
 
@@ -52,19 +52,21 @@ fs.writeFileSync(variablesPath, variables);
 let appGradle = fs.readFileSync(appGradlePath, 'utf8');
 if (!/\bversionCode\s+\d+/.test(appGradle)) throw new Error('Could not locate versionCode in android/app/build.gradle.');
 if (!/\bversionName\s+['"][^'"]+['"]/.test(appGradle)) throw new Error('Could not locate versionName in android/app/build.gradle.');
-appGradle = appGradle.replace(/(\bversionCode\s+)\d+/, \`$1\${versionCode}\`);
-appGradle = appGradle.replace(/(\bversionName\s+)['"][^'"]+['"]/, \`$1"\${versionName}"\`);
+appGradle = appGradle.replace(/(\bversionCode\s+)\d+/, '$1' + versionCode);
+appGradle = appGradle.replace(/(\bversionName\s+)['"][^'"]+['"]/, '$1"' + versionName + '"');
 
-const signingBlock = \`
-    signingConfigs {
-        release {
-            storeFile file(System.getenv("ANDROID_KEYSTORE_FILE"))
-            storePassword System.getenv("ANDROID_KEYSTORE_PASSWORD")
-            keyAlias System.getenv("ANDROID_KEY_ALIAS")
-            keyPassword System.getenv("ANDROID_KEY_PASSWORD")
-        }
-    }
-\`;
+const signingBlock = [
+  '',
+  '    signingConfigs {',
+  '        release {',
+  '            storeFile file(System.getenv("ANDROID_KEYSTORE_FILE"))',
+  '            storePassword System.getenv("ANDROID_KEYSTORE_PASSWORD")',
+  '            keyAlias System.getenv("ANDROID_KEY_ALIAS")',
+  '            keyPassword System.getenv("ANDROID_KEY_PASSWORD")',
+  '        }',
+  '    }',
+  ''
+].join('\n');
 if (!appGradle.includes('signingConfigs')) {
   if (!/\bbuildTypes\s*\{/.test(appGradle)) throw new Error('Could not locate buildTypes block in android/app/build.gradle.');
   appGradle = appGradle.replace(/(\bbuildTypes\s*\{)/, signingBlock + '    $1');
@@ -78,7 +80,7 @@ fs.writeFileSync(appGradlePath, appGradle);
 if (!/targetSdkVersion\s*=\s*36/.test(variables) || !/compileSdkVersion\s*=\s*36/.test(variables)) {
   throw new Error('Android API 36 enforcement did not verify after patching.');
 }
-if (!appGradle.includes(\`versionCode \${versionCode}\`) || !appGradle.includes(\`versionName "\${versionName}"\`)) {
+if (!appGradle.includes('versionCode ' + versionCode) || !appGradle.includes('versionName "' + versionName + '"')) {
   throw new Error('Android version metadata did not verify after patching.');
 }
-console.log(\`Prepared signed Play release \${versionName} (\${versionCode}) with compile/target API 36.\`);
+console.log('Prepared signed Play release ' + versionName + ' (' + versionCode + ') with compile/target API 36.');
