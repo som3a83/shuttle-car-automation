@@ -3,7 +3,7 @@ import { initialBatteries, initialFaults, initialShuttles } from './mockData';
 import { validateOperationalBackup } from './backupValidation';
 
 const validBackup = () => ({
-  schemaVersion: 10,
+  schemaVersion: 11,
   exportedAt: '2026-11-17T00:00:00.000Z',
   shuttles: JSON.parse(JSON.stringify(initialShuttles)),
   batteries: JSON.parse(JSON.stringify(initialBatteries)),
@@ -87,6 +87,14 @@ describe('operational backup validation', () => {
       connections: [valid.connections[0], { ...valid.connections[0], protocol: 'OPC UA' }]
     };
     expect(validateOperationalBackup(duplicateNames)).toMatchObject({ ok: false, error: expect.stringMatching(/Duplicate connection endpoint names/) });
+  });
+
+  it('migrates schema 10 backups without a connection register to an empty register', () => {
+    const legacy = validBackup();
+    legacy.schemaVersion = 10;
+    const result = validateOperationalBackup(legacy);
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.data.connections).toEqual([]);
   });
 
   it('accepts earlier backups with optional collections omitted', () => {
