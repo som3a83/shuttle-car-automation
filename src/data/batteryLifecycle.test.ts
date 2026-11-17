@@ -51,6 +51,16 @@ describe('battery lifecycle and assignment consistency', () => {
     expect(faultedResult.message).toMatch(/cannot be assigned/);
   });
 
+  it('allows a faulted battery to be manually detached while preserving its fault state', () => {
+    const result = assignBatteryToShuttle(initialBatteries, initialShuttles, 'BAT-ACME-01', '');
+    expect(result.changed).toBe(true);
+    expect(result.batteries[0]).toMatchObject({ assignment: 'Unassigned', status: 'Fault' });
+    expect(result.batteries[0].movementHistory?.[0]).toMatchObject({
+      action: 'Removed', fromShuttleId: 'SC-05', toShuttleId: 'Unassigned', source: 'MANUAL'
+    });
+    expect(result.shuttles.find((item) => item.id === 'SC-05')?.installedBattery).toBe('Not recorded');
+  });
+
   it('archives and detaches a battery while preserving its movement journal', () => {
     const result = archiveBatteryAndDetach(initialBatteries, initialShuttles, 'BAT-ACME-01', '2026-11-17T09:00:00.000Z');
     expect(result.batteries[0]).toMatchObject({
