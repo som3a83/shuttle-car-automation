@@ -1,0 +1,78 @@
+name: Package Android Debug APK
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: shuttle-android-package-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  package-apk:
+    name: Android Debug APK Packaging
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Validate web application
+        run: |
+          npm run check
+          npm test
+          npm run check:release
+          npm run assets:render
+          npm run build
+
+      - name: Generate Android project and branded assets
+        run: |
+          npx cap add android
+          npx capacitor-assets generate --android --iconBackgroundColor '#111820' --iconBackgroundColorDark '#111820' --splashBackgroundColor '#111820' --splashBackgroundColorDark '#111820'
+
+      - name: Sync web assets to Android
+        run: npx cap sync android
+
+      - name: Build debug APK
+        working-directory: android
+        run: ./gradlew --no-daemon assembleDebug
+
+      - name: Verify APK and generate checksum
+        run: |
+          set -euo pipefail
+          APK="android/app/build/outputs/apk/debug/app-debug.apk"
+          test -s "$APK"
+          mkdir -p artifacts/android-package
+          cp "$APK" artifacts/android-package/shuttle-car-automation-1.0.0-debug.apk
+          sha256sum artifacts/android-package/shuttle-car-automation-1.0.0-debug.apk > artifacts/android-package/SHA256SUMS.txt
+          ls -lh artifacts/android-package/
+
+      - name: Publish installable Android APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: shuttle-car-automation-1.0.0-debug-apk
+          path: artifacts/android-package/
+          if-no-files-found: error
+          retention-days: 30

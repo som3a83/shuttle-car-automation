@@ -1,0 +1,27 @@
+{
+  "name": "Shuttle Car Automation",
+  "short_name": "Shuttle Ops",
+  "description": "Offline shuttle fleet, battery, fault and maintenance tracking.",
+  "lang": "en",
+  "dir": "ltr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#111820",
+  "theme_color": "#111820",
+  "icons": [
+    {
+      "src": "/shuttle-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/shuttle-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

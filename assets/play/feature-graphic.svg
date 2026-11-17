@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="500" viewBox="0 0 1024 500">
+  <defs>
+    <linearGradient id="back" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#19232d"/><stop offset="1" stop-color="#0c1219"/>
+    </linearGradient>
+    <linearGradient id="metal" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#40505e"/><stop offset="1" stop-color="#1d2a35"/>
+    </linearGradient>
+    <linearGradient id="copper" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f1b06c"/><stop offset="1" stop-color="#bd672f"/>
+    </linearGradient>
+    <radialGradient id="glow"><stop offset="0" stop-color="#bf783f" stop-opacity=".25"/><stop offset="1" stop-color="#bf783f" stop-opacity="0"/></radialGradient>
+  </defs>
+  <rect width="1024" height="500" fill="url(#back)"/>
+  <circle cx="790" cy="260" r="330" fill="url(#glow)"/>
+  <g stroke="#8a9aa6" stroke-opacity=".12">
+    <path d="M0 32H1024M0 64H1024M0 96H1024M0 128H1024M0 160H1024M0 192H1024M0 224H1024M0 256H1024M0 288H1024M0 320H1024M0 352H1024M0 384H1024M0 416H1024M0 448H1024"/>
+    <path d="M32 0V500M64 0V500M96 0V500M128 0V500M160 0V500M192 0V500M224 0V500M256 0V500M288 0V500M320 0V500M352 0V500M384 0V500M416 0V500M448 0V500M480 0V500M512 0V500M544 0V500M576 0V500M608 0V500M640 0V500M672 0V500M704 0V500M736 0V500M768 0V500M800 0V500M832 0V500M864 0V500M896 0V500M928 0V500M960 0V500M992 0V500"/>
+  </g>
+  <rect x="56" y="55" width="31" height="31" rx="7" fill="#d98d4c"/>
+  <text x="108" y="78" font-family="Arial,sans-serif" font-size="35" font-weight="700" letter-spacing="1.2" fill="#edf1f4">SHUTTLE CAR</text>
+  <text x="108" y="123" font-family="Arial,sans-serif" font-size="35" font-weight="700" letter-spacing="1.2" fill="#edf1f4">AUTOMATION</text>
+  <rect x="56" y="159" width="417" height="4" rx="2" fill="url(#copper)"/>
+  <text x="56" y="207" font-family="Arial,sans-serif" font-size="22" font-weight="700" letter-spacing="1.5" fill="#e6a76d">INDUSTRIAL OPERATIONS</text>
+  <text x="56" y="256" font-family="Arial,sans-serif" font-size="19" fill="#cad3da">Fleet · Battery · Maintenance</text>
+  <text x="56" y="292" font-family="Arial,sans-serif" font-size="19" fill="#cad3da">Shift handover · Reports · Engineering views</text>
+  <text x="56" y="382" font-family="Arial,sans-serif" font-size="15" font-weight="700" letter-spacing="1.6" fill="#8da0ad">OFFLINE-FIRST · LOCAL RECORDS</text>
+  <g transform="translate(560 94)">
+    <path d="M0 316H430M18 347H405" stroke="#667987" stroke-width="10" stroke-linecap="round"/>
+    <path d="M65 236H365L342 150H89Z" fill="url(#metal)" stroke="url(#copper)" stroke-width="8" stroke-linejoin="round"/>
+    <path d="M105 150V105H324V150M135 105V74H293V105" fill="#202c37" stroke="#e3a05d" stroke-width="8"/>
+    <rect x="152" y="171" width="144" height="52" rx="10" fill="#121c25" stroke="#7f919d" stroke-width="3"/>
+    <path d="M177 196H271" stroke="#e3a05d" stroke-width="7" stroke-linecap="round"/>
+    <circle cx="116" cy="316" r="40" fill="#101820" stroke="#d98749" stroke-width="9"/>
+    <circle cx="314" cy="316" r="40" fill="#101820" stroke="#d98749" stroke-width="9"/>
+    <circle cx="116" cy="316" r="14" fill="#758793"/>
+    <circle cx="314" cy="316" r="14" fill="#758793"/>
+    <circle cx="296" cy="126" r="8" fill="#66b38d"/>
+    <circle cx="321" cy="126" r="8" fill="#dfa05e"/>
+    <circle cx="346" cy="126" r="8" fill="#669fbd"/>
+    <path d="M37 259C-7 193 12 118 79 64" stroke="#d18a4b" stroke-opacity=".6" stroke-width="4" fill="none"/>
+    <path d="M64 54L89 61L69 81" fill="none" stroke="#d18a4b" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <rect x="838" y="50" width="128" height="40" rx="11" fill="#263543" stroke="#667987"/>
+  <text x="858" y="76" font-family="Arial,sans-serif" font-size="13" font-weight="700" fill="#dce4e9" letter-spacing="1">OPS / CAD</text>
+</svg>

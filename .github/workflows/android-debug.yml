@@ -1,0 +1,145 @@
+name: Build Android Debug APK
+
+on:
+  push:
+    branches:
+      - main
+      - "development/**"
+      - "copilot/**"
+  pull_request:
+    branches:
+      - main
+      - "development/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: shuttle-android-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-android:
+    name: Android Debug APK & Emulator Smoke Test
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Install Android SDK packages
+        shell: bash
+        run: |
+          set -e
+          SDK_ROOT="$HOME/Library/Android/sdk"
+          SDKMANAGER="$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          test -x "$SDKMANAGER"
+          for attempt in {1..20}; do printf 'y\n'; done | "$SDKMANAGER" --licenses
+          "$SDKMANAGER" "platform-tools" "platforms;android-36" "build-tools;36.0.0" "emulator" "system-images;android-35;google_apis;arm64-v8a"
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "$SDK_ROOT/platform-tools" >> "$GITHUB_PATH"
+          echo "$SDK_ROOT/emulator" >> "$GITHUB_PATH"
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Validate web application
+        run: |
+          npm run check
+          npm test
+          npm run check:release
+          npm run assets:render
+          npm run build
+
+      - name: Generate Android project and branded assets
+        run: |
+          npx cap add android
+          npx capacitor-assets generate --android --iconBackgroundColor '#111820' --iconBackgroundColorDark '#111820' --splashBackgroundColor '#111820' --splashBackgroundColorDark '#111820'
+
+      - name: Sync web assets to Android
+        run: npx cap sync android
+
+      - name: Build debug APK
+        working-directory: android
+        run: ./gradlew --no-daemon assembleDebug
+
+      - name: Install and launch APK in Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        timeout-minutes: 18
+        with:
+          api-level: 35
+          system-image-api-level: 35
+          target: google_apis
+          arch: arm64-v8a
+          profile: pixel_7
+          emulator-boot-timeout: 600
+          emulator-options: -no-snapshot -no-window -noaudio -no-boot-anim
+          disable-animations: true
+          script: |
+            set -euo pipefail
+            APK="android/app/build/outputs/apk/debug/app-debug.apk"
+            test -s "$APK"
+            mkdir -p artifacts/android-smoke
+
+            adb wait-for-device
+            BOOTED=""
+            for attempt in $(seq 1 45); do
+              BOOTED="$(adb shell getprop sys.boot_completed | tr -d '\r' || true)"
+              if [ "$BOOTED" = "1" ]; then break; fi
+              sleep 2
+            done
+            test "$BOOTED" = "1"
+
+            adb shell wm size | tee artifacts/android-smoke/display-size.txt
+            adb shell wm density | tee artifacts/android-smoke/display-density.txt
+            adb install -r "$APK"
+            adb logcat -c
+            adb shell am force-stop com.shuttlecar.automation
+            adb shell am start -W -n com.shuttlecar.automation/.MainActivity | tee artifacts/android-smoke/launch-result.txt
+            grep -F "Status: ok" artifacts/android-smoke/launch-result.txt
+
+            sleep 8
+            APP_PID="$(adb shell pidof com.shuttlecar.automation | tr -d '\r' || true)"
+            test -n "$APP_PID"
+            adb exec-out screencap -p > artifacts/android-smoke/android-app-screen.png
+            test -s artifacts/android-smoke/android-app-screen.png
+            adb shell dumpsys activity activities > artifacts/android-smoke/activities.txt
+            adb logcat -d -t 3000 > artifacts/android-smoke/device-logcat.txt
+
+            if grep -E "FATAL EXCEPTION|Process: com\.shuttlecar\.automation" artifacts/android-smoke/device-logcat.txt; then
+              echo "Android app crash signature found in device log."
+              exit 1
+            fi
+            grep -F "com.shuttlecar.automation/.MainActivity" artifacts/android-smoke/activities.txt
+            echo "Android emulator install, launch, foreground-process, screenshot, and crash-log checks passed."
+
+      - name: Upload Android emulator evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: shuttle-android-emulator-evidence
+          path: artifacts/android-smoke/
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Upload debug APK
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: shuttle-car-automation-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: ignore
+          retention-days: 14
