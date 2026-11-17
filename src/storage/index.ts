@@ -100,7 +100,7 @@ function isQuotaError(error: unknown): boolean {
   return error instanceof DOMException && (error.name === 'QuotaExceededError' || error.name === 'NS_ERROR_DOM_QUOTA_REACHED');
 }
 function checksumOf(value: string): string {
-  // Deterministic non-cryptographic corruption detector; not an authenticity signature.
+  // Checksums detect accidental corruption only; they are not cryptographic and do not prove authenticity.
   let hash = 2166136261;
   for (let i = 0; i < value.length; i++) { hash ^= value.charCodeAt(i); hash = Math.imul(hash, 16777619); }
   return (hash >>> 0).toString(16).padStart(8, '0');
@@ -150,6 +150,41 @@ function transactionDone(tx: IDBTransaction): Promise<void> {
     tx.onabort = tx.onerror = () => reject(tx.error ?? new Error('IndexedDB transaction failed'));
   });
 }
+function indexedDbFailure(error: unknown, key?: StorageKey): never {
+  if (error instanceof StorageError) throw error;
+  if (isQuotaError(error)) fail('STORAGE_QUOTA_EXCEEDED', 'Storage quota was exceeded.', { key });
+  fail('STORAGE_TRANSACTION_FAILED', 'The IndexedDB operation could not be completed.', { key });
+}
+
+/** Persist a corrupt raw record and its diagnostic reason without exposing it in logs. */
+export async function quarantineRecord(key: StorageKey, rawValue: unknown, reason: string): Promise<void> {
+  const entry = {
+    id: 'quarantine-' + Date.now() + '-' + Math.random().toString(36).slice(2),
+    key,
+    rawValue,
+    reason: reason.slice(0, 500),
+    quarantinedAt: new Date().toISOString(),
+  };
+  try {
+    if (typeof indexedDB !== 'undefined') {
+      const db = await openDatabase();
+      const tx = db.transaction([STORE_QUARANTINE], 'readwrite');
+      tx.objectStore(STORE_QUARANTINE).put(entry);
+      await transactionDone(tx);
+      return;
+    }
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('shuttle.storage.quarantine.' + entry.id, stableJson(entry));
+      return;
+    }
+    fail('STORAGE_UNAVAILABLE', 'No quarantine-capable storage backend is available.', { key });
+  } catch (error) {
+    indexedDbFailure(error, key);
+  }
+}
+async function quarantineWithoutMasking(key: StorageKey, rawValue: unknown, reason: string): Promise<void> {
+  try { await quarantineRecord(key, rawValue, reason); } catch { /* Preserve the original corruption error. */ }
+}
 function openDatabase(): Promise<IDBDatabase> {
   if (typeof indexedDB === 'undefined') return Promise.reject(new Error('IndexedDB unavailable'));
   return new Promise((resolve, reject) => {
@@ -168,25 +203,36 @@ function openDatabase(): Promise<IDBDatabase> {
 }
 class IndexedDbEngine implements StorageEngine {
   private dbPromise = openDatabase();
-  async getMode(): Promise<StorageMode> { await this.dbPromise; return 'indexeddb'; }
+  async getMode(): Promise<StorageMode> {
+    try { await this.dbPromise; return 'indexeddb'; }
+    catch (error) { indexedDbFailure(error); }
+  }
   private async activeGeneration(tx: IDBTransaction): Promise<string> {
     const row = await requestResult<{ key: string; value: string } | undefined>(
       tx.objectStore(STORE_METADATA).get(ACTIVE_GENERATION_KEY));
     return row?.value ?? 'generation-1';
   }
   async read(key: StorageKey): Promise<RevisionedValue<unknown> | null> {
-    const db = await this.dbPromise;
-    const tx = db.transaction([STORE_RECORDS, STORE_METADATA], 'readonly');
-    const generation = await this.activeGeneration(tx);
-    const row = await requestResult<{ id: string; value: unknown; revision: number } | undefined>(
-      tx.objectStore(STORE_RECORDS).get(generation + ':' + key));
-    await transactionDone(tx);
-    return row ? { value: row.value, revision: row.revision } : null;
+    try {
+      const db = await this.dbPromise;
+      const tx = db.transaction([STORE_RECORDS, STORE_METADATA], 'readonly');
+      const generation = await this.activeGeneration(tx);
+      const row = await requestResult<{ id: string; value: unknown; revision: number } | undefined>(
+        tx.objectStore(STORE_RECORDS).get(generation + ':' + key));
+      await transactionDone(tx);
+      if (!row) return null;
+      if (!validateStoredShape(key, row.value) || !Number.isSafeInteger(row.revision) || row.revision < 0) {
+        await quarantineWithoutMasking(key, row.value, 'IndexedDB record failed stored-shape or revision validation.');
+        fail('STORAGE_CORRUPT', 'Stored data failed integrity validation.', { key });
+      }
+      return { value: row.value, revision: row.revision };
+    } catch (error) { indexedDbFailure(error, key); }
   }
   async write(key: StorageKey, value: unknown, expectedRevision?: number): Promise<number> {
-    const db = await this.dbPromise;
-    const tx = db.transaction([STORE_RECORDS, STORE_METADATA], 'readwrite');
+    let tx: IDBTransaction | undefined;
     try {
+      const db = await this.dbPromise;
+      tx = db.transaction([STORE_RECORDS, STORE_METADATA], 'readwrite');
       const generation = await this.activeGeneration(tx);
       const store = tx.objectStore(STORE_RECORDS);
       const id = generation + ':' + key;
@@ -202,51 +248,61 @@ class IndexedDbEngine implements StorageEngine {
       await transactionDone(tx);
       return revision;
     } catch (error) {
-      if (error instanceof StorageError) throw error;
-      if (isQuotaError(error)) fail('STORAGE_QUOTA_EXCEEDED', 'Storage quota was exceeded.', { key });
-      fail('STORAGE_TRANSACTION_FAILED', 'The storage transaction could not be completed.', { key });
+      if (tx && tx.readyState !== 'done') { try { tx.abort(); } catch { /* transaction may already be closed */ } }
+      indexedDbFailure(error, key);
     }
   }
   async remove(key: StorageKey): Promise<void> {
-    const db = await this.dbPromise;
-    const tx = db.transaction([STORE_RECORDS, STORE_METADATA], 'readwrite');
-    const generation = await this.activeGeneration(tx);
-    tx.objectStore(STORE_RECORDS).delete(generation + ':' + key);
-    await transactionDone(tx);
+    try {
+      const db = await this.dbPromise;
+      const tx = db.transaction([STORE_RECORDS, STORE_METADATA], 'readwrite');
+      const generation = await this.activeGeneration(tx);
+      tx.objectStore(STORE_RECORDS).delete(generation + ':' + key);
+      await transactionDone(tx);
+    } catch (error) { indexedDbFailure(error, key); }
   }
   async backup(): Promise<BackupEnvelope> {
-    const db = await this.dbPromise;
-    const tx = db.transaction([STORE_RECORDS, STORE_METADATA], 'readonly');
-    const generation = await this.activeGeneration(tx);
-    const all = await requestResult<Array<{ id: string; value: unknown; revision: number }>>(tx.objectStore(STORE_RECORDS).getAll());
-    await transactionDone(tx);
-    const records: BackupEnvelope['records'] = {};
-    for (const row of all) {
-      if (!row.id.startsWith(generation + ':')) continue;
-      const key = row.id.slice(generation.length + 1) as StorageKey;
-      (records as Record<string, unknown>)[key] = { value: row.value, revision: row.revision };
-    }
-    const createdAt = new Date().toISOString();
-    const body = { format: 'shuttle-storage-backup' as const, schemaVersion: 1 as const, createdAt, records };
-    return { ...body, checksum: checksumOf(stableJson(body)) };
+    try {
+      const db = await this.dbPromise;
+      const tx = db.transaction([STORE_RECORDS, STORE_METADATA], 'readonly');
+      const generation = await this.activeGeneration(tx);
+      const all = await requestResult<Array<{ id: string; value: unknown; revision: number }>>(tx.objectStore(STORE_RECORDS).getAll());
+      await transactionDone(tx);
+      const records: BackupEnvelope['records'] = {};
+      for (const row of all) {
+        if (!row.id.startsWith(generation + ':')) continue;
+        const key = row.id.slice(generation.length + 1) as StorageKey;
+        (records as Record<string, unknown>)[key] = { value: row.value, revision: row.revision };
+      }
+      const createdAt = new Date().toISOString();
+      const body = { format: 'shuttle-storage-backup' as const, schemaVersion: 1 as const, createdAt, records };
+      return { ...body, checksum: checksumOf(stableJson(body)) };
+    } catch (error) { indexedDbFailure(error); }
   }
   async restore(backup: BackupEnvelope): Promise<void> {
     validateBackup(backup);
-    const db = await this.dbPromise;
-    const tx = db.transaction([STORE_RECORDS, STORE_METADATA, STORE_SNAPSHOTS], 'readwrite');
-    const metadata = tx.objectStore(STORE_METADATA);
-    const current = await this.activeGeneration(tx);
-    const next = 'generation-' + Date.now() + '-' + Math.random().toString(36).slice(2);
-    const records = tx.objectStore(STORE_RECORDS);
-    for (const [key, entry] of Object.entries(backup.records)) {
-      if (!entry || typeof entry !== 'object' || !('value' in entry) || !Number.isInteger(entry.revision) || entry.revision < 0) {
-        tx.abort(); fail('BACKUP_INVALID', 'Backup contains an invalid record.');
+    let tx: IDBTransaction | undefined;
+    try {
+      const db = await this.dbPromise;
+      tx = db.transaction([STORE_RECORDS, STORE_METADATA, STORE_SNAPSHOTS], 'readwrite');
+      const metadata = tx.objectStore(STORE_METADATA);
+      const current = await this.activeGeneration(tx);
+      const next = 'generation-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+      const records = tx.objectStore(STORE_RECORDS);
+      for (const [key, entry] of Object.entries(backup.records)) {
+        if (!entry || typeof entry !== 'object' || !('value' in entry) || !Number.isInteger(entry.revision) || entry.revision < 0) {
+          tx.abort(); fail('BACKUP_INVALID', 'Backup contains an invalid record.');
+        }
+        records.put({ id: next + ':' + key, value: entry.value, revision: entry.revision });
       }
-      records.put({ id: next + ':' + key, value: entry.value, revision: entry.revision });
+      tx.objectStore(STORE_SNAPSHOTS).put({ id: 'restore-' + Date.now(), previousGeneration: current, nextGeneration: next, createdAt: new Date().toISOString() });
+      metadata.put({ key: ACTIVE_GENERATION_KEY, value: next });
+      await transactionDone(tx);
+    } catch (error) {
+      if (tx) { try { tx.abort(); } catch { /* transaction may already be closed */ } }
+      if (error instanceof StorageError) throw error;
+      indexedDbFailure(error);
     }
-    tx.objectStore(STORE_SNAPSHOTS).put({ id: 'restore-' + Date.now(), previousGeneration: current, nextGeneration: next, createdAt: new Date().toISOString() });
-    metadata.put({ key: ACTIVE_GENERATION_KEY, value: next });
-    await transactionDone(tx);
   }
 }
 export class LegacyFallbackEngine implements StorageEngine {
@@ -261,12 +317,20 @@ export class LegacyFallbackEngine implements StorageEngine {
     if (raw === null) return null;
     try {
       const value: unknown = JSON.parse(raw);
+      if (!validateStoredShape(key, value)) {
+        await quarantineWithoutMasking(key, raw, 'Legacy fallback record failed stored-shape validation.');
+        fail('STORAGE_CORRUPT', 'Stored data failed shape validation.', { key });
+      }
       const revisionRaw = storage.getItem(LEGACY_REVISION_PREFIX + key);
       const revision = revisionRaw === null ? 0 : Number(revisionRaw);
-      if (!Number.isSafeInteger(revision) || revision < 0) fail('STORAGE_CORRUPT', 'Stored revision metadata is invalid.', { key });
+      if (!Number.isSafeInteger(revision) || revision < 0) {
+        await quarantineWithoutMasking(key, raw, 'Legacy fallback revision metadata is invalid.');
+        fail('STORAGE_CORRUPT', 'Stored revision metadata is invalid.', { key });
+      }
       return { value, revision };
     } catch (error) {
       if (error instanceof StorageError) throw error;
+      await quarantineWithoutMasking(key, raw, 'Legacy fallback record could not be decoded.');
       fail('STORAGE_CORRUPT', 'Stored data could not be decoded.', { key });
     }
   }
@@ -274,12 +338,18 @@ export class LegacyFallbackEngine implements StorageEngine {
     const storage = this.storage();
     const raw = storage.getItem(LEGACY_PREFIX + key);
     const revisionRaw = storage.getItem(LEGACY_REVISION_PREFIX + key);
-    const actual = revisionRaw === null ? (raw === null ? 0 : null) : Number(revisionRaw);
-    if (expectedRevision !== undefined && (actual === null || actual !== expectedRevision)) {
-      fail('STORAGE_CONFLICT', 'Stored data changed before this update could be committed.',
-        { key, expectedRevision, actualRevision: actual ?? undefined, metadata: { revisionSidecarMissing: true } });
+    // Legacy records without a revision sidecar are revision 0: expectedRevision 0 creates the sidecar.
+    const actual = revisionRaw === null ? 0 : Number(revisionRaw);
+    if (!Number.isSafeInteger(actual) || actual < 0) {
+      const rawValue = raw;
+      await quarantineWithoutMasking(key, rawValue, 'Legacy fallback revision sidecar is invalid.');
+      fail('STORAGE_CORRUPT', 'Stored revision metadata is invalid.', { key });
     }
-    const revision = (typeof actual === 'number' ? actual : 0) + 1;
+    if (expectedRevision !== undefined && actual !== expectedRevision) {
+      fail('STORAGE_CONFLICT', 'Stored data changed before this update could be committed.',
+        { key, expectedRevision, actualRevision: actual });
+    }
+    const revision = actual + 1;
     try {
       storage.setItem(LEGACY_PREFIX + key, stableJson(value));
       storage.setItem(LEGACY_REVISION_PREFIX + key, String(revision));
@@ -316,14 +386,18 @@ async function engine(): Promise<StorageEngine> {
   }
   return productionEnginePromise;
 }
-export async function getMode(): Promise<StorageMode> { return (await engine()).getMode(); }
+export function __resetStorageForTesting(): void { injectedEngine = null; productionEnginePromise = null; }
+export async function getMode(): Promise<StorageMode> {
+  try { return await (await engine()).getMode(); }
+  catch (error) { if (error instanceof StorageError) throw error; fail('STORAGE_TRANSACTION_FAILED', 'The storage mode could not be determined.'); }
+}
 export async function get<T = unknown>(key: StorageKey): Promise<T | null> {
-  const result = await (await engine()).read(key);
-  return result ? result.value as T : null;
+  try { const result = await (await engine()).read(key); return result ? result.value as T : null; }
+  catch (error) { if (error instanceof StorageError) throw error; if (isQuotaError(error)) fail('STORAGE_QUOTA_EXCEEDED', 'Storage quota was exceeded.', { key }); fail('STORAGE_TRANSACTION_FAILED', 'The storage read could not be completed.', { key }); }
 }
 export async function getWithRevision<T = unknown>(key: StorageKey): Promise<RevisionedValue<T> | null> {
-  const result = await (await engine()).read(key);
-  return result ? { value: result.value as T, revision: result.revision } : null;
+  try { const result = await (await engine()).read(key); return result ? { value: result.value as T, revision: result.revision } : null; }
+  catch (error) { if (error instanceof StorageError) throw error; if (isQuotaError(error)) fail('STORAGE_QUOTA_EXCEEDED', 'Storage quota was exceeded.', { key }); fail('STORAGE_TRANSACTION_FAILED', 'The storage read could not be completed.', { key }); }
 }
 export async function set<K extends StorageKey>(key: K, value: StorageSchema[K], expectedRevision?: number): Promise<SetResult> {
   const active = await engine();
@@ -339,16 +413,19 @@ export async function set<K extends StorageKey>(key: K, value: StorageSchema[K],
 export async function remove(key: StorageKey): Promise<void> {
   const active = await engine();
   if (await active.getMode() === 'readonly-recovery') fail('STORAGE_RECOVERY_REQUIRED', 'Storage recovery must be completed before removing data.', { key });
-  await active.remove(key);
+  try { await active.remove(key); }
+  catch (error) { if (error instanceof StorageError) throw error; if (isQuotaError(error)) fail('STORAGE_QUOTA_EXCEEDED', 'Storage quota was exceeded.', { key }); fail('STORAGE_TRANSACTION_FAILED', 'The storage removal could not be completed.', { key }); }
 }
 export async function backup(): Promise<BackupEnvelope> {
   const active = await engine();
   if (await active.getMode() === 'readonly-recovery') fail('STORAGE_RECOVERY_REQUIRED', 'Storage recovery must be completed before creating a backup.');
-  return active.backup();
+  try { return await active.backup(); }
+  catch (error) { if (error instanceof StorageError) throw error; if (isQuotaError(error)) fail('STORAGE_QUOTA_EXCEEDED', 'Storage quota was exceeded.'); fail('STORAGE_TRANSACTION_FAILED', 'The storage backup could not be completed.'); }
 }
 export async function restore(input: BackupEnvelope): Promise<void> {
   const active = await engine();
   if (await active.getMode() === 'readonly-recovery') fail('STORAGE_RECOVERY_REQUIRED', 'Storage recovery must be completed before restoring a backup.');
   validateBackup(input);
-  await active.restore(input);
+  try { await active.restore(input); }
+  catch (error) { if (error instanceof StorageError) throw error; if (isQuotaError(error)) fail('STORAGE_QUOTA_EXCEEDED', 'Storage quota was exceeded.'); fail('STORAGE_TRANSACTION_FAILED', 'The storage restore could not be completed.'); }
 }
