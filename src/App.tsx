@@ -26,6 +26,7 @@ import { appendAuditRecordAsync, readAllAuditRecordsAsync, verifyAuditLedgerAsyn
 import { canAccessRoute, canPerformAction, type Permission } from './security/permissions';
 import { listLocalAccountsAsync, readLocalSessionAsync } from './security/localAuth';
 import { OPERATIONAL_COLLECTIONS, persistOperationalSnapshot, readOperationalStorageIssues } from './security/operationalStorage';
+import { get, set, type StorageKey } from './storage';
 import type {
   AppSettings,
   Battery,
@@ -139,38 +140,31 @@ function tabFromLocation(): Tab {
   return navItems.some((item) => item.id === candidate) ? candidate : 'dashboard';
 }
 
-const PREFIX = 'shuttle-car-automation-v7:';
-function readLocal<T>(key: string, fallback: T): T {
-  try {
-    const raw = localStorage.getItem(PREFIX + key);
-    if (!raw) return fallback;
-    const parsed: unknown = JSON.parse(raw);
+async function readOperationalValue<T>(key: StorageKey, fallback: T): Promise<T> {
+  const stored = await get<T>(key);
+  const value = stored ?? fallback;
 
-    // V7 stored zero-hour / zero-cycle placeholders for unverified shuttle records.
-    // Convert only those legacy placeholders; preserve zero values from a verified source.
-    if (key === 'shuttles' && Array.isArray(parsed)) {
-      return parsed.map((value) => {
-        if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
-        const shuttle = value as Partial<Shuttle>;
-        const isUnverifiedPlaceholder =
-          shuttle.model === 'Not recorded' &&
-          shuttle.serialNumber === 'Not recorded' &&
-          shuttle.connectivity === 'UNKNOWN' &&
-          shuttle.status === 'Unknown';
+  // Preserve the established V7 normalization for unverified shuttle placeholders.
+  if (key === 'operational.shuttles' && Array.isArray(value)) {
+    return value.map((entry) => {
+      if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return entry;
+      const shuttle = entry as Partial<Shuttle>;
+      const isUnverifiedPlaceholder =
+        shuttle.model === 'Not recorded' &&
+        shuttle.serialNumber === 'Not recorded' &&
+        shuttle.connectivity === 'UNKNOWN' &&
+        shuttle.status === 'Unknown';
 
-        if (!isUnverifiedPlaceholder) return shuttle;
-        return {
-          ...shuttle,
-          operatingHours: shuttle.operatingHours === 0 ? null : shuttle.operatingHours,
-          operatingCycles: shuttle.operatingCycles === 0 ? null : shuttle.operatingCycles
-        };
-      }) as T;
-    }
-
-    return parsed as T;
-  } catch {
-    return fallback;
+      if (!isUnverifiedPlaceholder) return shuttle;
+      return {
+        ...shuttle,
+        operatingHours: shuttle.operatingHours === 0 ? null : shuttle.operatingHours,
+        operatingCycles: shuttle.operatingCycles === 0 ? null : shuttle.operatingCycles
+      };
+    }) as T;
   }
+
+  return value;
 }
 
 export interface AppInitialData {
@@ -224,22 +218,29 @@ export async function hydrateApplicationState(): Promise<AppInitialData> {
   // registry must fail startup rather than silently presenting an empty guest registry.
   void accounts;
 
+  const [
+    language, theme, shuttles, batteries, faults, jobs, connections, notifications,
+    settings, sidebarCollapsed, dailyReports, shifts
+  ] = await Promise.all([
+    readOperationalValue('operational.language', 'en'),
+    readOperationalValue('operational.theme', 'dark'),
+    readOperationalValue('operational.shuttles', initialShuttles),
+    readOperationalValue('operational.batteries', initialBatteries),
+    readOperationalValue('operational.faults', initialFaults),
+    readOperationalValue('operational.maintenance', initialMaintenance),
+    readOperationalValue('operational.connections', initialConnections),
+    readOperationalValue('operational.notifications', initialNotifications),
+    readOperationalValue('operational.settings', defaultSettings),
+    readOperationalValue('operational.sidebarCollapsed', false),
+    readOperationalValue('operational.dailyReports', [] as DailyReportSnapshot[]),
+    readOperationalValue('operational.shifts', [] as ShiftRecord[])
+  ]);
+
   return {
-    language: readLocal('language', 'en'),
-    theme: readLocal('theme', 'dark'),
-    customization,
-    currentUser,
-    shuttles: readLocal('shuttles', initialShuttles),
-    batteries: readLocal('batteries', initialBatteries),
-    faults: readLocal('faults', initialFaults),
-    jobs: readLocal('maintenance', initialMaintenance),
-    connections: readLocal('connections', initialConnections),
-    notifications: readLocal('notifications', initialNotifications),
-    settings: readLocal('settings', defaultSettings),
-    sidebarCollapsed: readLocal('sidebarCollapsed', false),
-    storageIssues: readOperationalStorageIssues(localStorage),
-    dailyReports: readLocal('dailyReports', []),
-    shifts: readLocal('shifts', [])
+    language, theme, customization, currentUser, shuttles, batteries, faults, jobs,
+    connections, notifications, settings, sidebarCollapsed,
+    storageIssues: readOperationalStorageIssues(),
+    dailyReports, shifts
   };
 }
 
@@ -458,21 +459,41 @@ function App({ initialData }: { initialData: AppInitialData }) {
   }), [activeShuttles, search, statusFilter]);
 
   useEffect(() => {
-    const values: Record<string, unknown> = { language, theme, sidebarCollapsed, shuttles, batteries, faults, maintenance: jobs, connections, notifications, settings, dailyReports, shifts };
-    for (const [key, value] of Object.entries(values)) {
-      try {
-        localStorage.setItem(PREFIX + key, JSON.stringify(value));
-      } catch (error) {
-        console.error(`Could not persist compatibility copy for ${key}:`, error);
-        setToast(language === 'ar' ? `تعذر حفظ النسخة المتوافقة من ${key}` : `Compatibility save failed for ${key}`);
+    let active = true;
+    const values: Array<{ storageKey: StorageKey; collection: typeof OPERATIONAL_COLLECTIONS[number]; value: unknown }> = [
+      { storageKey: 'operational.language', collection: 'language', value: language },
+      { storageKey: 'operational.theme', collection: 'theme', value: theme },
+      { storageKey: 'operational.sidebarCollapsed', collection: 'sidebarCollapsed', value: sidebarCollapsed },
+      { storageKey: 'operational.shuttles', collection: 'shuttles', value: shuttles },
+      { storageKey: 'operational.batteries', collection: 'batteries', value: batteries },
+      { storageKey: 'operational.faults', collection: 'faults', value: faults },
+      { storageKey: 'operational.maintenance', collection: 'maintenance', value: jobs },
+      { storageKey: 'operational.connections', collection: 'connections', value: connections },
+      { storageKey: 'operational.notifications', collection: 'notifications', value: notifications },
+      { storageKey: 'operational.settings', collection: 'settings', value: settings },
+      { storageKey: 'operational.dailyReports', collection: 'dailyReports', value: dailyReports },
+      { storageKey: 'operational.shifts', collection: 'shifts', value: shifts }
+    ];
+
+    void (async () => {
+      for (const entry of values) {
+        try {
+          await set(entry.storageKey, entry.value as never);
+          // Await the verified snapshot before treating this state update as persisted.
+          // If snapshot persistence fails after the storage-layer write, surface the failure
+          // rather than silently reporting a fully successful save.
+          await persistOperationalSnapshot(entry.collection, entry.value);
+        } catch {
+          if (active) {
+            setToast(language === 'ar'
+              ? `تعذر تأكيد حفظ البيانات: ${entry.collection}`
+              : `Could not confirm persistence for ${entry.collection}`);
+          }
+        }
       }
-      if ((OPERATIONAL_COLLECTIONS as readonly string[]).includes(key)) {
-        void persistOperationalSnapshot(key as typeof OPERATIONAL_COLLECTIONS[number], value).catch((error) => {
-          console.error(`Could not persist verified ${key} snapshot:`, error);
-          setToast(language === 'ar' ? `تعذر حفظ نسخة التحقق من ${key}` : `Verified save failed for ${key}`);
-        });
-      }
-    }
+    })();
+
+    return () => { active = false; };
   }, [language, theme, sidebarCollapsed, shuttles, batteries, faults, jobs, connections, notifications, settings, dailyReports, shifts]);
 
   const metrics = {
