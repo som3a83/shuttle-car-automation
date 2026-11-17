@@ -40,3 +40,6 @@ artifacts/
 *.apk
 *.aab
 *.ipa
+
+# TypeScript incremental build cache
+*.tsbuildinfo
