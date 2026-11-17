@@ -103,6 +103,16 @@ export default function ShiftOperations({ language, shifts, shuttles, faults, jo
         <div><small>{ar ? 'وقت البداية' : 'Started'}</small><strong>{formatTime(openShift.startedAt)}</strong></div>
         <div><small>{ar ? 'أجهزة عند البداية' : 'Opening fleet snapshot'}</small><strong>{openShift.openingFleet.length}</strong></div>
       </div>
+      <div className="shift-opening-assets">
+        <div className="eyebrow">{ar ? 'حالة الأجهزة عند استلام الوردية' : 'EQUIPMENT STATE AT SHIFT OPEN'}</div>
+        <div className="shift-opening-assets-list">
+          {openShift.openingFleet.length === 0
+            ? <span className="muted-text">{ar ? 'لا توجد أجهزة نشطة في لقطة البداية.' : 'No active shuttles in the opening snapshot.'}</span>
+            : openShift.openingFleet.map(unit => <div className="shift-opening-asset" key={unit.id}>
+                <strong>{unit.id}</strong><span>{unit.manufacturer}</span><span>{unit.status}</span><small>{unit.connectivity}</small>
+              </div>)}
+        </div>
+      </div>
       {openShift.openingNotes && <p className="shift-notes">{openShift.openingNotes}</p>}
       <form className="stack-form shift-close-form" onSubmit={closeShift}>
         <label>{ar ? 'ملاحظات التسليم للوردية التالية *' : 'Handover notes for the next shift *'}
