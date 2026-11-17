@@ -19,7 +19,7 @@ https://github.com/som3a83/shuttle-car-automation/security/advisories/new
 قد تتضمن أسماء العاملين معلومات شخصية. لا تُدخل كلمات مرور أو مفاتيح API أو بيانات اعتماد أو أسرارًا صناعية حساسة في حقول التطبيق.
 
 ### 4. مكان التخزين والنقل
-تُحفظ السجلات في مساحة التخزين المحلية للتطبيق/متصفح الجهاز الحالي. **الإصدار الحالي لا يرسل هذه السجلات إلى خادم تابع للتطبيق، ولا يشاركها مع أطراف ثالثة، ولا يستخدم إعلانات أو أدوات تحليل استخدام أو تتبع مدمجة.** لا توجد مزامنة بين الأجهزة. عند فتح رابط خارجي من التطبيق (مثل صفحة الشركة المصنعة أو سياسة الخصوصية)، يتصل المتصفح بالموقع الذي اخترته وفق سياسة ذلك الموقع؛ ولا تُرفق سجلات التطبيق المحلية بطلب فتح الرابط.
+تُحفظ السجلات في مساحة التخزين المحلية للتطبيق/متصفح الجهاز الحالي. **الإصدار الحالي لا يرسل هذه السجلات إلى خادم تابع للتطبيق، ولا يشاركها مع أطراف ثالثة، ولا يستخدم إعلانات أو أدوات تحليل استخدام أو تتبع مدمجة.** لا توجد مزامنة بين الأجهزة.
 
 التخزين المحلي في هذا الإصدار ليس تشفيرًا تطبيقيًا متخصصًا. احمِ جهازك بقفل شاشة مناسب، ولا تستخدم التطبيق لتخزين أسرار أو بيانات تشغيلية مصنفة أو شديدة الحساسية.
 
@@ -56,7 +56,7 @@ Local records may contain equipment identifiers, manufacturer/model/serial detai
 Names may be personal information. Do not enter passwords, API keys, credentials or industrial secrets into the application.
 
 ### 4. Storage and sharing
-Records are stored in the local application/browser storage on the current device. **The current release does not transmit these records to an application-operated server, share them with third parties, or include in-app advertising, usage analytics or tracking.** It does not synchronize data between devices. When a user opens an external manufacturer or policy link, the browser connects to that selected website under its own privacy policy; local app records are not attached to that navigation.
+Records are stored in the local application/browser storage on the current device. **The current release does not transmit these records to an application-operated server, share them with third parties, or include in-app advertising, usage analytics or tracking.** It does not synchronize data between devices.
 
 This release does not provide application-level encryption for local records. Protect the device with an appropriate screen lock and do not use the app to store secrets or highly sensitive classified operational data.
 
