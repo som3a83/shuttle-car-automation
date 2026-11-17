@@ -301,7 +301,6 @@ function App() {
   const [mobileNav, setMobileNav] = useState(false);
   const [toast, setToast] = useState('');
   const [newAsset, setNewAsset] = useState({ manufacturer: 'Cassioli', zone: '', model: '', serialNumber: '', hardwareVersion: '', firmwareVersion: '', assignedOperator: '', notes: '' });
-  const [newBattery, setNewBattery] = useState({ manufacturer: 'Cassioli', model: '', chemistry: 'Lithium-ion (unverified)', nominalVoltage: '', capacity: '', assignment: '', notes: '' });
   const [editingShuttle, setEditingShuttle] = useState<Shuttle | null>(null);
   const [editingBattery, setEditingBattery] = useState(false);
   const [pendingShuttleArchive, setPendingShuttleArchive] = useState<string | null>(null);
@@ -623,12 +622,15 @@ function App() {
   const assignSelectedBattery = (shuttleId: string) => {
     if (!selectedBattery) return;
     const previousAssignment = selectedBattery.assignment;
-    setBatteries(prev => prev.map(item => item.id === selectedBattery.id ? {
-      ...item, assignment: shuttleId || 'Unassigned', status: shuttleId ? 'Installed' : 'Spare'
-    } : item));
+    const targetBatteryId = shuttles.find(item => item.id === shuttleId)?.installedBattery;
+    setBatteries(prev => prev.map(item => {
+      if (item.id === selectedBattery.id) return { ...item, assignment: shuttleId || 'Unassigned', status: shuttleId ? 'Installed' : 'Spare' };
+      if (targetBatteryId && item.id === targetBatteryId && item.assignment === shuttleId) return { ...item, assignment: 'Unassigned', status: 'Available' };
+      return item;
+    }));
     setShuttles(prev => prev.map(item => {
-      if (item.id === previousAssignment && item.installedBattery === selectedBattery.id) return { ...item, installedBattery: 'Not recorded' };
       if (item.id === shuttleId) return { ...item, installedBattery: selectedBattery.id };
+      if (item.id === previousAssignment && item.installedBattery === selectedBattery.id) return { ...item, installedBattery: 'Not recorded' };
       return item;
     }));
     pushNotification(language === 'ar' ? 'تم تحديث تخصيص البطارية' : 'Battery assignment updated', `${selectedBattery.id} → ${shuttleId || 'Unassigned'}`);
@@ -988,7 +990,7 @@ function App() {
       {activeTab === 'maintenance' && <section className="page-content">
         <PageIntro eyebrow="MAINTENANCE / WORK MANAGEMENT" title={t.maintenance} subtitle={t.maintenanceSub}/>
         <div className="two-column-page"><div className="surface-card"><div className="card-head"><div><span className="eyebrow">WORK ORDER QUEUE</span><h3>{t.backlog}</h3></div><span className="counter">{jobs.filter(j=>j.status!=='Completed').length}</span></div><div className="record-stack">{jobs.map(j=><div className="work-record" key={j.id}><div className="record-top"><div><span className="eyebrow">{j.id} · {j.shuttleId}</span><h3>{j.title}</h3></div><StatusPill status={j.status} language={language}/></div><div className="record-meta"><span>Type: {j.type}</span><span>Date: {j.scheduledDate}</span><span>Technician: {j.technician}</span></div><p>{j.notes}</p><div className="record-actions"><button className="btn-secondary" disabled={j.status!=='Scheduled'} onClick={()=>changeJobStatus(j.id,'In Progress')}>{t.startWork}</button><button className="btn-primary" disabled={j.status==='Completed'} onClick={()=>changeJobStatus(j.id,'Completed')}>{t.completeWork}</button></div></div>)}{jobs.length===0&&<div className="empty-state">{t.noWork}</div>}</div></div>
-          <div className="surface-card"><div className="card-head"><div><span className="eyebrow">PLANNED SERVICE</span><h3>{t.createWork}</h3></div></div><form className="stack-form" onSubmit={addJob}><label>Shuttle<select name="shuttleId">{shuttles.map(s=><option key={s.id} value={s.id}>{s.id} · {s.manufacturer}</option>)}</select></label><label>{t.workTitle}<input name="title" required/></label><label>Type<select name="type"><option>Preventive</option><option>Corrective</option></select></label><label>{t.date}<input name="date" type="date" required/></label><label>{t.technician}<input name="technician"/></label><label>{t.notes}<textarea name="notes"/></label><button className="btn-primary" type="submit">{language === 'ar' ? 'حفظ أمر الصيانة' : 'Save work order'}</button></form></div></div>
+          <div className="surface-card"><div className="card-head"><div><span className="eyebrow">PLANNED SERVICE</span><h3>{t.createWork}</h3></div></div><form className="stack-form" onSubmit={addJob}><label>Shuttle<select name="shuttleId">{activeShuttles.map(s=><option key={s.id} value={s.id}>{s.id} · {s.manufacturer}</option>)}</select></label><label>{t.workTitle}<input name="title" required/></label><label>Type<select name="type"><option>Preventive</option><option>Corrective</option></select></label><label>{t.date}<input name="date" type="date" required/></label><label>{t.technician}<input name="technician"/></label><label>{t.notes}<textarea name="notes"/></label><button className="btn-primary" type="submit">{language === 'ar' ? 'حفظ أمر الصيانة' : 'Save work order'}</button></form></div></div>
       </section>}
 
       {activeTab === 'connections' && <section className="page-content"><PageIntro eyebrow="INDUSTRIAL NETWORK / INTEGRATION" title={language==='ar'?'معمارية الاتصال بالمعدات':'Device integration architecture'} subtitle={t.connectionSub}/><div className="protocol-grid">{initialConnections.map((c,i)=><div className="surface-card protocol-card" key={c.name}><div className="protocol-icon"><Icon name="network" size={23}/></div><div className="protocol-index">0{i+1}</div><h3>{c.protocol}</h3><strong>{c.name}</strong><p>{c.notes}</p><div className="protocol-footer"><StatusPill status={c.mode} language={language}/><span>{t.notConfigured}</span></div></div>)}</div><div className="notice-inline"><Icon name="alert"/>{language==='ar'?'قبل تفعيل أي اتصال: يلزم دليل المصنع، وخريطة العناوين، وبيانات الشبكة، وتصريح فني. البداية قراءة فقط.':'Before enabling a connection: obtain vendor interface manuals, register/address maps, network details and engineering authorization. Begin read-only.'}</div></section>}
