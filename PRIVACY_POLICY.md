@@ -11,15 +11,15 @@ https://github.com/som3a83/shuttle-car-automation/security/advisories/new
 لا توجد نسخة خادم من سجلات التطبيق لدى الناشر في هذا الإصدار؛ حذف البيانات يتم من الجهاز نفسه بمسح بيانات التطبيق من إعدادات Android.
 
 ### 2. طبيعة التطبيق
-التطبيق يعمل محليًا لإدارة السجلات، ويتيح اختياريًا الاتصال عبر HTTPS ببوابة OT منفصلة ومصرح بها لقراءة القياسات فقط. لا يوجد اتصال مباشر من الهاتف بوحدات PLC، ولا يحتوي التطبيق على أوامر حركة أو تحكم. لا توجد حسابات خادم أو مزامنة سحابية.
+التطبيق يعمل محليًا لإدارة السجلات، ويتيح اختياريًا الاتصال عبر HTTPS ببوابة OT منفصلة ومصرح بها لقراءة القياسات فقط. لا يوجد اتصال مباشر من الهاتف بوحدات PLC، ولا يحتوي التطبيق على أوامر حركة أو تحكم. يتضمن التطبيق حسابات محلية على الجهاز فقط؛ لا توجد حسابات خادم أو مزامنة سحابية.
 
 ### 3. المعلومات التي قد تدخلها بنفسك
-قد يحتوي السجل المحلي على معرفات المعدات، الشركة المصنعة والموديل والأرقام التسلسلية التي تدخلها، مناطق التشغيل، أسماء المشرفين والمشغلين والفنيين، حالات التشغيل، قراءات البطاريات التي تدخلها يدويًا، ملاحظات الأعطال والصيانة، سجلات الورديات، والتفضيلات.
+قد يحتوي التخزين المحلي على معرفات المعدات، الشركة المصنعة والموديل والأرقام التسلسلية التي تدخلها، مناطق التشغيل، أسماء المشرفين والمشغلين والفنيين، حالات التشغيل، قراءات البطاريات التي تدخلها يدويًا، ملاحظات الأعطال والصيانة، سجلات الورديات، والتفضيلات. كما يخزن بيانات الحساب المحلي مثل الاسم والبريد واسم المستخدم والدور، وملحًا عشوائيًا وبصمة مشتقة لكلمة المرور؛ لا يخزن كلمة المرور بصورتها الأصلية.
 
 قد تتضمن أسماء العاملين معلومات شخصية. لا تُدخل كلمات مرور أو مفاتيح API أو بيانات اعتماد أو أسرارًا صناعية حساسة في حقول التطبيق.
 
 ### 4. مكان التخزين والنقل
-تُحفظ السجلات التشغيلية المحلية في مساحة التخزين المحلية للتطبيق/متصفح الجهاز الحالي. **لا يرسل التطبيق هذه السجلات إلى خادم تابع للناشر ولا توجد مزامنة سحابية.** عند تفعيل بوابة OT اختياريًا، يرسل التطبيق رمز القراءة مباشرة إلى عنوان البوابة المحدد عبر HTTPS ويطلب نقاط القراءة المخصصة فقط؛ لا يرسل سجل المعدات المحلي إليها. يبقى رمز القراءة في ذاكرة الشاشة ولا يُحفظ في localStorage. يتولى مشغل البوابة بالمصنع إدارة سجلات القياس ومدة الاحتفاظ بها. لا يتضمن التطبيق إعلانات أو أدوات تحليل استخدام أو تتبع مدمجة.
+تُحفظ السجلات التشغيلية والحسابات المحلية وسجلات التدقيق ونسخ التخزين المتحققة في مساحة التخزين المحلية للتطبيق/متصفح الجهاز الحالي. **لا يرسل التطبيق هذه السجلات إلى خادم تابع للناشر ولا توجد مزامنة سحابية.** عند تفعيل بوابة OT اختياريًا، يرسل التطبيق رمز القراءة مباشرة إلى عنوان البوابة المحدد عبر HTTPS ويطلب نقاط القراءة المخصصة فقط؛ لا يرسل سجل المعدات المحلي إليها. يبقى رمز القراءة في ذاكرة الشاشة ولا يُحفظ في localStorage. يتولى مشغل البوابة بالمصنع إدارة سجلات القياس ومدة الاحتفاظ بها. لا يتضمن التطبيق إعلانات أو أدوات تحليل استخدام أو تتبع مدمجة.
 
 التخزين المحلي في هذا الإصدار ليس تشفيرًا تطبيقيًا متخصصًا. احمِ جهازك بقفل شاشة مناسب، ولا تستخدم التطبيق لتخزين أسرار أو بيانات تشغيلية مصنفة أو شديدة الحساسية.
 
@@ -51,12 +51,12 @@ This release keeps records only on the device; deletion is performed locally by 
 The application is a device-local tool for recording shuttle fleet, battery, fault, maintenance, shift and report information. It optionally connects over HTTPS to a separately operated, authorized OT edge gateway to read telemetry. The mobile app does not connect directly to PLCs and does not provide machine-control commands, user accounts on a server, or cloud synchronization.
 
 ### 3. Information entered by the user
-Local records may contain equipment identifiers, manufacturer/model/serial details entered by the user, operating zones, supervisor/operator/technician names, operating states, manually entered battery readings, fault and maintenance notes, shift records and preferences.
+Local data may contain equipment identifiers, manufacturer/model/serial details entered by the user, operating zones, supervisor/operator/technician names, operating states, manually entered battery readings, fault and maintenance notes, shift records and preferences. Local account data includes a name, email, username and role, plus a random salt and derived password hash; the app does not store the original password.
 
 Names may be personal information. Do not enter passwords, API keys, credentials or industrial secrets into the application.
 
 ### 4. Storage and sharing
-Operational records are stored in local application/browser storage on the current device. **The app does not transmit those records to a publisher-operated server and does not synchronize them to the cloud.** When the optional OT gateway connection is configured, the app sends the read token directly to the user-selected gateway over HTTPS and requests read-only telemetry endpoints; it does not upload the local equipment register to that gateway. The read token is held in screen memory and is not persisted to localStorage. The plant gateway operator controls its telemetry retention. The app includes no in-app advertising, usage analytics or tracking.
+Operational records, local account metadata, audit entries and verified storage snapshots are stored in local application/browser storage on the current device. **The app does not transmit those records to a publisher-operated server and does not synchronize them to the cloud.** When the optional OT gateway connection is configured, the app sends the read token directly to the user-selected gateway over HTTPS and requests read-only telemetry endpoints; it does not upload the local equipment register to that gateway. The read token is held in screen memory and is not persisted to localStorage. The plant gateway operator controls its telemetry retention. The app includes no in-app advertising, usage analytics or tracking.
 
 This release does not provide application-level encryption for local records. Protect the device with an appropriate screen lock and do not use the app to store secrets or highly sensitive classified operational data.
 

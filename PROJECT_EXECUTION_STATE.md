@@ -1,54 +1,52 @@
-# Project Execution State
+# Project Execution State — Local Engineering Upgrade
 
-Updated: 2026-11-15  
-Repository: `som3a83/shuttle-car-automation`
+Updated: 17 November 2026
+Repository baseline: `som3a83/shuttle-car-automation`
+Source archive baseline: `faff09f63779e70074209dd1d8f808768a2c6021`
 
-## Current position
+## Scope and provenance
 
-**Phase 1 — Repository audit and backup: partially complete. Source extraction is blocked by the current tool environment.** The repository metadata, complete Git tree, README, archive metadata, and limited binary preview were inspected. The archive has not been completely listed, validated, or extracted.
+This local upgrade was applied to the complete source ZIP previously generated from the repository `main` branch. It is not the later in-progress Claude ZIP mentioned in chat, and it has not been pushed to GitHub. The downloaded archive had no `.git` metadata. The changes below are available in the supplied upgrade ZIP only until the maintainer applies them to the intended branch.
 
-## Verified repository state
+## Implemented in this local upgrade
 
-- Default branch: `main`.
-- Baseline: `5ad2a89d87947301eb399494236e479369d9d978`.
-- Original/recovery branch: `backup/v4-original-2026-11-15` (baseline snapshot).
-- Development branch: `development/v4-industrial-upgrade`.
-- Baseline tracked paths: `README.md`, `shuttle-control-v4.0.0.zip`.
-- ZIP size: 1,066,026 bytes.
-- Limited viewer preview has ZIP signatures and some embedded path strings; it is not a full archive listing.
-- Original ZIP and `main` have not been modified.
+- Added a centralized role/permission matrix covering seven application roles and route permissions.
+- Added an authenticated-action gate: a local role preview cannot perform write actions. First launch now starts as an unauthenticated Viewer/guest and routes the user to the local identity center for first-admin bootstrap.
+- Added local account creation and sign-in using PBKDF2-SHA-256 with per-account random salt, session-scoped credentials, eight-hour expiry and a short lockout after repeated failed attempts. Session roles are re-derived from the matching local account record rather than trusted from `sessionStorage`. A malformed or duplicated account registry now fails closed and blocks first-admin bootstrap rather than being treated as an empty registry.
+- Added a SHA-256 chained audit log. Malformed audit data is reported as unverifiable rather than filtered into an apparently clean empty ledger. Appends stop when the configured 5,000-record cap is reached rather than truncating the chain and breaking verification.
+- Added versioned/checksummed operational storage snapshots, previous-snapshot recovery, sequential writes per collection, startup migration from legacy keys and quarantine reporting for damaged envelopes. The old keys remain as a compatibility layer for the existing UI.
+- Integrated the versioned storage bootstrap before React mounts and persistence from the main application state effect.
+- Added an Arabic/English local identity and security center, sign-in/out and local account visibility controls.
+- Added permission checks and audit events to the shift handover and notification-management paths.
+- Updated README, SECURITY, PRIVACY and this execution record to describe the actual local-only security boundary.
 
-## Completed
+## Validation performed
 
-- Confirmed repository identity, default branch, and baseline commit.
-- Enumerated the complete tracked Git tree.
-- Confirmed recovery and development branches exist.
-- Updated `TECHNICAL_AUDIT.md` and `PROJECT_ARCHITECTURE.md` with the extraction attempt and limitation.
-- Documented a local safe validation/extraction method in `TECHNICAL_AUDIT.md`.
+- Security and storage unit tests: **25 passed, 0 failed** using Node 22's built-in test runner with experimental TypeScript type stripping.
+- Industrial gateway Python tests: **9 passed, 0 failed** using `python3 -m unittest -v` from `industrial-gateway/`.
+- Isolated TypeScript strict check for security modules: passed.
+- TypeScript/TSX syntax transpilation: 37 source files parsed, zero syntax diagnostics. This is a syntax check, not a full application typecheck.
+- ZIP integrity: source archive extracted and its ZIP CRC test passed before modification.
 
-## Explicitly not done
+## Not validated / outstanding
 
-- No complete ZIP directory listing, CRC check, traversal validation, or extraction was run.
-- No application source files were added or reviewed.
-- No app code, database, API, or configuration was inspected or modified.
-- No frontend/backend tests, security tests, or production build were run.
-- No APK, AAB, web production build, or release ZIP was generated.
-- No live AI provider, PLC/device, push notification, or Google Play integration was tested.
-- No pull request was created.
+- `npm install` could not complete because the package registry was unreachable (`EAI_AGAIN`); offline installation also failed because required packages were not cached.
+- Therefore the full Vitest suite, complete React typecheck, Vite production build, Android Gradle build, emulator launch and physical-device test were not run on this locally modified source.
+- No APK or AAB was generated from this upgraded source.
+- This local upgrade has not been pushed, committed or merged into GitHub.
+- The current app remains local browser/WebView storage. The versioned envelope layer is not SQLite, and device-local accounts are not enterprise identity or server-side RBAC.
+- No physical shuttle is commissioned or connected. The OT gateway still requires manufacturer-approved read-only adapters, verified models/firmware and approved tag maps.
+- 3D representations remain conceptual and are not manufacturer CAD.
 
-## Exact blocker
+## Safety and security boundary
 
-This session exposes GitHub API read/write, file, and repository tools only. It does **not** provide a terminal/shell, local working directory, binary download, or archive extraction tool. The GitHub contents API returned empty content with `encoding: none` for the binary ZIP; the file preview is incomplete and unsuitable for extraction or a full path safety audit. Therefore it is not possible to perform the requested safe extraction from this session. No extraction success is claimed.
+Local password derivation, role checks, checksums and chained audit records improve local integrity and accountability, but a user who controls the device or application files can modify local storage and client code. A network/shared deployment requires trusted server-side identity, authorization, protected APIs and centrally stored audit logs. No PLC writes, motion, charging, reset or machine-control functions were added.
 
-## Next step to unblock
+## Recommended integration sequence
 
-Use a trusted workstation with Git, Python 3, and authenticated access to the private repository. Follow the ZIP path/integrity validation and extraction commands in `TECHNICAL_AUDIT.md`. Inspect the extracted project root, copy only reviewed source and required assets/configuration into the cloned development branch, leave the original archive intact, omit `node_modules`, caches, and unnecessary build output, then review and push the source-bearing changes to `development/v4-industrial-upgrade`.
-
-After source is pushed and accessible:
-
-1. Inspect all files and identify framework, package manifests, backend, database, tests, and Android setup.
-2. Run existing baseline build/tests before editing; capture exact commands and outputs.
-3. Fix critical issues in `development/v4-industrial-upgrade`, preserving existing behavior and data.
-4. Implement and test features against actual project structure; distinguish real hardware from simulated/manual telemetry.
-5. Build Android only with a suitable SDK/toolchain. Keep signing material outside the repository and under owner control.
-6. Update this file with changed paths, test results, and remaining external dependencies after each stage.
+1. Review the changed files in this ZIP and compare with the latest Claude output before merging anything.
+2. Apply the upgrade to a dedicated branch based on the latest intended GitHub branch, not by overwriting `main` or an unreviewed V6 branch.
+3. Install dependencies in a network-enabled environment and run `npm run validate` plus the Android debug build.
+4. Resolve full typecheck/build/test results, then manually verify first-admin bootstrap, login/logout, role-specific routes and denied write actions on mobile and desktop.
+5. Protect the default branch in GitHub Settings and retain the PR/test evidence.
+6. Obtain vendor-approved hardware documentation before any live shuttle integration.

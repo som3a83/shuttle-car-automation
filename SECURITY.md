@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-Security fixes are applied to the latest maintained release line (currently 1.x) and the active development branch. Older builds may contain known defects and should not be used for new deployments.
+Security fixes are applied to the latest maintained release line and the active development branch. Source archives and debug APKs are development artifacts unless a release tag and release-signing record explicitly state otherwise.
 
 ## Report a vulnerability privately
 
@@ -12,34 +12,37 @@ Use GitHub's private repository security advisory flow:
 
 1. Open the repository's **Security** tab.
 2. Select **Advisories** or **Report a vulnerability**.
-3. Submit a private report with the affected version/commit, impact, reproducible steps and a safe proof of concept.
+3. Submit the affected version/commit, impact, reproducible steps and a safe proof of concept.
 
 Direct link: https://github.com/som3a83/shuttle-car-automation/security/advisories/new
 
-If the private reporting option is unavailable, contact the repository maintainer through the GitHub profile: https://github.com/som3a83. Do not include credentials, personal data, customer records, network diagrams or confidential industrial information in a public issue.
+If private reporting is unavailable, contact the repository maintainer through https://github.com/som3a83. Never attach credentials, personal data, customer records, access tokens, network diagrams or confidential industrial information to a public issue.
 
-Please allow the maintainer a reasonable opportunity to investigate and prepare a fix before public disclosure. No response-time or coordinated-disclosure deadline is guaranteed by this personal project.
+## Current security model
 
-## What to include
+The application supports device-local accounts, PBKDF2-SHA-256 password derivation, expiring browser/WebView sessions, a role-permission matrix, application-level mutation checks, a SHA-256 chained audit record and versioned operational storage snapshots with checksums and recovery copies.
 
-- Affected release tag or commit SHA.
-- Impact and attack scenario.
-- Minimal reproduction steps.
-- Relevant logs with tokens, passwords, IPs and personal information removed.
-- Any proposed mitigation, if known.
+These controls improve local-device account separation and data-integrity diagnostics. They are **not** a trusted server security boundary:
 
-## Scope and industrial safety
+- Local account records, audit entries and storage envelopes reside in device/browser storage and can be modified by someone with sufficient access to that device or its application data.
+- The audit chain is tamper-evident, not immutable or cryptographically anchored outside the device.
+- Checksums detect accidental corruption and unsophisticated edits; they do not provide confidentiality or protect against an attacker who can rewrite the data and recompute hashes.
+- Local roles are enforced in application code. They are not server-enforced authorization and do not support centralized revocation or cross-device identity.
+- The app has no publisher-operated cloud database or application backend, and no cross-device synchronization.
 
-This application is currently a local recordkeeping and visualization tool. It has no app-operated backend, account authentication, server-enforced RBAC, cloud synchronization, live PLC integration or machine-control interface. The role selector is a UI preview; it is not a security boundary. Do not treat the application as a safety system.
+For multi-user or network deployment, add a trusted identity provider, server-side authorization, protected API, managed device policy and centrally stored audit records before relying on role separation.
 
-Never submit a real production secret or actual site access credential as a proof of concept. Use synthetic test values.
+## Industrial safety boundary
 
-## Security controls in this repository
+The application is a local fleet recordkeeping, visualization and monitoring tool. It is not a safety system, emergency stop, machine-protection controller or authorization to release equipment to service. The app and bundled gateway do not issue machine movement, charging, reset, PLC-write or motor-control commands.
 
-- Pull-request and CI checks before the protected-branch policy is applied.
-- Automated dependency update configuration through Dependabot.
-- CodeQL static analysis workflow.
-- Secret-leak scanning workflow.
-- Dependency review workflow for pull requests.
+The separate Python OT edge gateway accepts authenticated read-only status/telemetry requests and authenticated telemetry ingestion from explicitly configured adapters. The five known asset records are disabled/uncommissioned in the example configuration. No Cassioli, Craftsman or ACME vendor driver or approved register/tag map is included. Live integration requires manufacturer documentation, site authorization, verified hardware details, secure network design and commissioning tests.
+
+## Secure development controls
+
+- Pull-request and CI checks should pass before merge.
+- Dependabot, CodeQL, secret scanning and dependency review are configured in repository workflows, subject to their current GitHub availability/settings.
 - Release signing keys must be stored as protected GitHub Actions secrets and must never be committed.
-- Security settings that are controlled from GitHub repository Settings (branch protection, Dependabot alerts, secret scanning and push protection) are listed in [GITHUB_SECURITY_SETUP.md](GITHUB_SECURITY_SETUP.md).
+- Branch protection, repository secret scanning, push protection and Actions permissions are controlled in GitHub Settings. Follow [GITHUB_SECURITY_SETUP.md](GITHUB_SECURITY_SETUP.md) and verify the actual repository settings; documentation alone does not enable them.
+
+Use synthetic values for tests. Redact all tokens, credentials, IPs, personal information and production configuration from logs and security reports.

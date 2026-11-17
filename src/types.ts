@@ -30,6 +30,7 @@ export interface User {
   role: Role;
   email: string;
   isAuthenticated: boolean;
+  mustChangePassword?: boolean;
 }
 
 export interface Shuttle {

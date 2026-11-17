@@ -112,15 +112,23 @@ The in-app **Customize** control opens a device-local presentation settings cent
 
 The dashboard and desktop/mobile navigation consume these saved preferences. Core routes (Dashboard, Fleet and System Settings) cannot be hidden or disabled. Unknown routes and malformed preference values are discarded when settings are loaded.
 
-**Security and storage boundary:** these preferences and their event list are stored in local browser/WebView storage on the current device. They are editable by anyone with access to that device and are not an immutable audit trail, authentication mechanism or server-enforced role-based authorization. Hiding a menu item is presentation only; it does not secure the underlying data or route. The current application remains local-device recordkeeping software without a shared backend or authenticated server.
+**Security and storage boundary:** preferences, local identities, audit events and operational snapshots remain on the current device. The app now has local account sign-in, a role-permission matrix, application-level mutation checks, PBKDF2-SHA-256 password derivation, expiring local sessions, a SHA-256 chained audit log, and versioned/checksummed storage with recovery snapshots. These improve local separation and corruption detection but are not immutable or server-enforced security: a person who can modify app/browser storage or application code may bypass them. Hiding a menu item is never treated as authorization.
 
 ## Data storage and privacy
 
-The current version stores records in local browser/WebView storage on the current device. There is no shared cloud database, app-operated backend, authentication service, server-enforced RBAC or cross-device synchronization. The role selector is a UI preview only.
+The current version stores operational records, local account metadata and audit data in local browser/WebView storage on the current device. Local sign-in is available, but there is no shared cloud database, trusted identity provider, app-operated backend, server-enforced RBAC or cross-device synchronization. Local roles are enforced in application logic only and must not be treated as a server security boundary.
 
 Exported JSON, CSV and XLSX files may include equipment information, staff names and operational notes. Protect exported files and the device. Local browser storage is not application-level encryption; do not enter passwords, API keys or highly sensitive secrets.
 
 See [PRIVACY_POLICY.md](PRIVACY_POLICY.md) for the current data handling notice. The publicly reachable policy page for the current branch is: https://github.com/som3a83/shuttle-car-automation/blob/copilot/complete-shuttle-automation-v6/PRIVACY_POLICY.md.
+
+## Local identity and storage integrity
+
+- First launch presents a local administrator bootstrap; after an account exists, the app starts in guest mode until a valid local session is restored or a user signs in.
+- Passwords are not stored in plaintext. Local accounts use PBKDF2-SHA-256 derived values with per-account random salts. This protects stored password material but does not make browser storage tamper-proof.
+- Operational collections are migrated at startup into revisioned SHA-256-checksummed envelopes. The previous verified snapshot is retained; damaged envelopes are quarantined and reported rather than silently treated as clean data.
+- Local audit entries are chained with SHA-256 and verification fails closed on malformed or modified entries. This is a local tamper-evidence mechanism, not an externally immutable audit service.
+- The versioned store supplements the legacy localStorage keys for compatibility. It is not SQLite and is not a substitute for a managed database in a multi-device deployment.
 
 ## Repository security
 

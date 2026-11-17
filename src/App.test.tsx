@@ -1,14 +1,32 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from './App';
 import { initialShuttles } from './data/mockData';
 import { beforeEach, describe, it, expect, vi } from 'vitest';
 import '@testing-library/jest-dom/vitest';
 import { DEFAULT_CUSTOMIZATION } from './data/applicationCustomization';
+import { webcrypto } from 'node:crypto';
+import { authenticateLocalAccount, createLocalAccount } from './security/localAuth';
+
+const testCrypto = webcrypto as unknown as Crypto;
 
 describe('Shuttle Car Automation V10', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     window.localStorage.clear();
+    window.sessionStorage.clear();
+    vi.stubGlobal('crypto', webcrypto);
+    const credentials = {
+      name: 'Automation Test Administrator',
+      email: 'automation-admin@example.test',
+      username: 'automation-admin',
+      role: 'Super Admin' as const,
+      password: 'Automation-Test-Admin-2026!'
+    };
+    await createLocalAccount(credentials, window.localStorage, testCrypto);
+    const signIn = await authenticateLocalAccount(
+      credentials.username, credentials.password, window.localStorage, window.sessionStorage, testCrypto
+    );
+    if (!signIn.ok) throw new Error(`Test administrator sign-in failed: ${signIn.reason}`);
     window.history.replaceState({ tab: 'dashboard' }, '', '#/dashboard');
   });
 
@@ -18,6 +36,14 @@ describe('Shuttle Car Automation V10', () => {
     expect(screen.getByText(/Running shuttles/i)).toBeInTheDocument();
     expect(screen.getByText(/System communication status/i)).toBeInTheDocument();
     expect(screen.getByText('SHUTTLE CAR AUTOMATION · V1.0.0')).toBeInTheDocument();
+  });
+
+  it('keeps protected destinations unavailable when the local session is missing', () => {
+    window.sessionStorage.clear();
+    render(<App />);
+    expect(screen.queryByRole('button', { name: /Battery Management/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Maintenance Management/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent(/DEMO MODE/i);
   });
 
   it('switches to Arabic and updates interface direction', async () => {
@@ -49,7 +75,7 @@ describe('Shuttle Car Automation V10', () => {
     render(<App />);
     await user.click(screen.getAllByRole('button', { name: /Battery Management/i })[0]);
     await user.click(screen.getByRole('button', { name: /Set charging/i }));
-    expect(screen.getAllByText('Charging').length).toBeGreaterThan(0);
+    await waitFor(() => expect(screen.getAllByText('Charging').length).toBeGreaterThan(0));
   });
 
   it('does not allow a fault to be resolved without a corrective action', async () => {
@@ -71,7 +97,7 @@ describe('Shuttle Car Automation V10', () => {
     const resolveButtons = screen.getAllByRole('button', { name: /Resolve fault/i });
     expect((resolveButtons[0] as HTMLButtonElement).disabled).toBe(false);
     await user.click(resolveButtons[0]);
-    expect(screen.getAllByText('Resolved').length).toBeGreaterThan(0);
+    await waitFor(() => expect(screen.getAllByText('Resolved').length).toBeGreaterThan(0));
   });
 
 
@@ -252,19 +278,23 @@ describe('Shuttle Car Automation V10', () => {
     await user.type(screen.getByLabelText(/Work order title/i), 'Monthly rail inspection');
     await user.type(screen.getByLabelText(/Scheduled date/i), '2026-11-20');
     await user.click(screen.getByRole('button', { name: /Save work order/i }));
-    expect(screen.getByText('Monthly rail inspection')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText('Monthly rail inspection')).toBeInTheDocument());
     await user.click(screen.getByRole('button', { name: /Start job/i }));
-    expect(screen.getByText('In Progress')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText('In Progress')).toBeInTheDocument());
     await user.click(screen.getByRole('button', { name: /Complete job/i }));
     await user.type(screen.getByLabelText(/Completion result \/ work performed/i), 'Inspected rails and documented clearance verification.');
     await user.click(screen.getByRole('button', { name: /Save result & complete/i }));
-    expect(screen.getByText('Completed')).toBeInTheDocument();
-    expect(screen.getByText(/Completion result: Inspected rails and documented clearance verification/i)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('Completed')).toBeInTheDocument();
+      expect(screen.getByText(/Completion result: Inspected rails and documented clearance verification/i)).toBeInTheDocument();
+    });
 
     await user.click(screen.getAllByRole('button', { name: /Notifications/i })[0]);
-    expect(screen.getByText('Maintenance work order created')).toBeInTheDocument();
-    expect(screen.getByText('Maintenance work order updated')).toBeInTheDocument();
-    expect(screen.getByText('Work order completed with recorded result')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('Maintenance work order created')).toBeInTheDocument();
+      expect(screen.getByText('Maintenance work order updated')).toBeInTheDocument();
+      expect(screen.getByText('Work order completed with recorded result')).toBeInTheDocument();
+    });
   });
 
   it('registers a new fleet unit without fabricating manufacturer identity data', async () => {
@@ -343,10 +373,12 @@ describe('Shuttle Car Automation V10', () => {
     await user.clear(screen.getAllByLabelText(/Manufacturer serial/i)[0]);
     await user.type(screen.getAllByLabelText(/Manufacturer serial/i)[0], 'SERIAL-TEST-001');
     await user.click(screen.getByRole('button', { name: /Save changes/i }));
-    expect(screen.getByText('Verified test model')).toBeInTheDocument();
-    expect(screen.getByText('SERIAL-TEST-001')).toBeInTheDocument();
-    const saved = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:shuttles') || '[]') as Array<{id:string;model:string}>;
-    expect(saved.find(item => item.id === 'SC-01')?.model).toBe('Verified test model');
+    await waitFor(() => {
+      expect(screen.getByText('Verified test model')).toBeInTheDocument();
+      expect(screen.getByText('SERIAL-TEST-001')).toBeInTheDocument();
+      const saved = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:shuttles') || '[]') as Array<{id:string;model:string}>;
+      expect(saved.find(item => item.id === 'SC-01')?.model).toBe('Verified test model');
+    });
   });
 
   it('archives a shuttle without deleting its history and supports restoring it', async () => {
@@ -357,10 +389,12 @@ describe('Shuttle Car Automation V10', () => {
     await user.click(screen.getByRole('button', { name: /Confirm archive/i }));
     expect(screen.queryByRole('button', { name: /SC-01 Cassioli/i })).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /Show archived devices/i }));
-    const archive = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:shuttles') || '[]') as Array<{id:string;archivedAt?:string|null}>;
-    expect(archive.find(item => item.id === 'SC-01')?.archivedAt).toBeTruthy();
+    await waitFor(() => {
+      const archive = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:shuttles') || '[]') as Array<{id:string;archivedAt?:string|null}>;
+      expect(archive.find(item => item.id === 'SC-01')?.archivedAt).toBeTruthy();
+    });
     await user.click(screen.getAllByRole('button', { name: /Restore/i })[0]);
-    expect(window.localStorage.getItem('shuttle-car-automation-v7:shuttles')).toContain('"archivedAt":null');
+    await waitFor(() => expect(window.localStorage.getItem('shuttle-car-automation-v7:shuttles')).toContain('"archivedAt":null'));
   });
 
   it('blocks shuttle archiving while a linked fault is unresolved', async () => {
@@ -418,7 +452,7 @@ describe('Shuttle Car Automation V10', () => {
     await user.clear(screen.getByLabelText(/SOC %/i));
     await user.type(screen.getByLabelText(/SOC %/i), '12.5');
     await user.click(screen.getByRole('button', { name: /Save battery data/i }));
-    expect(screen.getByText('12.5% (manual / reported)')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText('12.5% (manual / reported)')).toBeInTheDocument());
     const saved = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:batteries') || '[]') as Array<{id:string;soc:number|null;connectionMode:string}>;
     expect(saved.find(item => item.id === 'BAT-ACME-01')).toMatchObject({soc:12.5,connectionMode:'UNKNOWN'});
   });
@@ -428,7 +462,7 @@ describe('Shuttle Car Automation V10', () => {
     const first = render(<App />);
     await user.click(screen.getAllByRole('button', { name: /Reports Center/i })[0]);
     await user.click(screen.getByRole('button', { name: /Generate today.s report/i }));
-    expect(screen.getByText(/LATEST SAVED DAILY REPORT/i)).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText(/LATEST SAVED DAILY REPORT/i)).toBeInTheDocument());
     expect(screen.getByRole('button', { name: /Download daily report CSV/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Download daily report Excel/i })).toBeInTheDocument();
     first.unmount();
@@ -444,7 +478,7 @@ describe('Shuttle Car Automation V10', () => {
     render(<App />);
     await user.click(screen.getAllByRole('button', { name: /Reports Center/i })[0]);
     await user.click(screen.getByRole('button', { name: /Generate today.s report/i }));
-    expect(screen.getByText(/LATEST SAVED DAILY REPORT/i)).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText(/LATEST SAVED DAILY REPORT/i)).toBeInTheDocument());
 
     const cancelSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
     await user.click(screen.getByRole('button', { name: /^Delete$/i }));
@@ -457,7 +491,7 @@ describe('Shuttle Car Automation V10', () => {
     confirmSpy.mockRestore();
     saved = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:dailyReports') || '[]') as Array<{id:string}>;
     expect(saved).toHaveLength(0);
-    expect(screen.queryByText(/LATEST SAVED DAILY REPORT/i)).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText(/LATEST SAVED DAILY REPORT/i)).not.toBeInTheDocument());
   });
 
   it('provides working in-app back and home navigation controls', async () => {
@@ -563,6 +597,7 @@ describe('Shuttle Car Automation V10', () => {
     await user.type(screen.getByLabelText(/Fault title/i), 'Test bearing inspection');
     await user.type(screen.getByLabelText(/Observed symptom/i), 'Newly observed vibration during manual inspection');
     await user.click(screen.getByRole('button', { name: /Register fault/i }));
+    await waitFor(() => expect(screen.getAllByRole('button', { name: /Edit report/i }).length).toBeGreaterThan(0));
 
     const editButtons = screen.getAllByRole('button', { name: /Edit report/i });
     await user.click(editButtons[0]);
@@ -570,26 +605,29 @@ describe('Shuttle Car Automation V10', () => {
     await user.clear(titleInputs[0]);
     await user.type(titleInputs[0], 'Updated bearing inspection');
     await user.click(screen.getByRole('button', { name: /Save changes/i }));
-    expect(screen.getByText('Updated bearing inspection')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText('Updated bearing inspection')).toBeInTheDocument());
 
     const actionFields = screen.getAllByPlaceholderText(/corrective action/i);
     await user.type(actionFields[0], 'Inspected bearing and recorded measured clearance; technician verification completed.');
     await user.click(screen.getAllByRole('button', { name: /Save corrective action/i })[0]);
     await user.click(screen.getAllByRole('button', { name: /Start investigation/i })[0]);
     await user.click(screen.getAllByRole('button', { name: /Resolve/i })[0]);
+    await waitFor(() => expect(screen.getAllByText('Resolved').length).toBeGreaterThan(0));
 
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
     await user.click(screen.getAllByRole('button', { name: /Archive/i })[0]);
     confirmSpy.mockRestore();
 
-    expect(screen.queryByText('Updated bearing inspection')).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText('Updated bearing inspection')).not.toBeInTheDocument());
     await user.click(screen.getByRole('button', { name: /Show archived faults/i }));
     expect(screen.getByText(/Updated bearing inspection/)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /Restore/i }));
-    const saved = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:faults') || '[]') as Array<{title:string;archivedAt?:string|null;correctiveAction?:string}>;
-    expect(saved.find(item => item.title === 'Updated bearing inspection')).toMatchObject({
-      archivedAt: null,
-      correctiveAction: 'Inspected bearing and recorded measured clearance; technician verification completed.'
+    await waitFor(() => {
+      const saved = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:faults') || '[]') as Array<{title:string;archivedAt?:string|null;correctiveAction?:string}>;
+      expect(saved.find(item => item.title === 'Updated bearing inspection')).toMatchObject({
+        archivedAt: null,
+        correctiveAction: 'Inspected bearing and recorded measured clearance; technician verification completed.'
+      });
     });
   });
 
@@ -600,29 +638,36 @@ describe('Shuttle Car Automation V10', () => {
     await user.type(screen.getByLabelText(/Work order title/i), 'Drive assembly inspection');
     await user.type(screen.getByLabelText(/Scheduled date/i), '2026-11-25');
     await user.click(screen.getByRole('button', { name: /Save work order/i }));
+    await waitFor(() => expect(screen.getByRole('button', { name: /Edit order/i })).toBeInTheDocument());
 
     await user.click(screen.getByRole('button', { name: /Edit order/i }));
     const title = screen.getAllByLabelText(/Work order title/i)[0];
     await user.clear(title);
     await user.type(title, 'Updated drive inspection');
     await user.click(screen.getByRole('button', { name: /Save changes/i }));
-    expect(screen.getByText('Updated drive inspection')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText('Updated drive inspection')).toBeInTheDocument());
 
     await user.click(screen.getAllByRole('button', { name: /Start job/i })[0]);
     await user.click(screen.getAllByRole('button', { name: /Complete job/i })[0]);
     await user.type(screen.getByLabelText(/Completion result \/ work performed/i), 'Inspected gearbox mount and verified fastener torque.');
     await user.click(screen.getByRole('button', { name: /Save result & complete/i }));
-    expect(screen.getByText(/Completion result: Inspected gearbox mount and verified fastener torque/i)).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText(/Completion result: Inspected gearbox mount and verified fastener torque/i)).toBeInTheDocument());
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
     await user.click(screen.getAllByRole('button', { name: /Archive/i })[0]);
     confirmSpy.mockRestore();
 
-    expect(screen.queryByText('Updated drive inspection')).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByText('Updated drive inspection')).not.toBeInTheDocument();
+      const saved = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:maintenance') || '[]') as Array<{title:string;status:string;archivedAt?:string|null}>;
+      expect(saved.find(item => item.title === 'Updated drive inspection')?.archivedAt).toEqual(expect.any(String));
+    });
     await user.click(screen.getByRole('button', { name: /Show archived work orders/i }));
     expect(screen.getByText(/Updated drive inspection/)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /Restore/i }));
-    const saved = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:maintenance') || '[]') as Array<{title:string;status:string;archivedAt?:string|null}>;
-    expect(saved.find(item => item.title === 'Updated drive inspection')).toMatchObject({ status:'Completed', archivedAt:null });
+    await waitFor(() => {
+      const saved = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:maintenance') || '[]') as Array<{title:string;status:string;archivedAt?:string|null}>;
+      expect(saved.find(item => item.title === 'Updated drive inspection')).toMatchObject({ status:'Completed', archivedAt:null });
+    });
   });
 
   it('manages connection register entries locally without claiming live connectivity', async () => {
@@ -634,7 +679,7 @@ describe('Shuttle Car Automation V10', () => {
     await user.type(screen.getByLabelText(/Technical notes/i), 'Vendor approved read-only interface reference pending');
     await user.click(screen.getByRole('button', { name: /Save connection record/i }));
 
-    expect(screen.getByText('Test vendor gateway')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText('Test vendor gateway')).toBeInTheDocument());
     expect(screen.getAllByText(/Not configured · read-only after commissioning/i).length).toBeGreaterThan(0);
 
     await user.click(screen.getAllByRole('button', { name: /Edit record/i }).find(button => button.closest('article')?.textContent?.includes('Test vendor gateway'))!);
@@ -643,18 +688,24 @@ describe('Shuttle Car Automation V10', () => {
     await user.clear(editName!);
     await user.type(editName!, 'Approved test gateway');
     await user.click(screen.getByRole('button', { name: /^Save$/i }));
-    expect(screen.getByText('Approved test gateway')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText('Approved test gateway')).toBeInTheDocument());
 
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
     const card = screen.getByText('Approved test gateway').closest('article');
     await user.click(card!.querySelector('button.btn-danger')!);
     confirmSpy.mockRestore();
+    await waitFor(() => {
+      const saved = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:connections') || '[]') as Array<{name:string;protocol:string;mode:string;archivedAt?:string|null}>;
+      expect(saved.find(item => item.name === 'Approved test gateway')?.archivedAt).toEqual(expect.any(String));
+    });
     await user.click(screen.getByRole('button', { name: /Show archived connection records/i }));
     expect(screen.getByText('Approved test gateway')).toBeInTheDocument();
     await user.click(screen.getAllByRole('button', { name: /Restore/i })[0]);
 
-    const saved = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:connections') || '[]') as Array<{name:string;protocol:string;mode:string;archivedAt?:string|null}>;
-    expect(saved.find(item => item.name === 'Approved test gateway')).toMatchObject({ protocol:'OPC UA', mode:'UNKNOWN', archivedAt:null });
+    await waitFor(() => {
+      const saved = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:connections') || '[]') as Array<{name:string;protocol:string;mode:string;archivedAt?:string|null}>;
+      expect(saved.find(item => item.name === 'Approved test gateway')).toMatchObject({ protocol:'OPC UA', mode:'UNKNOWN', archivedAt:null });
+    });
   });
 
 });

@@ -1,0 +1,92 @@
+name: Build and publish debug APK artifact
+on:
+  push:
+    branches:
+      - engineering/industrial-ui-security-v1
+    paths:
+      - .github/workflows/android-debug-artifact.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: shuttle-debug-apk-artifact-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-apk:
+    name: Build Android debug APK and upload artifact
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Set up Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Install Android SDK packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-$HOME/Android/Sdk}"
+          SDKMANAGER="$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          test -x "$SDKMANAGER"
+          set +o pipefail
+          yes | "$SDKMANAGER" --licenses >/dev/null
+          set -o pipefail
+          "$SDKMANAGER" "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "$SDK_ROOT/platform-tools" >> "$GITHUB_PATH"
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Validate web application
+        run: |
+          npm run check
+          npm test
+          npm run check:release
+          npm run assets:render
+          npm run build
+
+      - name: Generate Android project and branded assets
+        run: |
+          npx cap add android
+          npx capacitor-assets generate --android --iconBackgroundColor '#111820' --iconBackgroundColorDark '#111820' --splashBackgroundColor '#111820' --splashBackgroundColorDark '#111820'
+
+      - name: Sync web assets to Android
+        run: npx cap sync android
+
+      - name: Build debug APK
+        working-directory: android
+        run: ./gradlew --no-daemon assembleDebug
+
+      - name: Verify APK and publish artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="android/app/build/outputs/apk/debug/app-debug.apk"
+          test -s "$APK"
+          mkdir -p artifacts/android
+          cp "$APK" artifacts/android/Shuttle-Car-Automation-debug.apk
+          sha256sum artifacts/android/Shuttle-Car-Automation-debug.apk | tee artifacts/android/SHA256SUMS.txt
+          ls -lh artifacts/android
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: shuttle-car-automation-debug-apk
+          path: artifacts/android/
+          if-no-files-found: error
+          retention-days: 14

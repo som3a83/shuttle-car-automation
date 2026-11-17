@@ -55,7 +55,7 @@ export const DEFAULT_CUSTOMIZATION: CustomizationConfig = {
     ['ai', 'AI Technical Assistant', 'Advisory support; does not authorize actions.'],
     ['reports', 'Reports Center', 'Local register reports and exports.'],
     ['notifications', 'Notifications', 'On-device application notifications.'],
-    ['users', 'Users & Security', 'Role preview; not authentication or server RBAC.'],
+    ['users', 'Users & Security', 'Device-local sign-in, local roles and audit integrity.'],
     ['settings', 'System Settings', 'Local application preferences and data backup.']
   ].map(([id, label, description]) => ({ id: id as CustomizableRoute, label, description, enabled: true, hiddenForRoles: [] })),
   navigation: [
@@ -179,4 +179,4 @@ export function appendCustomizationAudit(entry: Omit<AuditEntry, 'id' | 'timesta
 }
 
 /** Core operational routes cannot be disabled or hidden from the navigation. */
-export const PROTECTED_ROUTES: readonly CustomizableRoute[] = ['dashboard', 'fleet', 'settings'];
+export const PROTECTED_ROUTES: readonly CustomizableRoute[] = ['dashboard', 'fleet', 'users', 'settings'];
