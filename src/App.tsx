@@ -589,6 +589,7 @@ function App() {
 
   const addShuttle = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const formElement = event.currentTarget;
     if (!await authorize('fleet.manage', 'shuttle', 'new')) return;
     const requestedSerial = newAsset.serialNumber.trim().toLocaleLowerCase();
     const duplicateSerial = requestedSerial && requestedSerial !== 'not recorded' &&
@@ -661,8 +662,9 @@ function App() {
 
   const saveShuttleEdit = async (event: React.FormEvent<HTMLFormElement>, id: string) => {
     event.preventDefault();
+    const formElement = event.currentTarget;
     if (!await authorize('fleet.manage', 'shuttle', id)) return;
-    const form = new FormData(event.currentTarget);
+    const form = new FormData(formElement);
     const nextSerial = String(form.get('serialNumber') || 'Not recorded').trim() || 'Not recorded';
     const duplicateSerial = nextSerial.toLocaleLowerCase() !== 'not recorded' &&
       shuttles.some((item) => item.id !== id && !item.archivedAt && item.serialNumber.trim().toLocaleLowerCase() === nextSerial.toLocaleLowerCase());
@@ -688,8 +690,9 @@ function App() {
 
   const addBattery = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const formElement = event.currentTarget;
     if (!await authorize('batteries.manage', 'battery', 'new')) return;
-    const form = new FormData(event.currentTarget);
+    const form = new FormData(formElement);
     const seq = Math.max(0, ...batteries.map(b => Number(b.id.match(/^BAT-(\\d+)$/)?.[1]) || 0)) + 1;
     const id = 'BAT-' + String(seq).padStart(3, '0');
     const requestedAssignment = String(form.get('assignment') || '').trim();
@@ -725,16 +728,17 @@ function App() {
     }
     setSelectedBatteryId(id);
     recordAudit('BATTERY_REGISTERED', 'battery', id, `Assignment: ${requestedAssignment || 'Unassigned'}`);
-    event.currentTarget.reset();
+    formElement.reset();
     pushNotification(language === 'ar' ? 'تم تسجيل بطارية جديدة' : 'New battery registered', `${id} · ${requestedAssignment || 'Unassigned'}`);
     showToast(language === 'ar' ? 'تم تسجيل البطارية' : 'Battery registered');
   };
 
   const saveBatteryDetails = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const formElement = event.currentTarget;
     if (!await authorize('batteries.manage', 'battery', selectedBattery?.id || 'selected')) return;
     if (!selectedBattery) return;
-    const form = new FormData(event.currentTarget);
+    const form = new FormData(formElement);
     const numberOrNull = (key: string) => {
       const raw = String(form.get(key) ?? '').trim();
       if (!raw) return null;
@@ -874,8 +878,9 @@ function App() {
 
   const addFault = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const formElement = event.currentTarget;
     if (!await authorize('faults.create', 'fault', 'new')) return;
-    const form = new FormData(event.currentTarget);
+    const form = new FormData(formElement);
     const record: Fault = {
       id: 'FLT-' + Date.now(), shuttleId: String(form.get('shuttleId') || selected?.id || 'Unassigned'),
       title: String(form.get('title') || 'Reported fault'), severity: String(form.get('severity') || 'Moderate') as Fault['severity'],
@@ -890,13 +895,14 @@ function App() {
       `${record.id} · ${record.shuttleId} · ${record.title} · ${record.severity}`,
       record.severity === 'Critical' || record.severity === 'Major' ? 'error' : 'warning'
     );
-    event.currentTarget.reset(); showToast(t.done);
+    formElement.reset(); showToast(t.done);
   };
 
   const addJob = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const formElement = event.currentTarget;
     if (!await authorize('maintenance.create', 'maintenance', 'new')) return;
-    const form = new FormData(event.currentTarget);
+    const form = new FormData(formElement);
     const job: MaintenanceJob = {
       id: 'MNT-' + Date.now(), shuttleId: String(form.get('shuttleId') || selected?.id || 'Unassigned'),
       title: String(form.get('title') || 'Inspection'), type: String(form.get('type') || 'Preventive') as MaintenanceJob['type'],
@@ -912,13 +918,14 @@ function App() {
         'info'
       );
     }
-    event.currentTarget.reset(); showToast(t.done);
+    formElement.reset(); showToast(t.done);
   };
 
   const recordCorrectiveAction = async (event: React.FormEvent<HTMLFormElement>, id: string) => {
     event.preventDefault();
+    const formElement = event.currentTarget;
     if (!await authorize('faults.update', 'fault', id)) return;
-    const form = new FormData(event.currentTarget);
+    const form = new FormData(formElement);
     const action = String(form.get('action') || '').trim(); if (!action) return;
     setFaults(prev => prev.map(f => f.id === id ? { ...f, correctiveAction: action } : f));
     recordAudit('FAULT_CORRECTIVE_ACTION_RECORDED', 'fault', id, action);
@@ -927,13 +934,14 @@ function App() {
       `${id} · ${language === 'ar' ? 'تم حفظ الإجراء محليًا' : 'Action saved locally'}`,
       'info'
     );
-    event.currentTarget.reset(); showToast(t.done);
+    formElement.reset(); showToast(t.done);
   };
 
   const saveFaultEdit = async (event: React.FormEvent<HTMLFormElement>, id: string) => {
     event.preventDefault();
+    const formElement = event.currentTarget;
     if (!await authorize('faults.update', 'fault', id)) return;
-    const form = new FormData(event.currentTarget);
+    const form = new FormData(formElement);
     const title = String(form.get('title') || '').trim();
     const description = String(form.get('description') || '').trim();
     if (!title || !description) {
@@ -980,8 +988,9 @@ function App() {
 
   const completeJob = async (event: React.FormEvent<HTMLFormElement>, id: string) => {
     event.preventDefault();
+    const formElement = event.currentTarget;
     if (!await authorize('maintenance.complete', 'maintenance', id)) return;
-    const form = new FormData(event.currentTarget);
+    const form = new FormData(formElement);
     const completionNotes = String(form.get('completionNotes') || '').trim();
     if (!completionNotes) {
       showToast(language === 'ar' ? 'سجل نتيجة التنفيذ قبل إتمام أمر الصيانة' : 'Record the work performed and result before completing this work order.');
@@ -1008,8 +1017,9 @@ function App() {
 
   const saveJobEdit = async (event: React.FormEvent<HTMLFormElement>, id: string) => {
     event.preventDefault();
+    const formElement = event.currentTarget;
     if (!await authorize('maintenance.update', 'maintenance', id)) return;
-    const form = new FormData(event.currentTarget);
+    const form = new FormData(formElement);
     const title = String(form.get('title') || '').trim();
     const scheduledDate = String(form.get('date') || '').trim();
     if (!title || !scheduledDate) {
@@ -1054,8 +1064,9 @@ function App() {
 
   const addConnection = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const formElement = event.currentTarget;
     if (!await authorize('connections.manage', 'connection', 'new')) return;
-    const form = new FormData(event.currentTarget);
+    const form = new FormData(formElement);
     const name = String(form.get('name') || '').trim();
     if (!name) return;
     if (connections.some(item => item.name.trim().toLocaleLowerCase() === name.toLocaleLowerCase())) {
@@ -1070,15 +1081,16 @@ function App() {
     };
     setConnections(prev => [endpoint, ...prev]);
     recordAudit('CONNECTION_REGISTER_CREATED', 'connection', endpoint.name, endpoint.protocol);
-    event.currentTarget.reset();
+    formElement.reset();
     pushNotification(language === 'ar' ? 'تمت إضافة سجل نقطة اتصال' : 'Connection register entry added', endpoint.name + ' · ' + endpoint.protocol);
     showToast(language === 'ar' ? 'تم حفظ سجل الاتصال المحلي' : 'Local connection record saved');
   };
 
   const saveConnectionEdit = async (event: React.FormEvent<HTMLFormElement>, previousName: string) => {
     event.preventDefault();
+    const formElement = event.currentTarget;
     if (!await authorize('connections.manage', 'connection', previousName)) return;
-    const form = new FormData(event.currentTarget);
+    const form = new FormData(formElement);
     const name = String(form.get('name') || '').trim();
     if (!name) {
       showToast(language === 'ar' ? 'اسم نقطة الاتصال مطلوب' : 'Connection name is required.');
@@ -1161,8 +1173,9 @@ function App() {
   };
 
   const importBackup = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (!await authorize('data.restore', 'backup', 'operational-data')) { event.target.value = ''; return; }
-    const file = event.target.files?.[0];
+    const inputElement = event.currentTarget;
+    if (!await authorize('data.restore', 'backup', 'operational-data')) { inputElement.value = ''; return; }
+    const file = inputElement.files?.[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
@@ -1171,7 +1184,7 @@ function App() {
         const validation = validateOperationalBackup(parsed);
         if (!validation.ok) {
           showToast(language === 'ar' ? 'رفض استيراد النسخة الاحتياطية: بنية البيانات غير سليمة' : `Backup rejected: ${validation.error}`);
-          event.target.value = '';
+          inputElement.value = '';
           return;
         }
         const data = validation.data;
@@ -1191,7 +1204,7 @@ function App() {
       } catch {
         showToast(language === 'ar' ? 'ملف النسخة الاحتياطية غير صالح أو تالف' : 'Backup file is invalid or corrupted');
       }
-      event.target.value = '';
+      inputElement.value = '';
     };
     reader.readAsText(file);
   };
