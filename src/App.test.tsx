@@ -590,6 +590,9 @@ describe('Shuttle Car Automation V10', () => {
 
     await user.click(screen.getAllByRole('button', { name: /Start job/i })[0]);
     await user.click(screen.getAllByRole('button', { name: /Complete job/i })[0]);
+    await user.type(screen.getByLabelText(/Completion result \/ work performed/i), 'Inspected gearbox mount and verified fastener torque.');
+    await user.click(screen.getByRole('button', { name: /Save result & complete/i }));
+    expect(screen.getByText(/Completion result: Inspected gearbox mount and verified fastener torque/i)).toBeInTheDocument();
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
     await user.click(screen.getAllByRole('button', { name: /Archive/i })[0]);
     confirmSpy.mockRestore();
