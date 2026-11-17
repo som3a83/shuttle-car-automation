@@ -852,3 +852,11 @@ button,select,input,textarea { touch-action:manipulation; }
   .shift-details-grid > div { padding:9px; }
   .shift-live-indicator { font-size:8px; }
 }
+
+
+.report-export-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
+@media (max-width:560px) {
+  .report-toolbar { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .report-toolbar > button { min-height:42px; width:100%; }
+  .report-export-actions > button { flex:1; }
+}
