@@ -97,7 +97,7 @@ describe('Shuttle Car Automation V10', () => {
     const resolveButtons = screen.getAllByRole('button', { name: /Resolve fault/i });
     expect((resolveButtons[0] as HTMLButtonElement).disabled).toBe(false);
     await user.click(resolveButtons[0]);
-    expect(screen.getAllByText('Resolved').length).toBeGreaterThan(0);
+    await waitFor(() => expect(screen.getAllByText('Resolved').length).toBeGreaterThan(0));
   });
 
 
@@ -383,10 +383,12 @@ describe('Shuttle Car Automation V10', () => {
     await user.click(screen.getByRole('button', { name: /Confirm archive/i }));
     expect(screen.queryByRole('button', { name: /SC-01 Cassioli/i })).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /Show archived devices/i }));
-    const archive = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:shuttles') || '[]') as Array<{id:string;archivedAt?:string|null}>;
-    expect(archive.find(item => item.id === 'SC-01')?.archivedAt).toBeTruthy();
+    await waitFor(() => {
+      const archive = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:shuttles') || '[]') as Array<{id:string;archivedAt?:string|null}>;
+      expect(archive.find(item => item.id === 'SC-01')?.archivedAt).toBeTruthy();
+    });
     await user.click(screen.getAllByRole('button', { name: /Restore/i })[0]);
-    expect(window.localStorage.getItem('shuttle-car-automation-v7:shuttles')).toContain('"archivedAt":null');
+    await waitFor(() => expect(window.localStorage.getItem('shuttle-car-automation-v7:shuttles')).toContain('"archivedAt":null'));
   });
 
   it('blocks shuttle archiving while a linked fault is unresolved', async () => {
