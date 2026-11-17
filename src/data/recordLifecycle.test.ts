@@ -28,6 +28,14 @@ describe('operational record lifecycle', () => {
     expect(restored.records[0].correctiveAction).toBe(fault.correctiveAction);
   });
 
+  it('does not archive unresolved faults', () => {
+    const openFault = { ...fault, status: 'Open' as const, correctiveAction: '' };
+    const result = archiveFaultRecord([openFault], openFault.id);
+    expect(result.changed).toBe(false);
+    expect(result.message).toMatch(/Only resolved fault records/);
+    expect(result.records[0].archivedAt).toBeUndefined();
+  });
+
   it('does not archive unfinished work orders', () => {
     for (const status of ['Scheduled', 'In Progress', 'Overdue'] as const) {
       const result = archiveCompletedWorkOrder([job(status)], 'MNT-1');
