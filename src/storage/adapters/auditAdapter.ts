@@ -86,6 +86,29 @@ function parseArray(raw: string | null): unknown[] | null {
  * complete hash chain. A pending marker blocks automatic import and remains untouched.
  */
 export async function importAuditData(legacyStorage: LegacyReadStorage = globalThis.localStorage): Promise<AdapterResult[]> {
+  /**
+   * ATOMICITY CONSTRAINT (2B-4 dependency):
+   *
+   * This adapter verifies the complete audit ledger (active + archives) BEFORE
+   * writing, but it imports each key via a separate `set()` call. If active is
+   * imported but archives returns `conflict` or `failed`, the destination store
+   * will contain a partial audit ledger that is not internally consistent.
+   *
+   * The 2B-1 `set()` API writes to the ACTIVE generation, not to a staging
+   * generation. Therefore 2B-4 (migration orchestrator) MUST NOT call this
+   * adapter directly against the active generation. It must use ONE of:
+   *
+   *   (A) A staging-generation writer that 2B-4 introduces (preferred), OR
+   *   (B) A rollback procedure: if `importAuditData` returns partial success,
+   *       2B-4 must delete the successfully-imported key (via `remove()`) before
+   *       reporting failure to the user, OR
+   *   (C) A pre-flight check in 2B-4 that asserts BOTH `audit.active` and
+   *       `audit.archives` are ABSENT from the destination before calling this
+   *       adapter, so that neither can return `already-synced` or `conflict`.
+   *
+   * This adapter alone cannot guarantee atomicity because the underlying storage
+   * API does not support multi-key transactions across keys.
+   */
   let pending: string | null;
   try { pending = readAuditArchivePendingMarker(legacyStorage); }
   catch (error) {
