@@ -5,10 +5,26 @@ import { initialShuttles } from './data/mockData';
 import { beforeEach, describe, it, expect, vi } from 'vitest';
 import '@testing-library/jest-dom/vitest';
 import { DEFAULT_CUSTOMIZATION } from './data/applicationCustomization';
+import { webcrypto } from 'node:crypto';
+import { authenticateLocalAccount, createLocalAccount } from './security/localAuth';
 
 describe('Shuttle Car Automation V10', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     window.localStorage.clear();
+    window.sessionStorage.clear();
+    vi.stubGlobal('crypto', webcrypto);
+    const credentials = {
+      name: 'Automation Test Administrator',
+      email: 'automation-admin@example.test',
+      username: 'automation-admin',
+      role: 'Super Admin' as const,
+      password: 'Automation-Test-Admin-2026!'
+    };
+    await createLocalAccount(credentials, window.localStorage, webcrypto);
+    const signIn = await authenticateLocalAccount(
+      credentials.username, credentials.password, window.localStorage, window.sessionStorage, webcrypto
+    );
+    if (!signIn.ok) throw new Error(`Test administrator sign-in failed: ${signIn.reason}`);
     window.history.replaceState({ tab: 'dashboard' }, '', '#/dashboard');
   });
 
@@ -18,6 +34,14 @@ describe('Shuttle Car Automation V10', () => {
     expect(screen.getByText(/Running shuttles/i)).toBeInTheDocument();
     expect(screen.getByText(/System communication status/i)).toBeInTheDocument();
     expect(screen.getByText('SHUTTLE CAR AUTOMATION · V1.0.0')).toBeInTheDocument();
+  });
+
+  it('keeps protected destinations unavailable when the local session is missing', () => {
+    window.sessionStorage.clear();
+    render(<App />);
+    expect(screen.queryByRole('button', { name: /Battery Management/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Maintenance Management/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent(/DEMO MODE/i);
   });
 
   it('switches to Arabic and updates interface direction', async () => {
