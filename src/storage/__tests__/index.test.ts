@@ -38,7 +38,7 @@ class MemoryEngine implements StorageEngine {
   async restore(input: BackupEnvelope): Promise<void> {
     if (this.mode === 'legacy-fallback') throw new StorageError({ code: 'STORAGE_ATOMICITY_UNAVAILABLE', message: 'Atomic restore unavailable.' });
     if (this.mode === 'readonly-recovery') throw new StorageError({ code: 'STORAGE_RECOVERY_REQUIRED', message: 'Recovery required.' });
-    this.data = new Map(Object.entries(input.records).map(([key, entry]) => [key as StorageKey, structuredClone(entry!)]));
+    this.data = new Map(Object.entries(input.records).map(([key, entry]) => [key as StorageKey, structuredClone(entry!)] as [StorageKey, { value: unknown; revision: number }]));
   }
   seed(key: StorageKey, value: unknown, revision = 1): void { this.data.set(key, { value, revision }); }
 }
@@ -96,7 +96,7 @@ describe('revision conflicts and fallback rules', () => {
   it('CON-007 read-only recovery mode is selectable through the injected engine', async () => { __setBackendForTesting(new MemoryEngine('readonly-recovery')); expect(await getMode()).toBe('readonly-recovery'); });
   it('fallback rejects stale expected revision', async () => { __setBackendForTesting(new MemoryEngine('legacy-fallback')); await set(KEY, 'ar'); await expect(set(KEY, 'en', 0)).rejects.toMatchObject({ code: 'STORAGE_CONFLICT' }); });
   it('fallback missing sidecar is a conflict when the key already exists', async () => {
-    const storage = new Map<string, string>([['shuttle.storage.operational.language', '"ar"']]);
+    const storage = new Map<string, string>([['operational.language', '"ar"']]);
     const original = globalThis.localStorage;
     Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: {
       getItem: (k: string) => storage.get(k) ?? null, setItem: (k: string, v: string) => { storage.set(k, v); },
@@ -105,7 +105,7 @@ describe('revision conflicts and fallback rules', () => {
     try {
       __setBackendForTesting(new LegacyFallbackEngine());
       await expect(set(KEY, 'en', 1)).rejects.toMatchObject({ code: 'STORAGE_CONFLICT', metadata: { revisionSidecarMissing: true } });
-      expect(storage.get('shuttle.storage.operational.language')).toBe('"ar"');
+      expect(storage.get('operational.language')).toBe('"ar"');
     } finally { Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: original }); }
   });
   it('read-only recovery rejects set', async () => { __setBackendForTesting(new MemoryEngine('readonly-recovery')); await expect(set(KEY, 'ar')).rejects.toMatchObject({ code: 'STORAGE_RECOVERY_REQUIRED' }); });
