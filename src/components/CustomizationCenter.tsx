@@ -288,7 +288,7 @@ export default function CustomizationCenter({
                   onChange={(event) => commit({
                     ...config,
                     dashboard: config.dashboard.map((item) => item.id === widget.id ? { ...item, visible: event.target.checked } : item)
-                  }, event.target.checked ? 'SHOW_WIDGET' : 'HIDE_WIDGET', widget.id, 'Changed local dashboard widget visibility.')
+                  }, event.target.checked ? 'SHOW_WIDGET' : 'HIDE_WIDGET', widget.id, 'Changed local dashboard widget visibility.')}
                 />
               </label>
               <label className="custom-role">
