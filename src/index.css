@@ -624,3 +624,115 @@ td:first-child { color:var(--text); font-weight:700; }
   .notification-mark { width:32px; height:32px; }
   .notification-dismiss { grid-column:2; justify-self:start; }
 }
+
+
+/* V10 operations console: responsive controls, visible state changes and touch-safe forms. */
+.topbar-route-button {
+  display:grid; place-items:center; flex:none; width:36px; height:36px;
+  border:1px solid var(--line-strong); border-radius:8px;
+  background:var(--surface); color:var(--text); transition:transform .18s,border-color .18s,background .18s;
+}
+.topbar-route-button:hover:not(:disabled) { transform:translateY(-2px); border-color:var(--copper); background:var(--surface-2); }
+.topbar-route-button:disabled { opacity:.35; cursor:not-allowed; }
+.topbar-route-button:focus-visible,.form-grid button:focus-visible,.archive-panel button:focus-visible { outline:2px solid var(--copper-2); outline-offset:3px; }
+.form-grid {
+  display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:13px;
+  align-items:end; margin-top:12px;
+}
+.form-grid label,.battery-assignment label {
+  display:flex; flex-direction:column; gap:7px; color:var(--muted);
+  font-size:10px; font-weight:700; min-width:0;
+}
+.form-grid input,.form-grid select,.form-grid textarea,
+.battery-assignment select,.asset-edit-form input,.asset-edit-form select,.asset-edit-form textarea,
+.battery-edit-form input,.battery-edit-form textarea {
+  width:100%; min-width:0; min-height:40px; padding:9px 11px;
+  border:1px solid var(--line-strong); border-radius:8px;
+  background:var(--bg-2); color:var(--text); outline:none;
+}
+.form-grid input:focus,.form-grid select:focus,.form-grid textarea:focus,
+.battery-assignment select:focus,.asset-edit-form input:focus,.asset-edit-form select:focus,
+.asset-edit-form textarea:focus,.battery-edit-form input:focus,.battery-edit-form textarea:focus {
+  border-color:var(--copper); box-shadow:0 0 0 3px rgba(213,138,74,.12);
+}
+.form-grid > button { min-height:42px; }
+.form-grid.compact { grid-template-columns:repeat(3,minmax(0,1fr)); margin:0; }
+.archive-panel {
+  margin-top:15px; padding:15px 17px; border:1px dashed var(--line-strong);
+  border-radius:12px; background:rgba(120,145,165,.035);
+}
+.archive-panel > .text-button { min-height:34px; }
+.archive-row {
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+  padding:11px 0; border-top:1px solid var(--line);
+}
+.archive-row > div { min-width:0; display:flex; flex-direction:column; gap:4px; }
+.archive-row strong { font-size:11px; }
+.archive-row small { color:var(--muted); font-size:9px; }
+.archive-confirm {
+  display:flex; flex-wrap:wrap; align-items:center; gap:9px;
+  margin:12px 0; padding:12px; border:1px solid rgba(230,120,120,.25);
+  border-radius:9px; background:rgba(230,120,120,.06);
+}
+.archive-confirm strong { flex-basis:100%; color:var(--muted); font-size:10px; line-height:1.6; }
+.asset-edit-form,.battery-edit-form { margin-top:13px; padding:14px; border:1px solid var(--line); border-radius:10px; background:var(--surface-2); }
+.asset-edit-form label,.battery-edit-form label { display:flex; flex-direction:column; gap:6px; color:var(--muted); font-size:10px; font-weight:700; }
+.asset-edit-form textarea,.battery-edit-form textarea { min-height:74px; resize:vertical; }
+.battery-assignment { display:grid; grid-template-columns:1fr; gap:7px; margin:14px 0; }
+.battery-assignment select { max-width:100%; }
+.battery-edit-form > strong { font-size:12px; margin-bottom:4px; }
+.settings-action-row { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-top:12px; }
+.file-import-button {
+  min-height:38px; display:inline-flex; align-items:center; justify-content:center;
+  border:1px solid var(--line-strong); border-radius:8px; padding:0 13px;
+  background:var(--surface-2); color:var(--text); font-size:11px; font-weight:700; cursor:pointer;
+}
+.file-import-button input { width:1px; height:1px; position:absolute; overflow:hidden; clip:rect(0,0,0,0); }
+.danger-settings { border-color:rgba(230,120,120,.25); }
+.latest-report-card { margin-bottom:14px; }
+.compact-metrics { grid-template-columns:repeat(4,minmax(0,1fr)); margin:12px 0; }
+.report-history-row { min-height:58px; }
+.report-history-row button { flex:none; }
+.btn-primary:active,.btn-secondary:active,.btn-danger:active,.nav-button:active,.asset-row:active {
+  transform:scale(.985);
+}
+.surface-card { transition:border-color .2s,transform .2s,box-shadow .2s; }
+.surface-card:hover { border-color:var(--line-strong); }
+button,select,input,textarea { touch-action:manipulation; }
+@media (prefers-reduced-motion: no-preference) {
+  .metric-card { animation:metricEnter .35s both; }
+  .metric-card:nth-child(2) { animation-delay:.035s; }
+  .metric-card:nth-child(3) { animation-delay:.07s; }
+  .metric-card:nth-child(4) { animation-delay:.105s; }
+  .metric-card:nth-child(5) { animation-delay:.14s; }
+  .metric-card:nth-child(6) { animation-delay:.175s; }
+  .btn-primary,.btn-secondary,.btn-danger,.topbar-route-button { transition:transform .16s ease,filter .16s ease,background .16s ease,border-color .16s ease; }
+}
+@keyframes metricEnter { from { opacity:0; transform:translateY(9px); } to { opacity:1; transform:translateY(0); } }
+@media (max-width:980px) {
+  .topbar-actions { gap:5px; }
+  .topbar-route-button { width:33px; height:33px; }
+  .form-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+@media (max-width:640px) {
+  .form-grid,.form-grid.compact { grid-template-columns:1fr; gap:10px; }
+  .form-grid label,.asset-edit-form label,.battery-edit-form label { font-size:11px; }
+  .form-grid input,.form-grid select,.form-grid textarea,
+  .asset-edit-form input,.asset-edit-form select,.asset-edit-form textarea,
+  .battery-edit-form input,.battery-edit-form textarea { min-height:44px; font-size:14px; }
+  .topbar-actions { gap:4px; }
+  .topbar-route-button { width:30px; height:30px; }
+  .topbar-route-button svg { width:15px; height:15px; }
+  .compact-metrics { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .archive-row { align-items:flex-start; }
+  .archive-row button { min-height:36px; }
+  .archive-confirm { align-items:stretch; }
+  .archive-confirm button { flex:1; }
+  .file-import-button { min-height:42px; flex:1; }
+  .settings-action-row > button { flex:1; }
+}
+@media print {
+  .topbar-route-button,.archive-panel,.archive-confirm,.file-import-button,.danger-settings,
+  .report-toolbar button { display:none!important; }
+  .report-history-row { break-inside:avoid; }
+}
