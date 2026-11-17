@@ -120,10 +120,10 @@ export class VersionedStorageEngine<T> {
    * Restores the previous snapshot only when explicitly requested by the
    * Recovery UI after the user has inspected the candidate.
    */
-  async restorePrevious(): Promise<StorageReadResult<T>> {
+  async restorePrevious(allowReplacingValidPrimary = false): Promise<StorageReadResult<T>> {
     const { primary, previous } = await this.inspect();
-    if (primary.status === 'valid' && primary.envelope.schemaVersion === this.schemaVersion) {
-      throw new Error('The primary snapshot is already valid; recovery is no longer required.');
+    if (primary.status === 'valid' && primary.envelope.schemaVersion === this.schemaVersion && !allowReplacingValidPrimary) {
+      throw new Error('The primary snapshot is already valid; explicit Recovery Mode approval is required to replace it.');
     }
     if (previous.status !== 'valid' || previous.envelope.schemaVersion !== this.schemaVersion) {
       throw new Error('No compatible verified previous snapshot is available.');
