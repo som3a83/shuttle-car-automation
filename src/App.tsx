@@ -222,8 +222,8 @@ export async function hydrateApplicationState(): Promise<AppInitialData> {
     language, theme, shuttles, batteries, faults, jobs, connections, notifications,
     settings, sidebarCollapsed, dailyReports, shifts
   ] = await Promise.all([
-    readOperationalValue('operational.language', 'en'),
-    readOperationalValue('operational.theme', 'dark'),
+    readOperationalValue<Language>('operational.language', 'en'),
+    readOperationalValue<Theme>('operational.theme', 'light'),
     readOperationalValue('operational.shuttles', initialShuttles),
     readOperationalValue('operational.batteries', initialBatteries),
     readOperationalValue('operational.faults', initialFaults),
