@@ -93,7 +93,7 @@ Required repository Actions secrets:
 
 Create the upload key and configure it using the instructions in [PLAY_STORE_RELEASE.md](PLAY_STORE_RELEASE.md). Do not commit signing keys, passwords, certificates or production credentials.
 
-The release workflow enforces compile/target SDK 36, runs TypeScript/tests/build, generates branded Android resources, builds `bundleRelease`, verifies the signature and produces a SHA-256 checksum. It does not upload to Google Play automatically.
+The release workflow enforces compile/target SDK 36, runs TypeScript/tests/build, generates branded Android resources, builds a signed AAB and signed release APK using the publisher upload key, verifies both signatures and produces SHA-256 checksums. It does not upload to Google Play automatically.
 
 ## Store listing preparation
 
