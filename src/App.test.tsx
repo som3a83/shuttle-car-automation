@@ -462,7 +462,7 @@ describe('Shuttle Car Automation V10', () => {
     const first = render(<App />);
     await user.click(screen.getAllByRole('button', { name: /Reports Center/i })[0]);
     await user.click(screen.getByRole('button', { name: /Generate today.s report/i }));
-    expect(screen.getByText(/LATEST SAVED DAILY REPORT/i)).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText(/LATEST SAVED DAILY REPORT/i)).toBeInTheDocument());
     expect(screen.getByRole('button', { name: /Download daily report CSV/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Download daily report Excel/i })).toBeInTheDocument();
     first.unmount();
@@ -478,7 +478,7 @@ describe('Shuttle Car Automation V10', () => {
     render(<App />);
     await user.click(screen.getAllByRole('button', { name: /Reports Center/i })[0]);
     await user.click(screen.getByRole('button', { name: /Generate today.s report/i }));
-    expect(screen.getByText(/LATEST SAVED DAILY REPORT/i)).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText(/LATEST SAVED DAILY REPORT/i)).toBeInTheDocument());
 
     const cancelSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
     await user.click(screen.getByRole('button', { name: /^Delete$/i }));
@@ -491,7 +491,7 @@ describe('Shuttle Car Automation V10', () => {
     confirmSpy.mockRestore();
     saved = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:dailyReports') || '[]') as Array<{id:string}>;
     expect(saved).toHaveLength(0);
-    expect(screen.queryByText(/LATEST SAVED DAILY REPORT/i)).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText(/LATEST SAVED DAILY REPORT/i)).not.toBeInTheDocument());
   });
 
   it('provides working in-app back and home navigation controls', async () => {
