@@ -471,6 +471,22 @@ describe('Shuttle Car Automation V10', () => {
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Dashboard');
   });
 
+  it('collapses and expands the desktop engineering sidebar and remembers the choice locally', async () => {
+    const user = userEvent.setup();
+    const { container } = render(<App />);
+    const shell = container.querySelector('.app-shell');
+    expect(shell).not.toHaveClass('sidebar-collapsed');
+
+    await user.click(screen.getByRole('button', { name: /Collapse sidebar/i }));
+    expect(shell).toHaveClass('sidebar-collapsed');
+    expect(screen.getByRole('button', { name: /Expand sidebar/i })).toBeInTheDocument();
+    expect(window.localStorage.getItem('shuttle-car-automation-v7:sidebarCollapsed')).toBe('true');
+
+    await user.click(screen.getByRole('button', { name: /Expand sidebar/i }));
+    expect(shell).not.toHaveClass('sidebar-collapsed');
+    expect(window.localStorage.getItem('shuttle-car-automation-v7:sidebarCollapsed')).toBe('false');
+  });
+
   it('opens system settings directly from the fixed workspace controls', async () => {
     const user = userEvent.setup();
     render(<App />);
