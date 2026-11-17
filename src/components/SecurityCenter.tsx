@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import type { Language, Role, User } from '../types';
-import { appendAuditRecord, readAuditRecords, verifyAuditChain } from '../security/auditLog';
+import { appendAuditRecord, archiveAuditRecords, auditRecordsToCsv, filterAuditRecords, readAllAuditRecords, readAuditArchives, verifyAuditLedger, type AuditRecord } from '../security/auditLog';
 import {
   authenticateLocalAccount,
   createLocalAccount,
@@ -24,7 +24,20 @@ export default function SecurityCenter({
   const ar = language === 'ar';
   const [accounts, setAccounts] = useState<LocalAccountSummary[]>(() => listLocalAccounts(localStorage));
   const [registryError, setRegistryError] = useState<string | null>(() => localAccountRegistryError(localStorage));
-  const [auditIntegrity, setAuditIntegrity] = useState<{ valid: boolean; checked: number; brokenIndex: number | null; reason?: string } | null>(null);
+  const [auditIntegrity, setAuditIntegrity] = useState<{
+    valid: boolean;
+    activeChecked: number;
+    archivedChecked: number;
+    archiveCount: number;
+    brokenArchiveIndex: number | null;
+    brokenRecordIndex: number | null;
+    reason?: string;
+  } | null>(null);
+  const [auditRecords, setAuditRecords] = useState<AuditRecord[]>([]);
+  const [auditQuery, setAuditQuery] = useState('');
+  const [auditActionFilter, setAuditActionFilter] = useState('');
+  const [auditEntityFilter, setAuditEntityFilter] = useState('');
+  const [auditBusy, setAuditBusy] = useState(false);
   const [login, setLogin] = useState({ identity: '', password: '' });
   const [newAccount, setNewAccount] = useState({ name: '', email: '', username: '', role: 'Maintenance Engineer' as Role, password: '', confirm: '' });
   const [error, setError] = useState('');
@@ -38,19 +51,102 @@ export default function SecurityCenter({
     setAccounts(listLocalAccounts(localStorage));
     setRegistryError(localAccountRegistryError(localStorage));
     try {
-      const result = await verifyAuditChain(readAuditRecords(localStorage));
+      const result = await verifyAuditLedger(localStorage);
       setAuditIntegrity(result);
+      setAuditRecords(result.valid ? await readAllAuditRecords(localStorage) : []);
     } catch (reason) {
-      setAuditIntegrity({ valid: false, checked: 0, brokenIndex: 0, reason: reason instanceof Error ? reason.message : 'Audit log could not be read.' });
+      setAuditIntegrity({
+        valid: false, activeChecked: 0, archivedChecked: 0, archiveCount: 0,
+        brokenArchiveIndex: null, brokenRecordIndex: null,
+        reason: reason instanceof Error ? reason.message : 'Audit ledger could not be read.'
+      });
+      setAuditRecords([]);
     }
   };
 
   useEffect(() => { void refresh(); }, []);
 
-  const recentAudit = useMemo(() => {
-    try { return readAuditRecords(localStorage).slice(-8).reverse(); }
-    catch { return []; }
-  }, [auditIntegrity, accounts.length]);
+  const recentAudit = useMemo(() => filterAuditRecords(auditRecords, {
+    query: auditQuery, action: auditActionFilter, entityType: auditEntityFilter
+  }).slice(-100).reverse(), [auditRecords, auditQuery, auditActionFilter, auditEntityFilter]);
+
+  const auditActions = useMemo(() => [...new Set(auditRecords.map(record => record.action))].sort(), [auditRecords]);
+  const auditEntities = useMemo(() => [...new Set(auditRecords.map(record => record.entityType))].sort(), [auditRecords]);
+
+  const downloadAuditFile = (fileName: string, content: string, mimeType: string) => {
+    const url = URL.createObjectURL(new Blob([content], { type: mimeType }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportAuditJson = async () => {
+    setAuditBusy(true);
+    setError('');
+    try {
+      const integrity = await verifyAuditLedger(localStorage);
+      if (!integrity.valid) throw new Error(integrity.reason || 'Audit ledger integrity verification failed.');
+      const [records, archives] = await Promise.all([
+        readAllAuditRecords(localStorage),
+        Promise.resolve(readAuditArchives(localStorage))
+      ]);
+      downloadAuditFile(
+        `shuttle-audit-ledger-${new Date().toISOString().replace(/[:.]/g, '-')}.json`,
+        JSON.stringify({ format: 'shuttle-audit-ledger-export', exportedAt: new Date().toISOString(), integrity, archiveCount: archives.length, archives, records }, null, 2),
+        'application/json'
+      );
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Audit JSON export failed.');
+    } finally {
+      setAuditBusy(false);
+      await refresh();
+    }
+  };
+
+  const exportAuditCsv = async () => {
+    setAuditBusy(true);
+    setError('');
+    try {
+      const integrity = await verifyAuditLedger(localStorage);
+      if (!integrity.valid) throw new Error(integrity.reason || 'Audit ledger integrity verification failed.');
+      const records = await readAllAuditRecords(localStorage);
+      downloadAuditFile(`shuttle-audit-ledger-${new Date().toISOString().replace(/[:.]/g, '-')}.csv`, auditRecordsToCsv(records), 'text/csv;charset=utf-8');
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Audit CSV export failed.');
+    } finally {
+      setAuditBusy(false);
+      await refresh();
+    }
+  };
+
+  const archiveActiveAudit = async () => {
+    if (!isAuthenticated || currentUser.role !== 'Super Admin') {
+      setError(ar ? 'أرشفة سجل التدقيق متاحة للمسؤول الأعلى فقط.' : 'Only the Super Admin can archive the active audit ledger.');
+      return;
+    }
+    const accepted = window.confirm(ar
+      ? 'سيتم نقل جميع أحداث السجل النشط إلى أرشيف مترابط ببصمة SHA-256. لن تُحذف السجلات. هل تريد المتابعة؟'
+      : 'Archive all active audit events into a SHA-256 chained archive? Records are retained, not deleted. Continue?');
+    if (!accepted) return;
+    setAuditBusy(true);
+    setError('');
+    try {
+      const archive = await archiveAuditRecords(localStorage);
+      downloadAuditFile(
+        `shuttle-audit-archive-${archive.id}.json`,
+        JSON.stringify({ format: 'shuttle-audit-archive-export', exportedAt: new Date().toISOString(), archive }, null, 2),
+        'application/json'
+      );
+      await refresh();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Audit archive failed. Original records were retained when recovery was possible.');
+      await refresh();
+    } finally {
+      setAuditBusy(false);
+    }
+  };
 
   const submitLogin = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -187,8 +283,10 @@ export default function SecurityCenter({
         <span className="eyebrow">AUDIT CHAIN / SHA-256</span>
         <div className="integrity-heading"><h3>{ar ? 'سلامة سجل التدقيق' : 'Audit log integrity'}</h3><span className={'integrity-indicator ' + (auditIntegrity?.valid ? 'valid' : 'invalid')}/></div>
         <strong>{auditIntegrity === null ? (ar ? 'جارٍ الفحص' : 'Checking…') : auditIntegrity.valid ? (ar ? 'سلسلة السجل سليمة' : 'CHAIN VERIFIED') : (ar ? 'تم اكتشاف تغيير' : 'TAMPERING DETECTED')}</strong>
-        <p>{auditIntegrity ? `${auditIntegrity.checked} ${ar ? 'سجل تم فحصه' : 'records checked'}` : (ar ? 'يتم فحص السجلات المحفوظة على هذا الجهاز.' : 'Verifying records stored on this device.')}</p>
-        {auditIntegrity && !auditIntegrity.valid && <p className="security-error">{auditIntegrity.reason || (ar ? `موضع الخلل: ${auditIntegrity.brokenIndex}` : `Broken record index: ${auditIntegrity.brokenIndex}`)}</p>}
+        <p>{auditIntegrity
+          ? `${auditIntegrity.archivedChecked + auditIntegrity.activeChecked} ${ar ? 'سجل تم فحصه' : 'records verified'} · ${auditIntegrity.archiveCount} ${ar ? 'أرشيف' : 'archives'}`
+          : (ar ? 'يتم فحص السجلات المحفوظة على هذا الجهاز.' : 'Verifying records stored on this device.')}</p>
+        {auditIntegrity && !auditIntegrity.valid && <p className="security-error">{auditIntegrity.reason || (ar ? `أرشيف: ${auditIntegrity.brokenArchiveIndex ?? '—'} · سجل: ${auditIntegrity.brokenRecordIndex ?? '—'}` : `Archive: ${auditIntegrity.brokenArchiveIndex ?? '—'} · record: ${auditIntegrity.brokenRecordIndex ?? '—'}`)}</p>}
       </section>
       {isAdministrator && <section className="surface-card security-integrity-card">
         <span className="eyebrow">LOCAL ACCOUNTS / DEVICE ONLY</span>
@@ -199,8 +297,21 @@ export default function SecurityCenter({
     </div>
 
     {isAdministrator && <section className="surface-card security-audit-list">
-      <div className="card-head"><div><span className="eyebrow">RECENT SECURITY EVENTS</span><h3>{ar ? 'أحدث أحداث الأمان' : 'Recent security events'}</h3></div><span className="counter">{recentAudit.length}</span></div>
-      {recentAudit.length === 0 ? <p className="muted-text">{ar ? 'لا توجد أحداث مسجلة بعد.' : 'No security events recorded yet.'}</p> : recentAudit.map(record => <div className="audit-event-row" key={record.id}><div><strong>{record.action}</strong><span>{record.actorRole} · {record.entityType} · {record.entityId}</span></div><time>{new Intl.DateTimeFormat(ar ? 'ar-EG' : 'en-GB', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(record.timestamp))}</time></div>)}
+      <div className="card-head"><div><span className="eyebrow">AUDIT LEDGER / ARCHIVES / EXPORT</span><h3>{ar ? 'سجل التدقيق والأرشيف' : 'Audit ledger & archives'}</h3></div><span className="counter">{recentAudit.length} / {auditRecords.length}</span></div>
+      <div className="audit-toolbar">
+        <label>{ar ? 'بحث' : 'Search'}<input value={auditQuery} onChange={event => setAuditQuery(event.target.value)} placeholder={ar ? 'بحث في الحدث أو المستخدم أو السجل' : 'Search action, user or record'}/></label>
+        <label>{ar ? 'العملية' : 'Action'}<select value={auditActionFilter} onChange={event => setAuditActionFilter(event.target.value)}><option value="">{ar ? 'كل العمليات' : 'All actions'}</option>{auditActions.map(action => <option key={action}>{action}</option>)}</select></label>
+        <label>{ar ? 'نوع السجل' : 'Entity type'}<select value={auditEntityFilter} onChange={event => setAuditEntityFilter(event.target.value)}><option value="">{ar ? 'كل الأنواع' : 'All types'}</option>{auditEntities.map(entity => <option key={entity}>{entity}</option>)}</select></label>
+      </div>
+      <div className="audit-toolbar-actions">
+        <button className="btn-secondary" type="button" disabled={auditBusy || !auditIntegrity?.valid} onClick={() => void exportAuditJson()}>{ar ? 'تصدير JSON' : 'Export JSON'}</button>
+        <button className="btn-secondary" type="button" disabled={auditBusy || !auditIntegrity?.valid} onClick={() => void exportAuditCsv()}>{ar ? 'تصدير CSV' : 'Export CSV'}</button>
+        {currentUser.role === 'Super Admin' && <button className="btn-primary" type="button" disabled={auditBusy || !auditIntegrity?.valid || auditIntegrity.activeChecked === 0} onClick={() => void archiveActiveAudit()}>{auditBusy ? (ar ? 'جارٍ التنفيذ…' : 'Working…') : (ar ? 'أرشفة السجل النشط' : 'Archive active ledger')}</button>}
+      </div>
+      {recentAudit.length === 0 ? <p className="muted-text">{ar ? 'لا توجد أحداث تطابق الفلاتر الحالية.' : 'No audit events match the current filters.'}</p> : recentAudit.map(record => <div className="audit-event-row" key={record.id}><div><strong>{record.action}</strong><span>{record.actorId} · {record.actorRole} · {record.entityType} · {record.entityId}</span>{record.detail && <small>{record.detail}</small>}</div><time>{new Intl.DateTimeFormat(ar ? 'ar-EG' : 'en-GB', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(record.timestamp))}</time></div>)}
+      <p className="muted-text">{ar
+        ? 'الأرشيف والسجل نشطان على هذا الجهاز. تصدير JSON يحفظ بيانات الأرشيف وسلسلة البصمات؛ الاحتفاظ المحلي يظل مقيداً بسعة المتصفح ولا يمثل تخزيناً مركزياً.'
+        : 'Archives and active events are stored on this device. JSON export contains archive manifests and hash chains. Local retention remains limited by browser storage quota and is not centralized storage.'}</p>
     </section>}
 
     <div className="notice-inline"><span>ⓘ</span>{ar
