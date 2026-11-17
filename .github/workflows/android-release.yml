@@ -116,7 +116,7 @@ jobs:
           APP_VERSION_INPUT: ${{ inputs.version_name || '1.0.0' }}
 
       - name: Upload signed Play bundle
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: shuttle-car-automation-play-aab
           path: artifacts/play-release/
