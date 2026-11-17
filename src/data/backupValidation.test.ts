@@ -49,7 +49,8 @@ describe('operational backup validation', () => {
     expect(validateOperationalBackup(orphan)).toMatchObject({ ok: false, error: expect.stringMatching(/missing or archived shuttle/) });
 
     const archivedTarget = validBackup();
-    archivedTarget.shuttles.find((item) => item.id === 'SC-05')!.archivedAt = '2026-11-17T08:00:00.000Z';
+    (archivedTarget.shuttles as Array<{ id: string; archivedAt?: string | null }>)
+      .find((item) => item.id === 'SC-05')!.archivedAt = '2026-11-17T08:00:00.000Z';
     expect(validateOperationalBackup(archivedTarget)).toMatchObject({ ok: false, error: expect.stringMatching(/missing or archived shuttle/) });
   });
 
