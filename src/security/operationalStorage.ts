@@ -183,17 +183,32 @@ export async function bootstrapOperationalStorage(storage: StorageLike = globalT
       }
 
       const primaryData = snapshot.primary.envelope.payload;
-      if (legacyRaw !== JSON.stringify(primaryData)) {
-        if (legacyRaw !== null) quarantineRaw(storage, legacyKey, legacyRaw);
+      if (legacyRaw !== null && (legacy.summary.status !== 'valid' || JSON.stringify(legacy.data) !== JSON.stringify(primaryData))) {
+        // A healthy verified snapshot and a different legacy copy may represent
+        // two different points in time. Never overwrite either silently.
+        const reason = legacy.summary.status === 'valid'
+          ? 'A verified primary snapshot and a different valid legacy copy both exist. Preview both and explicitly choose the authoritative version.'
+          : 'A verified primary snapshot exists, but the legacy compatibility copy is invalid. Export and review it before replacing the raw bytes.';
+        issues.push(`${collection}: conflicting primary and legacy data require an explicit Recovery Mode decision.`);
+        items.push({
+          collection, reason, primary: primarySummary, previous: previousSummary, legacy: legacy.summary,
+          primaryData,
+          ...(snapshot.previous.status === 'valid' && snapshot.previous.envelope.schemaVersion === OPERATIONAL_STORAGE_SCHEMA ? { previousData: snapshot.previous.envelope.payload } : {}),
+          ...(legacy.data !== undefined ? { legacyData: legacy.data } : {}),
+          canUseEmpty: true
+        });
+        continue;
+      }
+      if (legacyRaw === null) {
         try {
+          // With no previous legacy bytes, rebuilding the compatibility key
+          // from a checksum-verified primary does not discard user data.
           storage.setItem(legacyKey, JSON.stringify(primaryData));
         } catch (reason) {
           items.push({
-            collection, reason: `Verified primary is healthy, but the application compatibility cache could not be refreshed: ${reason instanceof Error ? reason.message : 'storage write failed'}.`,
+            collection, reason: `Verified primary is healthy, but the compatibility key could not be created: ${reason instanceof Error ? reason.message : 'storage write failed'}.`,
             primary: primarySummary, previous: previousSummary, legacy: legacy.summary,
-            primaryData, ...(snapshot.previous.status === 'valid' && snapshot.previous.envelope.schemaVersion === OPERATIONAL_STORAGE_SCHEMA ? { previousData: snapshot.previous.envelope.payload } : {}),
-            ...(legacy.data !== undefined ? { legacyData: legacy.data } : {}),
-            canUseEmpty: false
+            primaryData, canUseEmpty: false
           });
         }
       }
@@ -283,12 +298,12 @@ export async function resolveOperationalRecovery(
     if (snapshot.primary.status !== 'valid') throw new Error('The verified primary candidate is no longer available.');
     saved = { revision: snapshot.primary.envelope.revision, checksum: snapshot.primary.envelope.checksum };
   } else if (source === 'previous') {
-    const restored = await engine.restorePrevious();
+    const restored = await engine.restorePrevious(true);
     if (restored.status !== 'recovered') throw new Error('The previous snapshot could not be restored.');
     saved = { revision: restored.revision, checksum: snapshot.previous.status === 'valid' ? snapshot.previous.envelope.checksum : '' };
     data = restored.data;
   } else {
-    saved = await engine.replaceAfterRecovery(data);
+    saved = await engine.replaceAfterRecovery(data, new Date(), true);
   }
 
   storage.setItem(legacyKey, JSON.stringify(data));
