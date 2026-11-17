@@ -10,7 +10,8 @@
     "preview": "vite preview --host 0.0.0.0",
     "check": "tsc -b",
     "validate": "npm run check && npm test && npm run build",
-    "assets:render": "node scripts/render-store-assets.mjs"
+    "assets:render": "node scripts/render-store-assets.mjs",
+    "check:release": "node --test scripts/android-release-config.check.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",
