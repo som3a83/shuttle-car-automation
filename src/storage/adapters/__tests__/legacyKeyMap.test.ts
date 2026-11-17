@@ -6,7 +6,8 @@ import {
   EXCLUDED_SESSION_STORAGE_KEY,
   LEGACY_KEY_MAP,
   assertLegacyImportKey,
-  listImportableLegacyKeys
+  listImportableLegacyKeys,
+  importMappedLegacyKey
 } from '../legacyKeyMap';
 
 async function resetDatabase(): Promise<void> {
@@ -39,6 +40,17 @@ describe('legacy key allow-list', () => {
     const pending = LEGACY_KEY_MAP.find((entry) => entry.legacyKey === AUDIT_ARCHIVE_PENDING_LEGACY_KEY);
     expect(pending).toMatchObject({ adapter: 'audit-marker', targetKey: null, importable: false });
     expect(LEGACY_KEY_MAP.some((entry) => entry.legacyKey === EXCLUDED_SESSION_STORAGE_KEY)).toBe(false);
+  });
+
+  it('MAP-004 distinguishes an absent legacy key from invalid JSON or shape data', async () => {
+    const result = await importMappedLegacyKey(
+      'shuttle-car-automation-v7:language',
+      (value): value is 'en' | 'ar' => value === 'en' || value === 'ar',
+      localStorage,
+      undefined,
+      'operational'
+    );
+    expect(result).toEqual({ status: 'missing-source', key: 'operational.language' });
   });
 
   it('MAP-003 rejects unknown, non-importable and session keys as programmer errors', () => {
