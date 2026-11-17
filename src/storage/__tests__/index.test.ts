@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   __setBackendForTesting, backup, get, getMode, getWithRevision, remove, restore, set,
-  StorageError, type BackupEnvelope, type StorageEngine, type StorageKey, type StorageMode,
+  StorageError, LegacyFallbackEngine, type BackupEnvelope, type StorageEngine, type StorageKey, type StorageMode,
 } from '../index';
 
 class MemoryEngine implements StorageEngine {
@@ -82,8 +82,8 @@ describe('backup and restore guarantees', () => {
   it('BAK-004 rejects an invalid envelope', async () => { await expect(restore({} as BackupEnvelope)).rejects.toMatchObject({ code: 'BACKUP_INVALID' }); });
   it('BAK-005 rejects checksum tampering', async () => { const b = await backup(); await expect(restore({ ...b, checksum: '00000000' })).rejects.toMatchObject({ code: 'BACKUP_INVALID' }); });
   it('BAK-006 fallback backup rejects for lack of atomicity', async () => { __setBackendForTesting(new MemoryEngine('legacy-fallback')); await expect(backup()).rejects.toMatchObject({ code: 'STORAGE_ATOMICITY_UNAVAILABLE' }); });
-  it('BAK-007 fallback restore rejects for lack of atomicity', async () => { __setBackendForTesting(new MemoryEngine('legacy-fallback')); const b = await backup().catch(() => null); const minimal = { format: 'shuttle-storage-backup', schemaVersion: 1, createdAt: 'x', records: {}, checksum: 'x' } as BackupEnvelope; await expect(restore(minimal)).rejects.toMatchObject({ code: 'BACKUP_INVALID' }); void b; });
-  it('BAK-008 restore is rejected in read-only recovery mode', async () => { __setBackendForTesting(new MemoryEngine('readonly-recovery')); const invalid = {} as BackupEnvelope; await expect(restore(invalid)).rejects.toMatchObject({ code: 'BACKUP_INVALID' }); });
+  it('BAK-007 fallback restore rejects for lack of atomicity', async () => { const valid = await backup(); __setBackendForTesting(new MemoryEngine('legacy-fallback')); await expect(restore(valid)).rejects.toMatchObject({ code: 'STORAGE_ATOMICITY_UNAVAILABLE' }); });
+  it('BAK-008 restore is rejected in read-only recovery mode', async () => { const valid = await backup(); __setBackendForTesting(new MemoryEngine('readonly-recovery')); await expect(restore(valid)).rejects.toMatchObject({ code: 'STORAGE_RECOVERY_REQUIRED' }); });
 });
 
 describe('revision conflicts and fallback rules', () => {
@@ -103,15 +103,9 @@ describe('revision conflicts and fallback rules', () => {
       removeItem: (k: string) => storage.delete(k), get length() { return storage.size; }, key: (i: number) => [...storage.keys()][i] ?? null,
     } });
     try {
-      // Production fallback engine is exercised directly through a minimal injected delegate.
-      class FallbackProbe extends MemoryEngine {
-        async write(key: StorageKey, value: unknown, expectedRevision?: number): Promise<number> {
-          if (expectedRevision !== undefined) throw new StorageError({ code: 'STORAGE_CONFLICT', message: 'Missing sidecar.', key, expectedRevision, metadata: { revisionSidecarMissing: true } });
-          return super.write(key, value);
-        }
-      }
-      __setBackendForTesting(new FallbackProbe('legacy-fallback'));
+      __setBackendForTesting(new LegacyFallbackEngine());
       await expect(set(KEY, 'en', 1)).rejects.toMatchObject({ code: 'STORAGE_CONFLICT', metadata: { revisionSidecarMissing: true } });
+      expect(storage.get('shuttle.storage.operational.language')).toBe('"ar"');
     } finally { Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: original }); }
   });
   it('read-only recovery rejects set', async () => { __setBackendForTesting(new MemoryEngine('readonly-recovery')); await expect(set(KEY, 'ar')).rejects.toMatchObject({ code: 'STORAGE_RECOVERY_REQUIRED' }); });
