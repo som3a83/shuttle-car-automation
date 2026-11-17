@@ -193,6 +193,8 @@ async function quarantineWithoutMasking(key: StorageKey, rawValue: unknown, reas
   try { await quarantineRecord(key, rawValue, reason); return true; }
   catch { /* Preserve the original corruption error. */ return false; }
 }
+const openConnections = new Set<IDBDatabase>();
+
 function openDatabase(): Promise<IDBDatabase> {
   if (typeof indexedDB === 'undefined') return Promise.reject(new Error('IndexedDB unavailable'));
   return new Promise((resolve, reject) => {
@@ -204,7 +206,16 @@ function openDatabase(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains(STORE_SNAPSHOTS)) db.createObjectStore(STORE_SNAPSHOTS, { keyPath: 'id' });
       if (!db.objectStoreNames.contains(STORE_QUARANTINE)) db.createObjectStore(STORE_QUARANTINE, { keyPath: 'id' });
     };
-    request.onsuccess = () => resolve(request.result);
+    request.onsuccess = () => {
+      const db = request.result;
+      openConnections.add(db);
+      // A version change must never leave this module holding a blocking connection.
+      db.onversionchange = () => {
+        db.close();
+        openConnections.delete(db);
+      };
+      resolve(db);
+    };
     request.onerror = () => reject(request.error ?? new Error('IndexedDB open failed'));
     request.onblocked = () => reject(new Error('IndexedDB upgrade blocked'));
   });
@@ -398,6 +409,21 @@ async function engine(): Promise<StorageEngine> {
   return productionEnginePromise;
 }
 export function __resetStorageForTesting(): void { injectedEngine = null; productionEnginePromise = null; }
+
+/**
+ * Test-only cleanup: close every live IndexedDB connection opened by this module.
+ * The handles are tracked at open time, including the separate quarantine connection.
+ */
+export async function __closeForTesting(): Promise<void> {
+  const pendingEngine = productionEnginePromise;
+  if (pendingEngine) {
+    try { await pendingEngine; } catch { /* A failed open has no live handle to close. */ }
+  }
+  for (const db of openConnections) {
+    try { db.close(); } catch { /* Best-effort cleanup; continue closing other handles. */ }
+    openConnections.delete(db);
+  }
+}
 export async function getMode(): Promise<StorageMode> {
   try { return await (await engine()).getMode(); }
   catch (error) { if (error instanceof StorageError) throw error; fail('STORAGE_TRANSACTION_FAILED', 'The storage mode could not be determined.'); }
