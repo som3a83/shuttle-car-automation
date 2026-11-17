@@ -1,5 +1,5 @@
 import { sanitizeSpreadsheetCell } from '../data/csvSafety.ts';
-import { LegacyFallbackEngine } from '../storage';
+import { LegacyFallbackEngine } from '../storage/index.ts';
 
 export interface AuditRecordInput {
   actorId: string;

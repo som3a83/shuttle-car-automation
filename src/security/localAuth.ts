@@ -1,5 +1,5 @@
 import type { Role } from '../types';
-import { LegacyFallbackEngine } from '../storage';
+import { LegacyFallbackEngine } from '../storage/index.ts';
 
 export const LOCAL_AUTH_STORAGE_KEY = 'shuttle-car-automation-v1:local-accounts';
 export const LOCAL_SESSION_STORAGE_KEY = 'shuttle-car-automation-v1:session';
