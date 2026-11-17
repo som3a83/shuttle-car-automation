@@ -20,6 +20,10 @@ describe('multi-sheet Excel export', () => {
         notes: 'Local placeholder only'
       }]
     }, 'en');
+    for (const sheet of sheets) {
+      const columnCount = Math.max(0, ...sheet.rows.map(row => row.length));
+      expect(sheet.widths?.length ?? columnCount).toBeGreaterThanOrEqual(columnCount);
+    }
     const bytes = await createXlsxBuffer(sheets);
     const XLSX = await import('xlsx');
     const workbook = XLSX.read(bytes, { type: 'array' });
