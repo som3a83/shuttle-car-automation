@@ -81,7 +81,7 @@ export function buildRegisterSheets(data: {
     { name: 'Shuttles', rows: shuttles, widths: [14,18,20,20,15,15,16,16,16,20,16,16,20,24,22,42] },
     { name: 'Batteries', rows: batteries, widths: [16,18,18,16,16,14,12,12,16,14,14,12,16,18,18,22] },
     { name: 'Battery movements', rows: movements, widths: [18,24,16,18,18,52,14] },
-    { name: 'Faults', rows: faults, widths: [18,16,28,14,16,24,48,42,42,42,22] },
+    { name: 'Faults', rows: faults, widths: [18,16,28,14,16,24,48,42,42,42,22,22] },
     { name: 'Maintenance', rows: maintenance, widths: [18,16,28,16,16,18,22,42,48,22] },
     { name: 'Connections', rows: connections, widths: [32,20,18,60,22] },
     { name: 'Shift handovers', rows: shifts, widths: [24,14,24,24,24,32,18,18,20,20,42,52] },

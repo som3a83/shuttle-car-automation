@@ -20,6 +20,7 @@ import { archiveBatteryAndDetach, assignBatteryToShuttle, restoreBatteryRecord }
 import { validateOperationalBackup } from './data/backupValidation';
 import { archiveCompletedWorkOrder, archiveFaultRecord, restoreFaultRecord, restoreWorkOrder } from './data/recordLifecycle';
 import { buildDailyReportSheets, buildRegisterSheets, downloadXlsx } from './data/excelExport';
+import { buildDailyReportCsv } from './data/dailyReportCsv';
 import { appendAuditRecord } from './security/auditLog';
 import { canAccessRoute, canPerformAction, type Permission } from './security/permissions';
 import { listLocalAccounts, readLocalSession } from './security/localAuth';
@@ -839,32 +840,7 @@ function App() {
 
   const downloadDailyReport = async (report: DailyReportSnapshot) => {
     if (!await authorize('reports.export', 'report', report.id)) return;
-    const rows: Array<Array<string | number>> = [
-      ['SHUTTLE CAR AUTOMATION · DAILY DEVICE STATUS', report.reportDate],
-      ['Generated at', report.generatedAt],
-      ['Active shuttle units', report.shuttleCount],
-      ['Running', report.runningCount],
-      ['Ready', report.readyCount],
-      ['Not connected / unverified', report.disconnectedCount],
-      ['Open fault reports', report.openFaultCount],
-      ['Open maintenance orders', report.openMaintenanceCount],
-      ['Active batteries', report.batteryCount],
-      ['Faulted batteries', report.faultedBatteryCount],
-      ['Verified telemetry sources', report.verifiedTelemetryCount],
-      ['Active shift', report.activeShift ? report.activeShift.id : 'No active shift'],
-      ['Shift supervisor', report.activeShift?.supervisor || 'Not recorded'],
-      ['Shift type', report.activeShift?.shiftType || 'Not recorded'],
-      [],
-      ['SHUTTLES', 'Manufacturer', 'Status', 'Connectivity', 'Zone'],
-      ...report.shuttles.map(item => [item.id, item.manufacturer, item.status, item.connectivity, item.warehouseZone]),
-      [],
-      ['BATTERIES', 'Manufacturer', 'Status', 'Assignment', 'SOC', 'Connection'],
-      ...report.batteries.map(item => [item.id, item.manufacturer, item.status, item.assignment, item.soc === null ? 'Not verified' : item.soc + '%', item.connectionMode]),
-      [],
-      ['BATTERY MOVEMENT JOURNAL', 'Battery ID', 'Timestamp', 'Action', 'From shuttle', 'To shuttle', 'Note'],
-      ...report.batteries.flatMap(item => (item.movementHistory || []).map(move => [item.id, move.timestamp, move.action, move.fromShuttleId, move.toShuttleId, move.note]))
-    ];
-    const csv = rows.map(row => row.map(value => '"' + String(value ?? '').replace(/"/g,'""') + '"').join(',')).join('\r\n');
+    const csv = buildDailyReportCsv(report);
     const url = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }));
     const link = document.createElement('a');
     link.href = url;
