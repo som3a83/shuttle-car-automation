@@ -860,3 +860,15 @@ button,select,input,textarea { touch-action:manipulation; }
   .report-toolbar > button { min-height:42px; width:100%; }
   .report-export-actions > button { flex:1; }
 }
+
+
+.shift-opening-assets { margin-top:13px; padding:12px; border:1px solid var(--line); border-radius:9px; background:var(--surface-2); }
+.shift-opening-assets > .eyebrow { margin-bottom:9px; }
+.shift-opening-assets-list { display:grid; gap:6px; }
+.shift-opening-asset { display:grid; grid-template-columns:1.1fr 1fr 1fr .9fr; align-items:center; gap:8px; padding:8px 9px; border-bottom:1px solid var(--line); font-size:9px; }
+.shift-opening-asset:last-child { border-bottom:0; }
+.shift-opening-asset strong { color:var(--text); }
+.shift-opening-asset span,.shift-opening-asset small { color:var(--muted); }
+@media (max-width:520px) {
+  .shift-opening-asset { grid-template-columns:1fr 1fr; gap:5px; font-size:9px; }
+}
