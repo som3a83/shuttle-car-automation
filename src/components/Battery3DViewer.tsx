@@ -43,7 +43,7 @@ export default function Battery3DViewer({ battery, fallback }: Battery3DViewerPr
     rim.position.set(-6, 3, -5);
     scene.add(rim);
 
-    const camera = new THREE.PerspectiveCamera(37, 1, 0.1, 80);
+    const camera = new THREE.OrthographicCamera(-7, 7, 5, -5, 0.1, 80);
     camera.position.set(8.8, 7.2, 9.2);
     camera.lookAt(0, 0, 0);
     const root = new THREE.Group();
@@ -160,8 +160,8 @@ export default function Battery3DViewer({ battery, fallback }: Battery3DViewerPr
     const onUp = () => { down = null; };
     const onWheel = (event: WheelEvent) => {
       event.preventDefault();
-      camera.position.multiplyScalar(event.deltaY > 0 ? 1.08 : 0.92);
-      camera.position.clampLength(7, 22);
+      camera.zoom = THREE.MathUtils.clamp(camera.zoom * (event.deltaY > 0 ? 0.92 : 1.08), 0.65, 1.8);
+      camera.updateProjectionMatrix();
       camera.lookAt(0, 0, 0);
     };
     renderer.domElement.addEventListener('pointerdown', onDown);
@@ -174,7 +174,12 @@ export default function Battery3DViewer({ battery, fallback }: Battery3DViewerPr
       const width = Math.max(1, host.clientWidth);
       const height = Math.max(1, host.clientHeight);
       renderer.setSize(width, height, false);
-      camera.aspect = width / height;
+      const frustumHeight = 5.2;
+      const aspect = width / height;
+      camera.left = -frustumHeight * aspect;
+      camera.right = frustumHeight * aspect;
+      camera.top = frustumHeight;
+      camera.bottom = -frustumHeight;
       camera.updateProjectionMatrix();
     };
     const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(resize) : null;
@@ -219,6 +224,16 @@ export default function Battery3DViewer({ battery, fallback }: Battery3DViewerPr
         <span><i/>PRISMATIC CELL BANKS</span><span><i/>BMS / BALANCING</span><span><i/>BUS BAR NETWORK</span><span><i/>SERVICE TERMINALS</span>
       </div>
       <div className="battery-cad-crosshair" aria-hidden="true">+</div>
+      <svg className="battery-dimension-overlay" viewBox="0 0 1000 600" preserveAspectRatio="none" aria-hidden="true">
+        <defs><marker id="battery-dim-arrow" markerWidth="7" markerHeight="7" refX="3.5" refY="3.5" orient="auto-start-reverse"><path d="M0,0 L7,3.5 L0,7" fill="none" stroke="#83aabd" strokeWidth="1"/></marker></defs>
+        <g fill="none" stroke="#83aabd" strokeWidth="1.2" opacity=".82">
+          <path d="M170 485 V520 M830 485 V520 M170 510 H830" markerStart="url(#battery-dim-arrow)" markerEnd="url(#battery-dim-arrow)"/>
+          <path d="M860 180 H890 M860 405 H890 M880 180 V405" markerStart="url(#battery-dim-arrow)" markerEnd="url(#battery-dim-arrow)"/>
+        </g>
+      </svg>
+      <div className="battery-dimension-label battery-dimension-length">6.80 MU · PACK LENGTH</div>
+      <div className="battery-dimension-label battery-dimension-width">3.70 MU · PACK WIDTH</div>
+      <div className="battery-cad-stamp">ORTHOGRAPHIC / INTERNAL REFERENCE GEOMETRY</div>
     </div>
   );
 }
