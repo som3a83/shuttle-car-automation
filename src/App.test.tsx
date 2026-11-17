@@ -316,6 +316,22 @@ describe('Shuttle Car Automation V10', () => {
     expect(screen.getByText(/No new local notifications/i)).toBeInTheDocument();
   });
 
+  it('surfaces a verified snapshot failure after the storage-layer write', async () => {
+    const originalSetItem = Storage.prototype.setItem;
+    const setItemSpy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (key, value) {
+      if (key === 'shuttle-car-automation-v7:verified:language') {
+        throw new Error('Simulated verified snapshot failure.');
+      }
+      return originalSetItem.call(this, key, value);
+    });
+
+    renderApp();
+
+    expect(await screen.findByText(/Could not confirm persistence for language/i)).toBeInTheDocument();
+    expect(window.localStorage.getItem('shuttle-car-automation-v7:language')).toBe('"en"');
+    setItemSpy.mockRestore();
+  });
+
   it('persists notification records across an application remount', async () => {
     const user = userEvent.setup();
     const first = renderApp();
