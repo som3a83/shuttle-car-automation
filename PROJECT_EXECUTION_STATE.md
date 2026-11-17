@@ -1,52 +1,65 @@
-# Project Execution State — Local Engineering Upgrade
+# Project Execution State — current main baseline
 
-Updated: 17 November 2026
-Repository baseline: `som3a83/shuttle-car-automation`
-Source archive baseline: `faff09f63779e70074209dd1d8f808768a2c6021`
+**Updated:** 17 November 2026  
+**Repository:** `som3a83/shuttle-car-automation`  
+**Official branch:** `main`  
+**Current audited commit:** `f7574cf5db3cfa636d0dae957e1b254cea68b369`
 
-## Scope and provenance
+## Current position
 
-This local upgrade was applied to the complete source ZIP previously generated from the repository `main` branch. It is not the later in-progress Claude ZIP mentioned in chat, and it has not been pushed to GitHub. The downloaded archive had no `.git` metadata. The changes below are available in the supplied upgrade ZIP only until the maintainer applies them to the intended branch.
+The security and local-recovery work is no longer an unpushed local ZIP or an open draft. Pull request #23 was merged into `main` on 17 November 2026. The read-only gateway, commissioning baseline, and application customization work from PRs #20–#22 are also merged.
 
-## Implemented in this local upgrade
+The repository is now a functioning web/Capacitor application source tree with automated tests and CI. It is not yet a production-commissioned shuttle-control system or a verified Google Play production release.
 
-- Added a centralized role/permission matrix covering seven application roles and route permissions.
-- Added an authenticated-action gate: a local role preview cannot perform write actions. First launch now starts as an unauthenticated Viewer/guest and routes the user to the local identity center for first-admin bootstrap.
-- Added local account creation and sign-in using PBKDF2-SHA-256 with per-account random salt, session-scoped credentials, eight-hour expiry and a short lockout after repeated failed attempts. Session roles are re-derived from the matching local account record rather than trusted from `sessionStorage`. A malformed or duplicated account registry now fails closed and blocks first-admin bootstrap rather than being treated as an empty registry.
-- Added a SHA-256 chained audit log. Malformed audit data is reported as unverifiable rather than filtered into an apparently clean empty ledger. Appends stop when the configured 5,000-record cap is reached rather than truncating the chain and breaking verification.
-- Added versioned/checksummed operational storage snapshots, previous-snapshot recovery, sequential writes per collection, startup migration from legacy keys and quarantine reporting for damaged envelopes. The old keys remain as a compatibility layer for the existing UI.
-- Integrated the versioned storage bootstrap before React mounts and persistence from the main application state effect.
-- Added an Arabic/English local identity and security center, sign-in/out and local account visibility controls.
-- Added permission checks and audit events to the shift handover and notification-management paths.
-- Updated README, SECURITY, PRIVACY and this execution record to describe the actual local-only security boundary.
+## Integrated capabilities
 
-## Validation performed
+- Shuttle fleet register and lifecycle operations.
+- Battery register, assignment, installation/removal history and battery lifecycle.
+- Fault recording, investigation, corrective action and resolution controls.
+- Maintenance work orders and shift handover records.
+- Reports and exports, notifications, application settings and local customization.
+- Arabic/English interface and responsive web/Android shell.
+- Conceptual shuttle and lithium-battery engineering visualizations.
+- Device-local accounts, PBKDF2-SHA-256 password derivation, local sessions and role/permission gates.
+- Tamper-evident local audit chain with archive verification and export.
+- Versioned/checksummed local operational snapshots and explicit recovery workflow.
+- Read-only industrial gateway architecture and client.
 
-- Security and storage unit tests: **25 passed, 0 failed** using Node 22's built-in test runner with experimental TypeScript type stripping.
-- Industrial gateway Python tests: **9 passed, 0 failed** using `python3 -m unittest -v` from `industrial-gateway/`.
-- Isolated TypeScript strict check for security modules: passed.
-- TypeScript/TSX syntax transpilation: 37 source files parsed, zero syntax diagnostics. This is a syntax check, not a full application typecheck.
-- ZIP integrity: source archive extracted and its ZIP CRC test passed before modification.
+## Verified CI evidence on current main
 
-## Not validated / outstanding
+- Main CI run `44070837675`: TypeScript project check, automated tests, dependency audit, release configuration validation, store asset rendering and production web bundle completed successfully.
+- Industrial gateway validation run `44070837474`: passed.
+- Secret scan run `44070837435`: passed.
+- CodeQL run `44070837417`: passed.
+- Android run `44070837434`: SDK/dependency setup, web validation, Capacitor generation/sync and debug APK assembly completed. Emulator install/launch was still in progress at last inspection; no emulator pass is claimed.
 
-- `npm install` could not complete because the package registry was unreachable (`EAI_AGAIN`); offline installation also failed because required packages were not cached.
-- Therefore the full Vitest suite, complete React typecheck, Vite production build, Android Gradle build, emulator launch and physical-device test were not run on this locally modified source.
-- No APK or AAB was generated from this upgraded source.
-- This local upgrade has not been pushed, committed or merged into GitHub.
-- The current app remains local browser/WebView storage. The versioned envelope layer is not SQLite, and device-local accounts are not enterprise identity or server-side RBAC.
-- No physical shuttle is commissioned or connected. The OT gateway still requires manufacturer-approved read-only adapters, verified models/firmware and approved tag maps.
-- 3D representations remain conceptual and are not manufacturer CAD.
+## Explicit constraints
 
-## Safety and security boundary
+- Accounts and permissions are local to one device. This is not server-side identity, enterprise RBAC or multi-device synchronization.
+- Operational data and audit archives are stored in local browser/WebView storage. The snapshot checksum and audit hash chain are integrity mechanisms, not encryption-at-rest or a server-anchored immutable record.
+- The active audit log stops accepting appends at 5,000 records until a Super Admin archives it. Manual archive exists; operational monitoring is required.
+- No exact vendor-specific shuttle driver, controller map, register map or commissioned physical telemetry source is present. The gateway is read-only.
+- The five fleet entries remain uncommissioned placeholders until verified against physical nameplates and vendor documentation.
+- 3D mechanical assemblies are conceptual illustrations, not OEM CAD.
+- The AI technical-assistant view is not a connected AI service.
+- Debug APK build success is not production signing, signed AAB generation, Play Console approval or store publication.
 
-Local password derivation, role checks, checksums and chained audit records improve local integrity and accountability, but a user who controls the device or application files can modify local storage and client code. A network/shared deployment requires trusted server-side identity, authorization, protected APIs and centrally stored audit logs. No PLC writes, motion, charging, reset or machine-control functions were added.
+## Repository hygiene
 
-## Recommended integration sequence
+- Keep `main` as the official source of truth.
+- PR #23 is merged. Do not re-merge its old branch.
+- Review old branches by their unique diff against current `main`; do not merge divergent V4/V6 branches wholesale.
+- Eight Dependabot PRs remain open (#10, #13–#19 excluding #11/#12). The React/React DOM/types updates are split and must be reviewed as a coordinated upgrade; TypeScript 7 is a major upgrade and must not be merged blindly.
+- The `main` ruleset currently exists with enforcement disabled. Enable branch protections only after confirming the required checks and repository settings.
 
-1. Review the changed files in this ZIP and compare with the latest Claude output before merging anything.
-2. Apply the upgrade to a dedicated branch based on the latest intended GitHub branch, not by overwriting `main` or an unreviewed V6 branch.
-3. Install dependencies in a network-enabled environment and run `npm run validate` plus the Android debug build.
-4. Resolve full typecheck/build/test results, then manually verify first-admin bootstrap, login/logout, role-specific routes and denied write actions on mobile and desktop.
-5. Protect the default branch in GitHub Settings and retain the PR/test evidence.
-6. Obtain vendor-approved hardware documentation before any live shuttle integration.
+## Next execution sequence
+
+1. Confirm Android emulator install/launch and artifact upload on the current main workflow.
+2. Review and enforce `main` branch protection with required CI/security checks.
+3. Resolve the audit-log 5,000-record operational threshold with warning/backup behavior and tests.
+4. Complete manual acceptance tests for all screens, forms, destructive actions, Arabic RTL, English LTR, mobile/tablet layouts and recovery flows.
+5. Review dependency PRs individually; group React ecosystem changes and run the full test/build matrix.
+6. Commission physical telemetry only after vendor/controller documents and approved read-only tag maps are supplied.
+7. Produce a signed production AAB and complete Play Store checks only after the above gates pass.
+
+**Current result:** the merged main branch is the valid working baseline. The web build and automated checks are green. Emulator acceptance, production signing/store release and physical shuttle commissioning remain open.
