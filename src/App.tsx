@@ -16,10 +16,12 @@ import ShiftOperations from './components/ShiftOperations';
 import { loadCustomization, validateCustomization, type CustomizationConfig } from './data/applicationCustomization';
 import { archiveBatteryAndDetach, assignBatteryToShuttle, restoreBatteryRecord } from './data/batteryLifecycle';
 import { validateOperationalBackup } from './data/backupValidation';
+import { archiveCompletedWorkOrder, archiveFaultRecord, restoreFaultRecord, restoreWorkOrder } from './data/recordLifecycle';
 import { buildDailyReportSheets, buildRegisterSheets, downloadXlsx } from './data/excelExport';
 import type {
   AppSettings,
   Battery,
+  CommunicationEndpoint,
   Fault,
   Language,
   MaintenanceJob,
@@ -296,6 +298,7 @@ function App() {
   const [batteries, setBatteries] = useState<Battery[]>(() => readLocal('batteries', initialBatteries));
   const [faults, setFaults] = useState<Fault[]>(() => readLocal('faults', initialFaults));
   const [jobs, setJobs] = useState<MaintenanceJob[]>(() => readLocal('maintenance', initialMaintenance));
+  const [connections, setConnections] = useState<CommunicationEndpoint[]>(() => readLocal('connections', initialConnections));
   const [notifications, setNotifications] = useState(() => readLocal('notifications', initialNotifications));
   const [settings, setSettings] = useState<AppSettings>(() => readLocal('settings', defaultSettings));
   const [selectedId, setSelectedId] = useState('SC-01');
@@ -313,6 +316,12 @@ function App() {
   const [newAsset, setNewAsset] = useState({ manufacturer: 'Cassioli', zone: '', model: '', serialNumber: '', hardwareVersion: '', firmwareVersion: '', assignedOperator: '', notes: '' });
   const [editingShuttle, setEditingShuttle] = useState<Shuttle | null>(null);
   const [editingBattery, setEditingBattery] = useState(false);
+  const [editingFaultId, setEditingFaultId] = useState<string | null>(null);
+  const [showArchivedFaults, setShowArchivedFaults] = useState(false);
+  const [editingJobId, setEditingJobId] = useState<string | null>(null);
+  const [showArchivedJobs, setShowArchivedJobs] = useState(false);
+  const [editingConnectionName, setEditingConnectionName] = useState<string | null>(null);
+  const [showArchivedConnections, setShowArchivedConnections] = useState(false);
   const [pendingShuttleArchive, setPendingShuttleArchive] = useState<string | null>(null);
   const [pendingBatteryArchive, setPendingBatteryArchive] = useState<string | null>(null);
   const [showArchived, setShowArchived] = useState(false);
@@ -349,6 +358,12 @@ function App() {
   const archivedShuttles = shuttles.filter(s => Boolean(s.archivedAt));
   const activeBatteries = batteries.filter(b => !b.archivedAt);
   const archivedBatteries = batteries.filter(b => Boolean(b.archivedAt));
+  const activeFaults = faults.filter(f => !f.archivedAt);
+  const archivedFaults = faults.filter(f => Boolean(f.archivedAt));
+  const activeJobs = jobs.filter(j => !j.archivedAt);
+  const archivedJobs = jobs.filter(j => Boolean(j.archivedAt));
+  const activeConnections = connections.filter(c => !c.archivedAt);
+  const archivedConnections = connections.filter(c => Boolean(c.archivedAt));
   const selected = activeShuttles.find(s => s.id === selectedId) || activeShuttles[0] || null;
   const selectedBattery = activeBatteries.find(b => b.id === selectedBatteryId) || activeBatteries[0] || null;
   const selectedManufacturerReference = selected ? getManufacturerReference(selected.manufacturer) : null;
@@ -359,15 +374,15 @@ function App() {
   }), [activeShuttles, search, statusFilter]);
 
   useEffect(() => {
-    const values: Record<string, unknown> = { language, theme, shuttles, batteries, faults, maintenance: jobs, notifications, settings, dailyReports, shifts };
+    const values: Record<string, unknown> = { language, theme, shuttles, batteries, faults, maintenance: jobs, connections, notifications, settings, dailyReports, shifts };
     try { Object.entries(values).forEach(([key, value]) => localStorage.setItem(PREFIX + key, JSON.stringify(value))); } catch { /* local storage is optional */ }
-  }, [language, theme, shuttles, batteries, faults, jobs, notifications, settings, dailyReports, shifts]);
+  }, [language, theme, shuttles, batteries, faults, jobs, connections, notifications, settings, dailyReports, shifts]);
 
   const metrics = {
     total: activeShuttles.length,
     running: activeShuttles.filter(s => s.status === 'Running').length,
     idle: activeShuttles.filter(s => s.status === 'Idle' || s.status === 'Ready').length,
-    faulted: faults.filter(f => f.status !== 'Resolved').length,
+    faulted: activeFaults.filter(f => f.status !== 'Resolved').length,
     disconnected: activeShuttles.filter(s => s.connectivity !== 'REAL').length,
     verifiedSoc: activeBatteries.filter(b => b.connectionMode === 'REAL' && b.soc !== null).length
   };
@@ -807,7 +822,7 @@ function App() {
   };
 
   const exportBackup = () => {
-    const data = { schemaVersion: 10, exportedAt: new Date().toISOString(), warning: 'Local demo/record data only. Not a live PLC telemetry export.', shuttles, batteries, faults, jobs, notifications, settings, dailyReports, shifts };
+    const data = { schemaVersion: 10, exportedAt: new Date().toISOString(), warning: 'Local demo/record data only. Not a live PLC telemetry export.', shuttles, batteries, faults, jobs, connections, notifications, settings, dailyReports, shifts };
     const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
     const link = document.createElement('a'); link.href = url; link.download = 'shuttle-local-backup.json'; link.click(); URL.revokeObjectURL(url);
   };
@@ -830,6 +845,7 @@ function App() {
         setBatteries(data.batteries);
         setFaults(data.faults);
         setJobs(data.jobs);
+        setConnections(data.connections.length ? data.connections : initialConnections);
         setNotifications(data.notifications);
         setDailyReports(data.dailyReports);
         setShifts(data.shifts);
@@ -851,6 +867,7 @@ function App() {
     setBatteries(initialBatteries);
     setFaults(initialFaults);
     setJobs(initialMaintenance);
+    setConnections(initialConnections);
     setNotifications(initialNotifications);
     setDailyReports([]);
     setShifts([]);
