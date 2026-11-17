@@ -46,7 +46,7 @@ jobs:
           SDK_ROOT="$HOME/Library/Android/sdk"
           SDKMANAGER="$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
           test -x "$SDKMANAGER"
-          for attempt in {1..20}; do printf 'y\\n'; done | "$SDKMANAGER" --licenses
+          for attempt in {1..20}; do printf 'y\n'; done | "$SDKMANAGER" --licenses
           "$SDKMANAGER" "platform-tools" "platforms;android-36" "build-tools;36.0.0" "emulator" "system-images;android-35;google_apis;arm64-v8a"
           echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
           echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
