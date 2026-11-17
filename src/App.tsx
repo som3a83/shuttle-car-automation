@@ -13,6 +13,7 @@ const Shuttle3DViewer = lazy(() => import('./components/Shuttle3DViewer'));
 const Battery3DViewer = lazy(() => import('./components/Battery3DViewer'));
 import { getManufacturerReference } from './data/manufacturerReferences';
 import ShiftOperations from './components/ShiftOperations';
+import { loadCustomization, validateCustomization, type CustomizationConfig } from './data/applicationCustomization';
 import { archiveBatteryAndDetach, assignBatteryToShuttle, restoreBatteryRecord } from './data/batteryLifecycle';
 import { buildDailyReportSheets, buildRegisterSheets, downloadXlsx } from './data/excelExport';
 import type {
@@ -288,6 +289,7 @@ function App() {
   const [language, setLanguage] = useState<Language>(() => readLocal('language', 'en'));
   const [theme, setTheme] = useState<Theme>(() => readLocal('theme', 'dark'));
   const [activeTab, setActiveTab] = useState<Tab>(() => tabFromLocation());
+  const [customization, setCustomization] = useState<CustomizationConfig>(() => loadCustomization());
   const [currentUser, setCurrentUser] = useState(users[0]);
   const [shuttles, setShuttles] = useState<Shuttle[]>(() => readLocal('shuttles', initialShuttles));
   const [batteries, setBatteries] = useState<Battery[]>(() => readLocal('batteries', initialBatteries));
@@ -318,6 +320,30 @@ function App() {
   const routeStackRef = useRef<Tab[]>([tabFromLocation()]);
 
   const t = copy[language];
+  useEffect(() => {
+    const applyCustomization = (event: Event) => {
+      const detail = (event as CustomEvent<CustomizationConfig>).detail;
+      setCustomization(validateCustomization(detail));
+    };
+    window.addEventListener('shuttle-customization-change', applyCustomization);
+    return () => window.removeEventListener('shuttle-customization-change', applyCustomization);
+  }, []);
+
+  const visibleNavigation = useMemo(() => customization.navigation
+    .filter((entry) => entry.visible)
+    .filter((entry) => {
+      const module = customization.modules.find((item) => item.id === entry.route);
+      return Boolean(module?.enabled) && !module.hiddenForRoles.includes(currentUser.role);
+    })
+    .flatMap((entry) => {
+      const base = navItems.find((item) => item.id === entry.route);
+      return base ? [{ ...base, en: entry.label, ar: entry.labelAr || base.ar, group: entry.group, menuId: entry.id, order: entry.order }] : [];
+    })
+    .sort((a, b) => a.order - b.order), [customization, currentUser.role]);
+
+  const dashboardWidgets = customization.dashboard
+    .filter((widget) => widget.visible)
+    .sort((a, b) => a.order - b.order);
   const activeShuttles = shuttles.filter(s => !s.archivedAt);
   const archivedShuttles = shuttles.filter(s => Boolean(s.archivedAt));
   const activeBatteries = batteries.filter(b => !b.archivedAt);
@@ -801,6 +827,7 @@ function App() {
   };
 
   const header = navItems.find(n => n.id === activeTab);
+  const headerPreference = visibleNavigation.find(item => item.id === activeTab);
   const statusOptions: ShuttleStatus[] = ['Ready','Running','Idle','Charging','Maintenance','Fault','Disconnected','Unknown'];
 
   return <div className={'app-shell ' + theme} dir={language === 'ar' ? 'rtl' : 'ltr'}>
@@ -811,9 +838,9 @@ function App() {
         <button className="mobile-close" onClick={() => setMobileNav(false)} aria-label="Close navigation">×</button>
       </div>
       <div className="sidebar-caption">{t.appName}</div>
-      {['OPERATIONS','ENGINEERING','SYSTEM','ADMIN'].map(group => <div className="nav-group" key={group}>
-        <div className="nav-group-title">{language === 'ar' ? ({OPERATIONS:'التشغيل',ENGINEERING:'الهندسة',SYSTEM:'النظام',ADMIN:'الإدارة'} as Record<string,string>)[group] : group}</div>
-        {navItems.filter(item => item.group === group).map(item => <button key={item.id} type="button" title={language === 'ar' ? item.ar : item.en} aria-current={activeTab === item.id ? 'page' : undefined} className={'nav-button ' + (activeTab === item.id ? 'active' : '')} onClick={() => go(item.id)}>
+      {Array.from(new Set(visibleNavigation.map((item) => item.group))).map(group => <div className="nav-group" key={group}>
+        <div className="nav-group-title">{language === 'ar' ? ({OPERATIONS:'التشغيل',ENGINEERING:'الهندسة',SYSTEM:'النظام',ADMIN:'الإدارة'} as Record<string,string>)[group] || group : group}</div>
+        {visibleNavigation.filter(item => item.group === group).map(item => <button key={item.menuId} type="button" title={language === 'ar' ? item.ar : item.en} aria-current={activeTab === item.id ? 'page' : undefined} className={'nav-button ' + (activeTab === item.id ? 'active' : '')} onClick={() => go(item.id)}>
           <Icon name={item.icon}/><span>{language === 'ar' ? item.ar : item.en}</span>{activeTab === item.id && <i className="nav-active-mark"/>}
         </button>)}
       </div>)}
@@ -822,7 +849,7 @@ function App() {
 
     <main className="workspace">
       <header className="topbar">
-        <div className="topbar-heading"><button className="mobile-menu" onClick={() => setMobileNav(true)} aria-label="Open navigation"><Icon name="grid" size={20}/></button><div className="breadcrumb">SHUTTLE OPS <span>/</span> {language === 'ar' ? header?.ar : header?.en}</div><h1>{language === 'ar' ? header?.ar : header?.en}</h1></div>
+        <div className="topbar-heading"><button className="mobile-menu" onClick={() => setMobileNav(true)} aria-label="Open navigation"><Icon name="grid" size={20}/></button><div className="breadcrumb">SHUTTLE OPS <span>/</span> {language === 'ar' ? (headerPreference?.ar || header?.ar) : (headerPreference?.en || header?.en)}</div><h1>{language === 'ar' ? (headerPreference?.ar || header?.ar) : (headerPreference?.en || header?.en)}</h1></div>
         <div className="topbar-actions">
           <button className="topbar-route-button" type="button" onClick={goBack} disabled={!canGoBack} aria-label={language === 'ar' ? 'رجوع' : 'Go back'} title={language === 'ar' ? 'رجوع' : 'Go back'}><Icon name="chevron" size={17}/></button>
           <button className="topbar-route-button" type="button" onClick={() => go('dashboard')} aria-label={language === 'ar' ? 'الرئيسية' : 'Home'} title={language === 'ar' ? 'الرئيسية' : 'Home'}><Icon name="grid" size={17}/></button>
@@ -834,7 +861,7 @@ function App() {
       </header>
 
       <nav className="mobile-nav" aria-label={language === 'ar' ? 'التنقل السريع' : 'Quick navigation'}>
-        {navItems.slice(0, 4).map((item) => <button key={item.id} type="button" className={activeTab === item.id ? 'active' : ''} aria-current={activeTab === item.id ? 'page' : undefined} onClick={() => go(item.id)}><Icon name={item.icon} size={16}/><span>{language === 'ar' ? item.ar : item.en}</span></button>)}
+        {visibleNavigation.slice(0, 4).map((item) => <button key={item.menuId} type="button" className={activeTab === item.id ? 'active' : ''} aria-current={activeTab === item.id ? 'page' : undefined} onClick={() => go(item.id)}><Icon name={item.icon} size={16}/><span>{language === 'ar' ? item.ar : item.en}</span></button>)}
         <button type="button" onClick={() => setMobileNav(true)} aria-expanded={mobileNav}><Icon name="grid" size={16}/><span>{language === 'ar' ? 'المزيد' : 'More'}</span></button>
       </nav>
 
@@ -846,6 +873,8 @@ function App() {
           <div className="hero-machine"><div className="machine-orbit orbit-one"/><div className="machine-orbit orbit-two"/><div className="machine-label label-top">SHUTTLE / ASRS</div><ShuttleModel shuttle={selected || initialShuttles[0]} view="iso" exploded={false} animated={animated}/><div className="machine-label label-bottom">{selected?.manufacturer || 'CASSIOLI'} · {selected?.id || 'SC-01'}</div></div>
         </div>
         <div className="section-heading"><div><span className="eyebrow">FLEET TELEMETRY / LOCAL RECORDS</span><h2>{language === 'ar' ? 'مؤشرات الأسطول' : 'Fleet at a glance'}</h2></div><button className="text-button" onClick={() => go('fleet')}>{t.viewRegister}<Icon name="chevron" size={15}/></button></div>
+        <div className="dashboard-composition">
+        {dashboardWidgets.some((widget) => widget.id === 'fleet-status') && <section className="dashboard-fleet-widget" style={{ order: dashboardWidgets.find((widget) => widget.id === 'fleet-status')?.order ?? 0 }}>
         <div className="metric-grid">
           <Metric icon="truck" label={t.total} value={metrics.total} accent="blue" detail={language === 'ar' ? 'إجمالي السجلات' : 'Registered assets'}/>
           <Metric icon="grid" label={t.running} value={metrics.running} accent="green" detail={language === 'ar' ? 'لا توجد قراءة تشغيل مؤكدة' : 'No verified running signal'}/>
@@ -864,6 +893,28 @@ function App() {
             <div className="system-health-graphic"><div className="hub-core"><Icon name="network" size={28}/><strong>PLC</strong><small>NOT LINKED</small></div><div className="hub-node node-one">MODBUS</div><div className="hub-node node-two">OPC UA</div><div className="hub-node node-three">MQTT</div><div className="hub-node node-four">REST</div><svg viewBox="0 0 300 180"><path d="M150 90 40 35M150 90 260 35M150 90 40 145M150 90 260 145" stroke="currentColor" strokeDasharray="5 7" opacity=".4" fill="none"/></svg></div>
             <p className="muted-text">{t.connectionSub}</p><button className="btn-secondary full" onClick={() => go('connections')}>{language === 'ar' ? 'إعداد الاتصال' : 'View connection architecture'} <Icon name="arrow" size={15}/></button>
           </div>
+        </div>
+        </section>}
+        {dashboardWidgets.filter((widget) => widget.id !== 'fleet-status').map((widget) => (
+          <section key={widget.id} className={`surface-card dashboard-custom-widget ${widget.size === 'wide' ? 'dashboard-widget-wide' : ''}`} style={{ order: widget.order }}>
+            {widget.id === 'battery-status' && <>
+              <div className="card-head"><div><span className="eyebrow">BATTERY REGISTER</span><h3>{language === 'ar' ? 'ملخص البطاريات' : 'Battery overview'}</h3></div><button className="icon-button" onClick={() => go('batteries')}><Icon name="arrow"/></button></div>
+              {activeBatteries.length === 0 ? <p className="muted-text">{language === 'ar' ? 'لا توجد بطاريات مسجلة.' : 'No battery records are registered.'}</p> : activeBatteries.slice(0, 5).map((battery) => <div className="dashboard-record-row" key={battery.id}><strong>{battery.id}</strong><span>{battery.assignment}</span><StatusPill status={battery.status} language={language}/><small>{battery.soc == null ? t.unknown : `${battery.soc}% · MANUAL/REPORTED`}</small></div>)}
+            </>}
+            {widget.id === 'faults' && <>
+              <div className="card-head"><div><span className="eyebrow">RELIABILITY</span><h3>{language === 'ar' ? 'الأعطال المفتوحة' : 'Open fault records'}</h3></div><button className="icon-button" onClick={() => go('faults')}><Icon name="arrow"/></button></div>
+              {faults.filter((fault) => fault.status !== 'Resolved').length === 0 ? <p className="muted-text">{t.noFaults}</p> : faults.filter((fault) => fault.status !== 'Resolved').slice(0, 4).map((fault) => <div className="dashboard-record-row" key={fault.id}><strong>{fault.id}</strong><span>{fault.shuttleId} · {fault.title}</span><StatusPill status={fault.status} language={language}/><small>{fault.severity}</small></div>)}
+            </>}
+            {widget.id === 'maintenance' && <>
+              <div className="card-head"><div><span className="eyebrow">SERVICE</span><h3>{language === 'ar' ? 'قائمة الصيانة' : 'Maintenance queue'}</h3></div><button className="icon-button" onClick={() => go('maintenance')}><Icon name="arrow"/></button></div>
+              {jobs.filter((job) => job.status !== 'Completed').length === 0 ? <p className="muted-text">{t.noWork}</p> : jobs.filter((job) => job.status !== 'Completed').slice(0, 4).map((job) => <div className="dashboard-record-row" key={job.id}><strong>{job.id}</strong><span>{job.shuttleId} · {job.title}</span><StatusPill status={job.status} language={language}/><small>{job.scheduledDate}</small></div>)}
+            </>}
+            {widget.id === 'activity' && <>
+              <div className="card-head"><div><span className="eyebrow">LOCAL EVENT LOG</span><h3>{language === 'ar' ? 'أحدث النشاطات' : 'Recent local activity'}</h3></div><button className="icon-button" onClick={() => go('notifications')}><Icon name="arrow"/></button></div>
+              {notifications.length === 0 ? <p className="muted-text">{t.noNotifications}</p> : notifications.slice(0, 5).map((notification) => <div className="dashboard-record-row" key={notification.id}><strong>{notification.title}</strong><span>{notification.detail}</span><small>{formatNotificationTime(notification.time)}</small></div>)}
+            </>}
+          </section>
+        ))}
         </div>
       </section>}
 
