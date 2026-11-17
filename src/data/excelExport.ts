@@ -85,7 +85,7 @@ export function buildRegisterSheets(data: {
     { name: 'Faults', rows: faults, widths: [18,16,28,14,16,24,48,42,42,42,22,22] },
     { name: 'Maintenance', rows: maintenance, widths: [18,16,28,16,16,18,22,42,48,22] },
     { name: 'Connections', rows: connections, widths: [32,20,18,60,22] },
-    { name: 'Shift handovers', rows: shifts, widths: [24,14,24,24,24,32,18,18,42,42,42,52] },
+    { name: 'Shift handovers', rows: shifts, widths: [24,14,24,24,24,32,18,18,20,20,42,52] },
     { name: 'Daily report history', rows: reportHistory, widths: [20,16,24,12,12,12,24,16,18,14,20,20,24] },
     { name: 'Notifications', rows: notifications, widths: [24,28,55,14,24] }
   ];
