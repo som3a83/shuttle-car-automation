@@ -251,7 +251,7 @@ All 30 current branches were enumerated. Diverged branches are not merged wholes
 7. Android emulator build/install/launch smoke testing passed in PR #24; broad screen-navigation testing on a physical Android device remains outstanding. No Play production signing claim is made.
 8. shuttle-control-v4.0.0.zip is retained. Its binary contents have not yet been unpacked and compared, so it is not marked unused or obsolete.
 9. No file or asset has been deleted based on lack of direct imports; dynamic/runtime use still needs review.
-10. All branches were reported as unprotected. Branch-protection write capability has not yet been applied/verified.
+10. The `main` ruleset exists but enforcement remains Disabled; `main` is not protected. Activating the ruleset still requires a repository administrator action.
 
 ## 9. Current validation status
 
