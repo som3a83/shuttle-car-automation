@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   __setBackendForTesting, __resetStorageForTesting, __closeForTesting, backup, get, getMode, getWithRevision, quarantineRecord, remove, restore, set,
-  StorageError, LegacyFallbackEngine, type BackupEnvelope, type StorageEngine, type StorageKey, type StorageMode,
+  StorageError, LegacyFallbackEngine, setStorageModePreference, STORAGE_MODE_KEY, type BackupEnvelope, type StorageEngine, type StorageKey, type StorageMode,
 } from '../index';
 
 class MemoryEngine implements StorageEngine {
@@ -130,6 +130,8 @@ describe('real IndexedDB storage behavior', { timeout: 20000 }, () => {
   beforeEach(async () => {
     __setBackendForTesting(null);
     __resetStorageForTesting();
+    localStorage.removeItem(STORAGE_MODE_KEY);
+    setStorageModePreference('auto');
     await __closeForTesting();
     await new Promise<void>((resolve) => {
       const request = indexedDB.deleteDatabase('shuttle-car-storage');
