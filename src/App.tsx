@@ -536,6 +536,14 @@ function App() {
         : 'Remove or reassign the registered battery before archiving this shuttle.');
       return;
     }
+    const hasOpenFault = activeFaults.some(item => item.shuttleId === id && item.status !== 'Resolved');
+    const hasOpenWork = activeJobs.some(item => item.shuttleId === id && item.status !== 'Completed');
+    if (hasOpenFault || hasOpenWork) {
+      showToast(language === 'ar'
+        ? 'أغلق الأعطال المفتوحة وأكمل أوامر الصيانة قبل أرشفة الجهاز'
+        : 'Resolve open fault reports and complete active work orders before archiving this shuttle.');
+      return;
+    }
     const archivedAt = new Date().toISOString();
     setShuttles(prev => prev.map(item => item.id === id ? { ...item, archivedAt } : item));
     const next = activeShuttles.find(item => item.id !== id);
@@ -546,6 +554,15 @@ function App() {
   };
 
   const restoreShuttle = (id: string) => {
+    const archived = shuttles.find(item => item.id === id && item.archivedAt);
+    if (!archived) return;
+    const serial = archived.serialNumber.trim().toLocaleLowerCase();
+    const duplicateSerial = serial && serial !== 'not recorded' &&
+      shuttles.some(item => item.id !== id && !item.archivedAt && item.serialNumber.trim().toLocaleLowerCase() === serial);
+    if (duplicateSerial) {
+      showToast(language === 'ar' ? 'لا يمكن الاستعادة: الرقم المسلسل مستخدم لجهاز نشط آخر' : 'Cannot restore: this manufacturer serial number belongs to another active shuttle.');
+      return;
+    }
     setShuttles(prev => prev.map(item => item.id === id ? { ...item, archivedAt: null } : item));
     setSelectedId(id);
     pushNotification(language === 'ar' ? 'تم استعادة جهاز' : 'Shuttle restored', id);
