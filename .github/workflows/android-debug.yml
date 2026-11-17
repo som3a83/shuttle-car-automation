@@ -51,8 +51,8 @@ jobs:
         run: |
           npm run check
           npm test
-          npm run build
           npm run assets:render
+          npm run build
 
       - name: Generate Android project and branded assets
         run: |
