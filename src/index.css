@@ -1,36 +1,14 @@
 
-/* Application customization center: accessible, local-device preferences. */
-.customization-center { margin-top: 16px; }
-.customization-center h2 { margin: 5px 0 0; font-size: 16px; }
-.customization-center > .choice-row { margin: 15px 0; }
-.customization-list { display: grid; gap: 8px; margin-top: 12px; }
-.customization-row { display: grid; grid-template-columns: minmax(160px,1.3fr) minmax(100px,.55fr) minmax(130px,.7fr) auto; gap: 12px; align-items: center; padding: 11px 12px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface-2); }
-.customization-copy { min-width: 0; display: grid; gap: 4px; }
-.customization-copy strong { font-size: 10px; }
-.customization-copy small,.customization-copy code { color: var(--muted); font-size: 9px; line-height: 1.5; }
-.custom-role { display: grid; gap: 5px; color: var(--muted); font-size: 9px; }
-.custom-role input,.custom-role select,.customization-add input,.customization-add select { width: 100%; min-width: 0; min-height: 36px; border: 1px solid var(--line-strong); border-radius: 7px; padding: 7px 9px; color: var(--text); background: var(--bg-2); }
-.customization-row .setting-toggle { margin: 0; border: 0; padding: 5px 0; }
-.customization-row .setting-toggle strong { font-size: 9px; }
-.custom-order { display: flex; gap: 5px; }
-.custom-order .btn-secondary { min-width: 34px; min-height: 32px; padding: 0 8px; }
-.customization-add { display: grid; grid-template-columns: 1.2fr 1fr .8fr auto; gap: 10px; align-items: end; margin-top: 14px; padding: 13px; border: 1px dashed var(--line-strong); border-radius: 9px; }
-.customization-add label { display: grid; gap: 6px; color: var(--muted); font-size: 9px; }
-.customization-add small { grid-column: 1/-1; color: var(--muted); font-size: 9px; }
-.customization-message { margin: 12px 0 0; color: var(--green); font-size: 10px; }
-.customization-audit { margin-top: 15px; padding-top: 12px; border-top: 1px solid var(--line); color: var(--muted); font-size: 10px; }
-.customization-audit summary { cursor: pointer; color: var(--text); font-weight: 700; }
-.customization-audit ol { display: grid; gap: 7px; padding-inline-start: 22px; line-height: 1.6; }
-.customization-audit time { color: var(--subtle); }
-@media (max-width: 760px) {
-  .customization-row { grid-template-columns: minmax(0,1fr) auto; gap: 8px; }
-  .customization-copy { grid-column: 1/-1; }
-  .custom-role { grid-column: 1; }
-  .customization-add { grid-template-columns: 1fr 1fr; }
-  .customization-add > button { min-height: 40px; }
+.customization-launcher { position: fixed; z-index: 20; right: 22px; bottom: 20px; display: inline-flex; align-items: center; gap: 8px; min-height: 42px; padding: 0 15px; border: 1px solid rgba(240,181,110,.48); border-radius: 999px; color: #20170f; background: linear-gradient(135deg,#efbd7a,#c7793c); box-shadow: 0 8px 26px rgba(0,0,0,.32); font-size: 11px; font-weight: 800; }
+.customization-launcher:hover { filter: brightness(1.08); transform: translateY(-2px); }
+.customization-overlay { position: fixed; z-index: 100; inset: 0; display: grid; place-items: center; padding: 18px; background: rgba(3,8,13,.78); backdrop-filter: blur(7px); }
+.customization-dialog { position: relative; width: min(1120px,100%); max-height: min(90vh,900px); overflow: auto; padding: 20px; border: 1px solid var(--line-strong); border-radius: 14px; color: var(--text); background: var(--bg); box-shadow: 0 24px 80px rgba(0,0,0,.5); }
+.customization-dialog-close { position: sticky; z-index: 4; top: 0; float: inline-end; width: 36px; height: 36px; margin: -8px -8px 0 8px; border: 1px solid var(--line-strong); border-radius: 8px; color: var(--text); background: var(--surface); font-size: 22px; }
+.customization-dialog .customization-center { clear: both; margin-top: 0; }
+@media (max-width: 640px) {
+  .customization-launcher { right: 12px; bottom: 76px; min-height: 40px; }
+  .customization-overlay { padding: 0; align-items: end; }
+  .customization-dialog { width: 100%; max-height: 94dvh; padding: 14px 10px 24px; border-radius: 16px 16px 0 0; }
 }
-@media (max-width: 480px) {
-  .customization-row { grid-template-columns: 1fr auto; }
-  .customization-add { grid-template-columns: 1fr; }
-  .customization-add small { grid-column: auto; }
-}
+.app-shell[dir="rtl"] ~ .customization-launcher { right: auto; left: 22px; }
+.app-shell[dir="rtl"] ~ .customization-overlay { direction: rtl; }
