@@ -112,9 +112,14 @@ jobs:
           disable-animations: true
           script: |
             set -euo pipefail
-            APK="android/app/build/outputs/apk/debug/app-debug.apk"
+            WORKSPACE="${GITHUB_WORKSPACE:?GITHUB_WORKSPACE is required}"
+            APK="$WORKSPACE/android/app/build/outputs/apk/debug/app-debug.apk"
+            EVIDENCE="$WORKSPACE/artifacts/android-smoke"
+            echo "Emulator script working directory: $PWD"
+            echo "Repository workspace: $WORKSPACE"
+            find "$WORKSPACE/android/app/build/outputs" -maxdepth 5 -type f -name '*.apk' -print
             test -s "$APK"
-            mkdir -p artifacts/android-smoke
+            mkdir -p "$EVIDENCE"
 
             adb wait-for-device
             BOOTED=""
@@ -125,27 +130,27 @@ jobs:
             done
             test "$BOOTED" = "1"
 
-            adb shell wm size | tee artifacts/android-smoke/display-size.txt
-            adb shell wm density | tee artifacts/android-smoke/display-density.txt
+            adb shell wm size | tee $EVIDENCE/display-size.txt
+            adb shell wm density | tee $EVIDENCE/display-density.txt
             adb install -r "$APK"
             adb logcat -c
             adb shell am force-stop com.shuttlecar.automation
-            adb shell am start -W -n com.shuttlecar.automation/.MainActivity | tee artifacts/android-smoke/launch-result.txt
-            grep -F "Status: ok" artifacts/android-smoke/launch-result.txt
+            adb shell am start -W -n com.shuttlecar.automation/.MainActivity | tee $EVIDENCE/launch-result.txt
+            grep -F "Status: ok" $EVIDENCE/launch-result.txt
 
             sleep 8
             APP_PID="$(adb shell pidof com.shuttlecar.automation | tr -d '\r' || true)"
             test -n "$APP_PID"
-            adb exec-out screencap -p > artifacts/android-smoke/android-app-screen.png
-            test -s artifacts/android-smoke/android-app-screen.png
-            adb shell dumpsys activity activities > artifacts/android-smoke/activities.txt
-            adb logcat -d -t 3000 > artifacts/android-smoke/device-logcat.txt
+            adb exec-out screencap -p > $EVIDENCE/android-app-screen.png
+            test -s $EVIDENCE/android-app-screen.png
+            adb shell dumpsys activity activities > $EVIDENCE/activities.txt
+            adb logcat -d -t 3000 > $EVIDENCE/device-logcat.txt
 
-            if grep -E "FATAL EXCEPTION|Process: com\.shuttlecar\.automation" artifacts/android-smoke/device-logcat.txt; then
+            if grep -E "FATAL EXCEPTION|Process: com\.shuttlecar\.automation" $EVIDENCE/device-logcat.txt; then
               echo "Android app crash signature found in device log."
               exit 1
             fi
-            grep -F "com.shuttlecar.automation/.MainActivity" artifacts/android-smoke/activities.txt
+            grep -F "com.shuttlecar.automation/.MainActivity" $EVIDENCE/activities.txt
             echo "Android emulator install, launch, foreground-process, screenshot, and crash-log checks passed."
 
       - name: Upload Android emulator evidence
@@ -153,7 +158,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: shuttle-android-emulator-evidence
-          path: artifacts/android-smoke/
+          path: $EVIDENCE/
           if-no-files-found: ignore
           retention-days: 14
 
