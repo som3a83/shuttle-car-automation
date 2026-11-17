@@ -311,7 +311,7 @@ export default function Shuttle3DViewer({
       const width = Math.max(1, host.clientWidth);
       const height = Math.max(1, host.clientHeight);
       renderer.setSize(width, height, false);
-      const frustumHeight = 5.4;
+      const frustumHeight = width < 640 ? 4.45 : 5.4;
       const aspect = width / height;
       camera.left = -frustumHeight * aspect;
       camera.right = frustumHeight * aspect;
@@ -438,7 +438,7 @@ export default function Shuttle3DViewer({
           <path d="M860 190 H890 M860 420 H890 M880 190 V420" markerStart="url(#shuttle-dim-arrow)" markerEnd="url(#shuttle-dim-arrow)"/>
         </g>
       </svg>
-      <div className="shuttle-dimension-label shuttle-dimension-length">6.60 MU · FRAME LENGTH</div>
+      <div className="shuttle-dimension-label shuttle-dimension-length">REF 660 × 310 mm · L × W</div>
       <div className="shuttle-dimension-label shuttle-dimension-width">3.10 MU · DECK WIDTH</div>
       <div className="shuttle-cad-stamp">ORTHOGRAPHIC / {view.toUpperCase()} / REF GEOMETRY</div>
       {status === 'Unknown' && <div className="three-viewer-unknown">EQUIPMENT STATE · UNKNOWN</div>}
