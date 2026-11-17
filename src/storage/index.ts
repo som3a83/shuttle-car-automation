@@ -2,7 +2,7 @@ import type {
   Language, Theme, Shuttle, Battery, Fault, MaintenanceJob,
   CommunicationEndpoint, NotificationItem, AppSettings, DailyReportSnapshot, ShiftRecord,
 } from '../types';
-import { resolveLegacyKey } from './adapters/legacyKeyResolver';
+import { resolveLegacyKey } from './adapters/legacyKeyResolver.ts';
 
 /** Local placeholders; align with existing domain types in 2B-2. */
 export interface LocalAccountRecord { id: string; [field: string]: unknown } // TODO: align with existing type in 2B-2
