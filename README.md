@@ -90,6 +90,20 @@ The release workflow enforces compile/target SDK 36, runs TypeScript/tests/build
 
 Vector source assets are stored in `assets/`. CI renders the 512 × 512 Play icon and 1024 × 500 feature graphic into the `shuttle-car-automation-store-artwork` artifact. Capture genuine screenshots from the tested release app; do not use mockups or generated screenshots as evidence of actual application behavior.
 
+## Local application customization
+
+The in-app **Customize** control opens a device-local presentation settings center. It can:
+
+- Enable or hide supported non-critical modules without deleting their data.
+- Change existing navigation labels in English and Arabic, groups, visibility and order.
+- Add or remove menu aliases that point only to an existing supported application route.
+- Show, hide, resize and reorder the supported dashboard widgets.
+- Restore default presentation preferences and review a local customization event list.
+
+The dashboard and desktop/mobile navigation consume these saved preferences. Core routes (Dashboard, Fleet and System Settings) cannot be hidden or disabled. Unknown routes and malformed preference values are discarded when settings are loaded.
+
+**Security and storage boundary:** these preferences and their event list are stored in local browser/WebView storage on the current device. They are editable by anyone with access to that device and are not an immutable audit trail, authentication mechanism or server-enforced role-based authorization. Hiding a menu item is presentation only; it does not secure the underlying data or route. The current application remains local-device recordkeeping software without a shared backend or authenticated server.
+
 ## Data storage and privacy
 
 The current version stores records in local browser/WebView storage on the current device. There is no shared cloud database, app-operated backend, authentication service, server-enforced RBAC or cross-device synchronization. The role selector is a UI preview only.
