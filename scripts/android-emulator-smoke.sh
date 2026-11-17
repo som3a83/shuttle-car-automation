@@ -27,7 +27,7 @@ adb shell am start -W -n com.shuttlecar.automation/.MainActivity | tee "$EVIDENC
 grep -F "Status: ok" "$EVIDENCE/launch-result.txt"
 
 # Allow the WebView and the verified local-storage bootstrap to finish on slower CI emulators.
-sleep 20
+sleep 25
 APP_PID="$(adb shell pidof com.shuttlecar.automation | tr -d '\r' || true)"
 if [[ -z "$APP_PID" ]]; then
   echo "::error::Application process exited after launch."
@@ -36,6 +36,8 @@ fi
 
 adb exec-out screencap -p > "$EVIDENCE/android-app-screen.png"
 test -s "$EVIDENCE/android-app-screen.png"
+adb shell uiautomator dump /sdcard/shuttle-window.xml >/dev/null 2>&1 || true
+adb pull /sdcard/shuttle-window.xml "$EVIDENCE/ui-hierarchy.xml" >/dev/null 2>&1 || true
 adb shell dumpsys activity activities > "$EVIDENCE/activities.txt"
 grep -F "com.shuttlecar.automation/.MainActivity" "$EVIDENCE/activities.txt"
 adb logcat -d -t 5000 > "$EVIDENCE/device-logcat.txt"
