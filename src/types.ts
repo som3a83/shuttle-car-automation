@@ -137,6 +137,8 @@ export interface MaintenanceJob {
   scheduledDate: string;
   technician: string;
   notes: string;
+  /** Recorded result required by the application completion workflow; optional for legacy backups. */
+  completionNotes?: string;
 }
 
 export interface NotificationItem {
