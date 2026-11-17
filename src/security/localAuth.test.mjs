@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  authenticateLocalAccount, createLocalAccount, endLocalSession, listLocalAccounts,
+  authenticateLocalAccount, changeLocalAccountPassword, createLocalAccount, endLocalSession,
+  listLocalAccounts, setLocalAccountDisabled, updateLocalAccount,
   LOCAL_AUTH_STORAGE_KEY, LOCAL_SESSION_STORAGE_KEY, localAccountRegistryError, readLocalSession
 } from './localAuth.ts';
 
@@ -92,3 +93,72 @@ test('corrupt account registry cannot be treated as first-run setup or overwritt
   await assert.rejects(() => createLocalAccount(account, storage), /unreadable/);
   assert.equal(storage.getItem(LOCAL_AUTH_STORAGE_KEY), '{not-json');
 });
+
+test('disabling an account blocks sign-in and revokes an existing device session', async () => {
+  const accountStorage = new MemoryStorage();
+  const sessions = new MemoryStorage();
+  const administrator = await createLocalAccount(account, accountStorage);
+  const operator = await createLocalAccount({
+    name: 'Local Operator', email: 'operator@example.local', username: 'operator',
+    role: 'Operator', password: 'A-different-long-passphrase-2026'
+  }, accountStorage);
+  const signedIn = await authenticateLocalAccount('operator', 'A-different-long-passphrase-2026', accountStorage, sessions);
+  assert.equal(signedIn.ok, true);
+  setLocalAccountDisabled(operator.id, true, { id: administrator.id, role: 'Super Admin' }, accountStorage);
+  assert.equal(readLocalSession(sessions, accountStorage), null);
+  assert.deepEqual(
+    await authenticateLocalAccount('operator', 'A-different-long-passphrase-2026', accountStorage, sessions),
+    { ok: false, reason: 'disabled' }
+  );
+});
+
+test('the last active Super Admin cannot be demoted or disabled', async () => {
+  const storage = new MemoryStorage();
+  const administrator = await createLocalAccount(account, storage);
+  const actor = { id: administrator.id, role: 'Super Admin' };
+  assert.throws(() => updateLocalAccount(administrator.id, { role: 'Admin' }, actor, storage), /last active Super Admin/i);
+  assert.throws(() => setLocalAccountDisabled(administrator.id, true, actor, storage), /cannot disable your own active session/i);
+  const secondAdmin = await createLocalAccount({
+    name: 'Second Admin', email: 'second-admin@example.local', username: 'second-admin',
+    role: 'Super Admin', password: 'Another-long-passphrase-2026'
+  }, storage);
+  setLocalAccountDisabled(secondAdmin.id, true, actor, storage);
+  assert.throws(() => setLocalAccountDisabled(administrator.id, true, { id: secondAdmin.id, role: 'Super Admin' }, storage), /cannot disable your own active session/i);
+});
+
+test('administrator password reset requires a new password on next sign-in', async () => {
+  const storage = new MemoryStorage();
+  const sessions = new MemoryStorage();
+  const administrator = await createLocalAccount(account, storage);
+  const operator = await createLocalAccount({
+    name: 'Local Operator', email: 'operator@example.local', username: 'operator',
+    role: 'Operator', password: 'A-different-long-passphrase-2026'
+  }, storage);
+  const temporaryPassword = 'Temporary-password-2026!';
+  const updated = await changeLocalAccountPassword(
+    operator.id, '', temporaryPassword, { id: administrator.id, role: 'Super Admin' }, storage
+  );
+  assert.equal(updated.mustChangePassword, true);
+  assert.equal((await authenticateLocalAccount('operator', 'A-different-long-passphrase-2026', storage, sessions)).ok, false);
+  const signIn = await authenticateLocalAccount('operator', temporaryPassword, storage, sessions);
+  assert.equal(signIn.ok, true);
+  if (!signIn.ok) return;
+  assert.equal(signIn.session.mustChangePassword, true);
+});
+
+test('password change invalidates a previous session by credential version', async () => {
+  const storage = new MemoryStorage();
+  const sessions = new MemoryStorage();
+  const created = await createLocalAccount(account, storage);
+  const signIn = await authenticateLocalAccount('admin', account.password, storage, sessions);
+  assert.equal(signIn.ok, true);
+  if (!signIn.ok) return;
+  const updatedPassword = 'A-new-and-strong-passphrase-2026!';
+  await changeLocalAccountPassword(
+    created.id, account.password, updatedPassword,
+    { id: created.id, role: 'Super Admin' }, storage
+  );
+  assert.equal(readLocalSession(sessions, storage), null);
+  assert.equal((await authenticateLocalAccount('admin', updatedPassword, storage, sessions)).ok, true);
+});
+
