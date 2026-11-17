@@ -116,6 +116,7 @@ def load_factory(spec: str):
         if spec_obj is None or spec_obj.loader is None:
             raise ValueError("Cannot load the configured adapter module.")
         module = importlib.util.module_from_spec(spec_obj)
+        sys.modules[spec_obj.name] = module
         spec_obj.loader.exec_module(module)
     else:
         module = importlib.import_module(module_name)
