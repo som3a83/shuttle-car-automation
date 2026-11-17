@@ -1,4 +1,5 @@
 import type { DailyReportSnapshot } from '../types';
+import { sanitizeSpreadsheetCell } from './csvSafety';
 
 export type DailyReportCsvRow = Array<string | number>;
 
@@ -34,6 +35,9 @@ export function buildDailyReportCsvRows(report: DailyReportSnapshot): DailyRepor
 
 export function buildDailyReportCsv(report: DailyReportSnapshot): string {
   return buildDailyReportCsvRows(report)
-    .map(row => row.map(value => '"' + String(value ?? '').replace(/"/g, '""') + '"').join(','))
+    .map(row => row.map(value => {
+      const safeValue = sanitizeSpreadsheetCell(value);
+      return '"' + String(safeValue ?? '').replace(/"/g, '""') + '"';
+    }).join(','))
     .join('\r\n');
 }
