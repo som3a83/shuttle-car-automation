@@ -35,7 +35,9 @@ export interface User {
 export interface Shuttle {
   /** Application-local identifier; not the manufacturer's serial number. */
   id: string;
-  manufacturer: 'Cassioli' | 'Craftsman' | 'ACME';
+  manufacturer: string;
+  /** Soft archive retains fault and maintenance history without showing the unit as active. */
+  archivedAt?: string | null;
   model: string;
   serialNumber: string;
   hardwareVersion: string;
@@ -55,6 +57,8 @@ export interface Shuttle {
 
 export interface Battery {
   id: string;
+  /** Soft archive preserves battery history and prevents accidental permanent data loss. */
+  archivedAt?: string | null;
   manufacturer: string;
   model: string;
   chemistry: string;
@@ -128,4 +132,35 @@ export interface AppSettings {
   maintenanceReminders: boolean;
   batteryAlerts: boolean;
   communicationAlerts: boolean;
+}
+
+
+export interface DailyReportSnapshot {
+  id: string;
+  reportDate: string;
+  generatedAt: string;
+  shuttleCount: number;
+  runningCount: number;
+  readyCount: number;
+  disconnectedCount: number;
+  openFaultCount: number;
+  openMaintenanceCount: number;
+  batteryCount: number;
+  faultedBatteryCount: number;
+  verifiedTelemetryCount: number;
+  shuttles: Array<{
+    id: string;
+    manufacturer: string;
+    status: ShuttleStatus;
+    connectivity: ConnectivityStatus;
+    warehouseZone: string;
+  }>;
+  batteries: Array<{
+    id: string;
+    manufacturer: string;
+    status: Battery['status'];
+    assignment: string;
+    soc: number | null;
+    connectionMode: ConnectivityStatus;
+  }>;
 }
