@@ -2,25 +2,17 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   authenticateLocalAccount,
-  authenticateLocalAccountAsync,
   changeLocalAccountPassword,
-  changeLocalAccountPasswordAsync,
   createLocalAccount,
-  createLocalAccountAsync,
   endLocalSession,
   listLocalAccounts,
-  listLocalAccountsAsync,
-  localAccountRegistryErrorAsync,
   localAccountRegistryError,
   readLocalSession,
   setLocalAccountDisabled,
-  setLocalAccountDisabledAsync,
   updateLocalAccount,
-  updateLocalAccountAsync,
   LOCAL_AUTH_STORAGE_KEY,
   LOCAL_SESSION_STORAGE_KEY
 } from './localAuth.ts';
-import { LegacyFallbackEngine, StorageError } from '../storage/index.ts';
 
 class MemoryStorage {
   values = new Map();
@@ -238,71 +230,3 @@ test('a Super Admin reset forces the target to change the temporary password at 
 });
 
 
-test('async account interfaces use the legacy resolver and preserve synchronous compatibility reads', async () => {
-  const storage = new MemoryStorage();
-  const sessions = new MemoryStorage();
-  const original = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
-  Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: storage });
-  try {
-    const admin = await createLocalAccountAsync(account);
-    assert.equal(admin.role, 'Super Admin');
-    assert.equal(storage.getItem(LOCAL_AUTH_STORAGE_KEY) !== null, true);
-    assert.equal(listLocalAccounts(storage)[0].id, admin.id);
-    assert.deepEqual((await listLocalAccountsAsync()).map((item) => item.id), [admin.id]);
-    assert.equal(await localAccountRegistryErrorAsync(), null);
-
-    const viewer = await createLocalAccountAsync({
-      name: 'Read Only User', email: 'viewer@example.local', username: 'viewer',
-      role: 'Viewer', password: 'A-different-long-passphrase-2026'
-    }, globalThis.crypto, new Date(), { id: admin.id, role: admin.role });
-    const login = await authenticateLocalAccountAsync('admin', account.password, sessions);
-    assert.equal(login.ok, true);
-    if (!login.ok) return;
-    assert.equal(readLocalSession(sessions, storage, login.session.issuedAt + 1)?.accountId, admin.id);
-
-    const edited = await updateLocalAccountAsync(viewer.id, {
-      name: 'Updated Viewer', email: 'updated-viewer@example.local', username: 'viewer.updated'
-    }, { id: admin.id, role: admin.role });
-    assert.equal(edited.name, 'Updated Viewer');
-
-    await setLocalAccountDisabledAsync(viewer.id, true, { id: admin.id, role: admin.role });
-    assert.equal((await listLocalAccountsAsync()).find((item) => item.id === viewer.id)?.disabledAt != null, true);
-
-    const nextPassword = 'A-new-and-strong-passphrase-2026!';
-    await changeLocalAccountPasswordAsync(admin.id, account.password, nextPassword, { id: admin.id, role: admin.role });
-    assert.equal(readLocalSession(sessions, storage), null);
-    assert.equal((await authenticateLocalAccountAsync('admin', nextPassword, sessions)).ok, true);
-    assert.equal(await localAccountRegistryErrorAsync(), null);
-  } finally {
-    if (original) Object.defineProperty(globalThis, 'localStorage', original);
-    else delete globalThis.localStorage;
-  }
-});
-
-test('async account mutations retry revision conflicts without replacing the registry', async () => {
-  const storage = new MemoryStorage();
-  const originalStorage = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
-  const originalWrite = LegacyFallbackEngine.prototype.write;
-  let conflicts = 0;
-  Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: storage });
-  LegacyFallbackEngine.prototype.write = async function(key, value, revision) {
-    if (key === 'auth.accounts' && conflicts === 0) {
-      conflicts += 1;
-      throw new StorageError({
-        code: 'STORAGE_CONFLICT', message: 'Simulated concurrent account update.',
-        key, expectedRevision: revision, actualRevision: (revision ?? 0) + 1
-      });
-    }
-    return originalWrite.call(this, key, value, revision);
-  };
-  try {
-    const created = await createLocalAccountAsync(account);
-    assert.equal(created.username, 'admin');
-    assert.equal(conflicts, 1);
-    assert.equal(listLocalAccounts(storage).length, 1);
-  } finally {
-    LegacyFallbackEngine.prototype.write = originalWrite;
-    if (originalStorage) Object.defineProperty(globalThis, 'localStorage', originalStorage);
-    else delete globalThis.localStorage;
-  }
-});

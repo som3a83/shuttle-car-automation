@@ -5,8 +5,19 @@ export const LOCAL_SESSION_STORAGE_KEY = 'shuttle-car-automation-v1:session';
 export const LOCAL_AUTH_ITERATIONS = 210_000;
 const SESSION_TTL_MS = 8 * 60 * 60 * 1000;
 // 2B-3b remains on the approved legacy mode while App.tsx still has synchronous
-// compatibility reads. Bootstrap integration will own runtime engine selection.
-const asyncAuthEngine = new LegacyFallbackEngine();
+// compatibility reads. Load storage only when an async account API is used,
+// keeping native Node consumers of the synchronous compatibility API isolated.
+type AsyncAuthEngine = import('../storage/index.ts').StorageEngine;
+let asyncAuthEnginePromise: Promise<AsyncAuthEngine> | null = null;
+
+async function getAsyncAuthEngine(): Promise<AsyncAuthEngine> {
+  if (!asyncAuthEnginePromise) {
+    asyncAuthEnginePromise = import('../storage/index.ts').then(
+      ({ LegacyFallbackEngine }) => new LegacyFallbackEngine()
+    );
+  }
+  return asyncAuthEnginePromise;
+}
 const ALLOWED_ROLES: readonly Role[] = ['Super Admin', 'Admin', 'Supervisor', 'Maintenance Engineer', 'Technician', 'Operator', 'Viewer'];
 
 export interface LocalAccountInput {
@@ -377,7 +388,8 @@ async function withAsyncAccountStorage<T>(
   operation: (storage: AuthStorage) => T | Promise<T>
 ): Promise<T> {
   for (let attempt = 0; attempt < 3; attempt += 1) {
-    const current = await asyncAuthEngine.read('auth.accounts');
+    const engine = await getAsyncAuthEngine();
+    const current = await engine.read('auth.accounts');
     const storage = new MemoryAuthStorage();
     if (current) storage.setItem(LOCAL_AUTH_STORAGE_KEY, JSON.stringify(current.value));
     const before = storage.getItem(LOCAL_AUTH_STORAGE_KEY);
@@ -390,7 +402,7 @@ async function withAsyncAccountStorage<T>(
     catch { throw new Error('Local account registry could not be serialized safely.'); }
 
     try {
-      await asyncAuthEngine.write('auth.accounts', accounts, current?.revision ?? 0);
+      await engine.write('auth.accounts', accounts, current?.revision ?? 0);
       return result;
     } catch (reason) {
       if (!isRevisionConflict(reason)) throw reason;
@@ -402,7 +414,8 @@ async function withAsyncAccountStorage<T>(
 
 /** Async account read for components moving to the backend storage layer. */
 export async function listLocalAccountsAsync(): Promise<LocalAccountSummary[]> {
-  const current = await asyncAuthEngine.read('auth.accounts');
+  const engine = await getAsyncAuthEngine();
+  const current = await engine.read('auth.accounts');
   if (!current) return [];
   const storage = new MemoryAuthStorage();
   storage.setItem(LOCAL_AUTH_STORAGE_KEY, JSON.stringify(current.value));
