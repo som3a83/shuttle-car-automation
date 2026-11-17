@@ -859,6 +859,7 @@ function App() {
                <p className="muted-text">{t.localChanges}</p></>
                : <div className="empty-state">{language==='ar'?'لا توجد أجهزة نشطة. أعد جهازًا من الأرشيف أو سجل جهازًا جديدًا.':'No active units. Restore one from the archive or register a new unit.'}</div>}
            </div>
+         </div>
         <div className="surface-card add-asset-card"><div className="card-head"><div><span className="eyebrow">REGISTER NEW EQUIPMENT</span><h3>{language==='ar'?'إضافة جهاز إلى الأسطول':'Register a shuttle unit'}</h3></div><Icon name="plus" size={20}/></div>
           <form className="form-grid" onSubmit={addShuttle}>
             <label>{t.manufacturer}<select value={newAsset.manufacturer} onChange={e=>setNewAsset({...newAsset,manufacturer:e.target.value})}><option>Cassioli</option><option>Craftsman</option><option>ACME</option><option>Other</option></select></label>
