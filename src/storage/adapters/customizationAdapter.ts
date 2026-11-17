@@ -1,10 +1,12 @@
 import {
   CUSTOMIZATION_LEGACY_KEY_MAP,
+  importDefaultForMissing,
   importMappedLegacyKey,
   type AdapterResult,
   type LegacyReadStorage
 } from './legacyKeyMap';
 import {
+  DEFAULT_CUSTOMIZATION,
   validateCustomization,
   type AuditEntry,
   type CustomizationConfig
@@ -60,19 +62,22 @@ export async function importCustomizationData(
    * This adapter alone cannot guarantee atomicity because the underlying
    * storage API does not support multi-key transactions across keys.
    */
-  const config = await importMappedLegacyKey(
+  const configResult = await importMappedLegacyKey(
     CUSTOMIZATION_LEGACY_KEY_MAP.config.legacyKey,
     isCustomizationConfig,
     legacyStorage,
     (value) => validateCustomization(value),
     'customization'
   );
-  const audit = await importMappedLegacyKey(
+  const auditResult = await importMappedLegacyKey(
     CUSTOMIZATION_LEGACY_KEY_MAP.audit.legacyKey,
     isCustomizationAudit,
     legacyStorage,
     undefined,
     'customization'
   );
-  return [config, audit];
+  return [
+    await importDefaultForMissing(configResult, DEFAULT_CUSTOMIZATION),
+    await importDefaultForMissing(auditResult, [])
+  ];
 }
