@@ -14,7 +14,22 @@ const testCrypto = webcrypto as unknown as Crypto;
 function readTestValue<T>(key: string, fallback: T): T {
   try {
     const raw = window.localStorage.getItem(`shuttle-car-automation-v7:${key}`);
-    return raw === null ? fallback : JSON.parse(raw) as T;
+    if (raw === null) return fallback;
+    const parsed: unknown = JSON.parse(raw);
+    if (key === 'shuttles' && Array.isArray(parsed)) {
+      return parsed.map((value) => {
+        if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
+        const shuttle = value as { model?: string; serialNumber?: string; connectivity?: string; status?: string; operatingHours?: number | null; operatingCycles?: number | null };
+        const placeholder = shuttle.model === 'Not recorded' && shuttle.serialNumber === 'Not recorded' &&
+          shuttle.connectivity === 'UNKNOWN' && shuttle.status === 'Unknown';
+        return placeholder ? {
+          ...shuttle,
+          operatingHours: shuttle.operatingHours === 0 ? null : shuttle.operatingHours,
+          operatingCycles: shuttle.operatingCycles === 0 ? null : shuttle.operatingCycles
+        } : shuttle;
+      }) as T;
+    }
+    return parsed as T;
   } catch {
     return fallback;
   }

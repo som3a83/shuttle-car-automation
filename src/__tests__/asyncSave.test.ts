@@ -16,7 +16,7 @@ describe('2B-3c asynchronous operational saves', () => {
     const storage = new MemoryStorage();
     const result = await persistOperationalSnapshot('language', 'ar', storage);
     expect(result.revision).toBe(1);
-    expect(result.checksum).toMatch(/^[a-f0-9]{8}$/);
+    expect(result.checksum).toMatch(/^[a-f0-9]{64}$/);
     expect(storage.getItem(`${OPERATIONAL_PREFIX}verified:language`)).not.toBeNull();
   });
 
