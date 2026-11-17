@@ -1,7 +1,29 @@
-import { importMappedLegacyKey, OPERATIONAL_LEGACY_KEY_MAP, type AdapterResult, type LegacyReadStorage } from './legacyKeyMap';
+import { importDefaultForMissing, importMappedLegacyKey, OPERATIONAL_LEGACY_KEY_MAP, type AdapterResult, type LegacyReadStorage } from './legacyKeyMap';
 import type { AppSettings, Language, Theme } from '../../types';
 
 type OperationalLegacyKey = (typeof OPERATIONAL_LEGACY_KEY_MAP)[number]['legacyKey'];
+
+const OPERATIONAL_DEFAULTS: Record<OperationalLegacyKey, unknown> = {
+  'shuttle-car-automation-v7:language': 'en',
+  'shuttle-car-automation-v7:theme': 'light',
+  'shuttle-car-automation-v7:sidebarCollapsed': false,
+  'shuttle-car-automation-v7:shuttles': [],
+  'shuttle-car-automation-v7:batteries': [],
+  'shuttle-car-automation-v7:faults': [],
+  'shuttle-car-automation-v7:maintenance': [],
+  'shuttle-car-automation-v7:connections': [],
+  'shuttle-car-automation-v7:notifications': [],
+  'shuttle-car-automation-v7:settings': {
+    language: 'en',
+    theme: 'light',
+    notificationsEnabled: true,
+    maintenanceReminders: true,
+    batteryAlerts: true,
+    communicationAlerts: true
+  } satisfies AppSettings,
+  'shuttle-car-automation-v7:dailyReports': [],
+  'shuttle-car-automation-v7:shifts': []
+};
 
 const ARRAY_COLLECTIONS = new Set([
   'shuttles', 'batteries', 'faults', 'maintenance', 'connections',
@@ -64,13 +86,14 @@ export async function importOperationalKey(
   legacyKey: OperationalLegacyKey,
   legacyStorage: LegacyReadStorage = globalThis.localStorage
 ): Promise<AdapterResult> {
-  return importMappedLegacyKey(
+  const result = await importMappedLegacyKey(
     legacyKey,
     (value): value is unknown => isOperationalValue(legacyKey, value),
     legacyStorage,
     undefined,
     'operational'
   );
+  return importDefaultForMissing(result, OPERATIONAL_DEFAULTS[legacyKey]);
 }
 
 /** Imports the twelve operational compatibility keys in a deterministic order. */
