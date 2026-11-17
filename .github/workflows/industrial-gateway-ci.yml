@@ -37,7 +37,7 @@ jobs:
           python-version: "3.12"
       - name: Compile gateway source
         working-directory: industrial-gateway
-        run: python -m py_compile gateway.py test_gateway.py
+        run: python -m py_compile gateway.py adapter_contract.py adapter_runner.py test_gateway.py test_adapter_runner.py
       - name: Run gateway validation tests
         working-directory: industrial-gateway
         run: python -m unittest -v
