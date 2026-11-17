@@ -275,7 +275,10 @@ export async function resolveOperationalRecovery(
   if (legacyRaw !== null && source !== 'legacy') quarantineRaw(storage, legacyKey, legacyRaw);
 
   let saved: { revision: number; checksum: string };
-  if (source === 'previous') {
+  if (source === 'primary') {
+    if (snapshot.primary.status !== 'valid') throw new Error('The verified primary candidate is no longer available.');
+    saved = { revision: snapshot.primary.envelope.revision, checksum: snapshot.primary.envelope.checksum };
+  } else if (source === 'previous') {
     const restored = await engine.restorePrevious();
     if (restored.status !== 'recovered') throw new Error('The previous snapshot could not be restored.');
     saved = { revision: restored.revision, checksum: snapshot.previous.status === 'valid' ? snapshot.previous.envelope.checksum : '' };
