@@ -15,6 +15,7 @@ The recursive main tree returned 118 entries including directories (106 files an
 ## 2. Repository integration state
 
 - PR #23 — local identity, permission gates, audit integrity and recoverable storage — **merged** into `main` at `f7574cf5db3cfa636d0dae957e1b254cea68b369`.
+- PR #24 — Android emulator KVM access and smoke-test script correction — **merged** into `main` at `28eeca047863d39b1126a1e3116640ac791f65f2`.
 - PR #22 — read-only industrial telemetry gateway and app client — merged.
 - PR #21 — industrial UI customization — merged.
 - PR #20 — commissioning baseline and five-asset register — merged.
