@@ -49,13 +49,15 @@ The workflow does not upload to Google Play automatically. Review the artifact a
 
 ## 5. Store listing and policy
 Before submission:
-1. Use this publicly accessible policy URL in Play Console for the current public feature branch: https://github.com/som3a83/shuttle-car-automation/blob/main/PRIVACY_POLICY.md. Use this public privacy-policy URL in Play Console: https://github.com/som3a83/shuttle-car-automation/blob/main/PRIVACY_POLICY.md.
+1. Use this public privacy-policy URL in Play Console: https://github.com/som3a83/shuttle-car-automation/blob/main/PRIVACY_POLICY.md.
 2. Review the privacy summary shown inside the application.
 3. Prepare store listing text from `STORE_LISTING.md`.
-4. Provide a 512 × 512 PNG icon, 1024 × 500 feature graphic and genuine screenshots of the final application.
-5. Complete content rating, Data safety, target audience, app access, advertising and distribution declarations truthfully.
-6. Test the signed release on physical Android devices and on supported screen sizes.
-7. Review the generated AAB with Play Console's App Bundle Explorer before production rollout.
+4. Provide a 512 × 512 PNG app icon and a 1024 × 500 JPEG or 24-bit PNG feature graphic (no alpha channel).
+5. Set the publisher's valid support email and contact details in Play Console; the publisher must supply these details.
+6. Complete content rating, Data safety, target audience, app access, advertising and distribution declarations truthfully.
+7. Capture genuine phone screenshots from the final signed release; add tablet screenshots if tablet support is advertised.
+8. Test the signed release on physical Android devices and on supported screen sizes.
+9. Review the generated AAB with Play Console's App Bundle Explorer before production rollout.
 
 ## 6. Current application scope
 The current application is a local, single-device recordkeeping prototype. It has no shared cloud database, real user authentication, server-enforced roles, AI service, live PLC/telemetry connection or physical shuttle control. Do not advertise those capabilities. Industrial connectivity must remain read-only until vendor documentation, authorization and safety review are completed.
