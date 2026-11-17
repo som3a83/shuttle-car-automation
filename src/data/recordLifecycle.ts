@@ -14,6 +14,9 @@ export function archiveFaultRecord(
 ): LifecycleResult<Fault> {
   const current = faults.find((item) => item.id === id && !item.archivedAt);
   if (!current) return { records: faults, changed: false, message: 'Fault record was not found or is already archived.' };
+  if (current.status !== 'Resolved') {
+    return { records: faults, changed: false, message: 'Only resolved fault records can be archived.' };
+  }
   return {
     records: faults.map((item) => item.id === id ? { ...item, archivedAt: timestamp } : item),
     changed: true
