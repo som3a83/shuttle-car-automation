@@ -189,7 +189,6 @@ export default function Battery3DViewer({ battery, fallback }: Battery3DViewerPr
     let frame = 0;
     const animate = () => {
       frame = window.requestAnimationFrame(animate);
-      root.rotation.y += 0.0008;
       renderer.render(scene, camera);
     };
     animate();
