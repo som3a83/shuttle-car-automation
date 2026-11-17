@@ -675,8 +675,8 @@ function App() {
       runningCount: activeShuttles.filter(item => item.status === 'Running').length,
       readyCount: activeShuttles.filter(item => item.status === 'Ready').length,
       disconnectedCount: activeShuttles.filter(item => item.connectivity !== 'REAL').length,
-      openFaultCount: faults.filter(item => item.status !== 'Resolved').length,
-      openMaintenanceCount: jobs.filter(item => item.status !== 'Completed').length,
+      openFaultCount: activeFaults.filter(item => item.status !== 'Resolved').length,
+      openMaintenanceCount: activeJobs.filter(item => item.status !== 'Completed').length,
       batteryCount: activeBatteries.length,
       faultedBatteryCount: activeBatteries.filter(item => item.status === 'Fault').length,
       verifiedTelemetryCount: activeShuttles.filter(item => item.connectivity === 'REAL').length + activeBatteries.filter(item => item.connectionMode === 'REAL').length,
@@ -936,7 +936,8 @@ function App() {
       ...shuttles.map(s => ['Shuttle',s.id,s.manufacturer,s.status,s.connectivity,s.notes]),
       ...batteries.map(b => ['Battery',b.id,b.manufacturer,b.status,b.connectionMode,b.notes]),
       ...faults.map(f => ['Fault',f.id,f.shuttleId,f.status,f.severity,f.description]),
-      ...jobs.map(j => ['Maintenance',j.id,j.shuttleId,j.status,j.type,j.notes])];
+      ...jobs.map(j => ['Maintenance',j.id,j.shuttleId,j.status,j.type,j.notes]),
+      ...connections.map(endpoint => ['Connection',endpoint.name,endpoint.protocol,endpoint.mode,'Local register only',endpoint.notes])];
     const csv = rows.map(row => row.map(value => '"' + String(value ?? '').replace(/"/g,'""') + '"').join(',')).join('\r\n');
     const url = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }));
     const link = document.createElement('a'); link.href = url; link.download = 'shuttle-register.csv'; link.click(); URL.revokeObjectURL(url);
@@ -960,7 +961,7 @@ function App() {
   };
 
   const exportBackup = () => {
-    const data = { schemaVersion: 10, exportedAt: new Date().toISOString(), warning: 'Local demo/record data only. Not a live PLC telemetry export.', shuttles, batteries, faults, jobs, connections, notifications, settings, dailyReports, shifts };
+    const data = { schemaVersion: 11, exportedAt: new Date().toISOString(), warning: 'Local demo/record data only. Not a live PLC telemetry export.', shuttles, batteries, faults, jobs, connections, notifications, settings, dailyReports, shifts };
     const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
     const link = document.createElement('a'); link.href = url; link.download = 'shuttle-local-backup.json'; link.click(); URL.revokeObjectURL(url);
   };
@@ -1091,7 +1092,7 @@ function App() {
             </>}
             {widget.id === 'faults' && <>
               <div className="card-head"><div><span className="eyebrow">RELIABILITY</span><h3>{language === 'ar' ? 'الأعطال المفتوحة' : 'Open fault records'}</h3></div><button className="icon-button" onClick={() => go('faults')}><Icon name="arrow"/></button></div>
-              {faults.filter((fault) => fault.status !== 'Resolved').length === 0 ? <p className="muted-text">{t.noFaults}</p> : faults.filter((fault) => fault.status !== 'Resolved').slice(0, 4).map((fault) => <div className="dashboard-record-row" key={fault.id}><strong>{fault.id}</strong><span>{fault.shuttleId} · {fault.title}</span><StatusPill status={fault.status} language={language}/><small>{fault.severity}</small></div>)}
+              {activeFaults.filter((fault) => fault.status !== 'Resolved').length === 0 ? <p className="muted-text">{t.noFaults}</p> : activeFaults.filter((fault) => fault.status !== 'Resolved').slice(0, 4).map((fault) => <div className="dashboard-record-row" key={fault.id}><strong>{fault.id}</strong><span>{fault.shuttleId} · {fault.title}</span><StatusPill status={fault.status} language={language}/><small>{fault.severity}</small></div>)}
             </>}
             {widget.id === 'maintenance' && <>
               <div className="card-head"><div><span className="eyebrow">SERVICE</span><h3>{language === 'ar' ? 'قائمة الصيانة' : 'Maintenance queue'}</h3></div><button className="icon-button" onClick={() => go('maintenance')}><Icon name="arrow"/></button></div>
@@ -1453,8 +1454,8 @@ function App() {
         </div>
         <div className="report-metrics">
           <Metric icon="truck" label={language==='ar'?'الأجهزة النشطة':'Active shuttles'} value={activeShuttles.length} accent="blue"/>
-          <Metric icon="alert" label={language==='ar'?'الأعطال المفتوحة':'Open faults'} value={faults.filter(f=>f.status!=='Resolved').length} accent="red"/>
-          <Metric icon="wrench" label={language==='ar'?'أوامر صيانة مفتوحة':'Open work orders'} value={jobs.filter(j=>j.status!=='Completed').length} accent="amber"/>
+          <Metric icon="alert" label={language==='ar'?'الأعطال المفتوحة':'Open faults'} value={activeFaults.filter(f=>f.status!=='Resolved').length} accent="red"/>
+          <Metric icon="wrench" label={language==='ar'?'أوامر صيانة مفتوحة':'Open work orders'} value={activeJobs.filter(j=>j.status!=='Completed').length} accent="amber"/>
           <Metric icon="battery" label={language==='ar'?'البطاريات النشطة':'Active batteries'} value={activeBatteries.length} accent="cyan"/>
         </div>
         {dailyReports[0] && <div className="surface-card latest-report-card">
