@@ -92,7 +92,17 @@ The current version stores records in local browser/WebView storage on the curre
 
 Exported JSON, CSV and XLSX files may include equipment information, staff names and operational notes. Protect exported files and the device. Local browser storage is not application-level encryption; do not enter passwords, API keys or highly sensitive secrets.
 
-See [PRIVACY_POLICY.md](PRIVACY_POLICY.md) for the current data handling notice.
+See [PRIVACY_POLICY.md](PRIVACY_POLICY.md) for the current data handling notice. The publicly reachable policy page for the current branch is: https://github.com/som3a83/shuttle-car-automation/blob/copilot/complete-shuttle-automation-v6/PRIVACY_POLICY.md.
+
+## Repository security
+
+- [Security policy](SECURITY.md) defines private vulnerability reporting.
+- [GitHub security setup](GITHUB_SECURITY_SETUP.md) documents the required `main` branch protection, security alerts, push protection and Actions permission settings.
+- Dependabot is configured for weekly npm and GitHub Actions updates.
+- CodeQL, Gitleaks and dependency-review workflows run on their configured push/PR/scheduled events.
+- The app includes local-only data handling disclosures in System Settings.
+
+**Important:** GitHub branch protection and repository Security settings are controlled in GitHub Settings, not by these source files. Apply the one-time settings in [GITHUB_SECURITY_SETUP.md](GITHUB_SECURITY_SETUP.md) and verify that GitHub reports `main` as protected.
 
 ## Industrial connectivity and safety boundaries
 
