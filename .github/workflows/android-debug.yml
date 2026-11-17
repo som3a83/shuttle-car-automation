@@ -82,6 +82,22 @@ jobs:
         working-directory: android
         run: ./gradlew --no-daemon assembleDebug
 
+      - name: Enable Android emulator hardware acceleration
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! -e /dev/kvm ]]; then
+            echo "::error::The GitHub Actions runner does not expose /dev/kvm; accelerated Android emulator testing is unavailable."
+            exit 1
+          fi
+          echo "Runner identity: $(id)"
+          ls -l /dev/kvm
+          sudo chmod 666 /dev/kvm
+          test -r /dev/kvm
+          test -w /dev/kvm
+          echo "KVM access enabled for the ephemeral CI runner."
+          ls -l /dev/kvm
+
       - name: Install and launch APK in Android emulator
         uses: reactivecircus/android-emulator-runner@v2
         timeout-minutes: 18
