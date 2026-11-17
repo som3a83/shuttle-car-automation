@@ -36,7 +36,8 @@
     "@capacitor/cli": "^8.6.2",
     "@types/three": "^0.180.0",
     "@capacitor/assets": "4.0.0",
-    "@resvg/resvg-js": "2.6.2"
+    "@resvg/resvg-js": "2.6.2",
+    "fake-indexeddb": "^6.2.5"
   },
   "overrides": {
     "csstype": "3.2.3"
