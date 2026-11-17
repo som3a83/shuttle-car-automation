@@ -1401,7 +1401,44 @@ function App() {
         <p className="muted-text">{language==='ar'?'لا يمكن أرشفة أمر صيانة غير مكتمل؛ أكمل العمل أولًا حتى لا يختفي من قائمة التشغيل.':'Unfinished work orders cannot be archived; complete the work first so active tasks cannot disappear from the queue.'}</p>
       </section>}
 
-      {activeTab === 'connections' && <section className="page-content"><PageIntro eyebrow="INDUSTRIAL NETWORK / INTEGRATION" title={language==='ar'?'معمارية الاتصال بالمعدات':'Device integration architecture'} subtitle={t.connectionSub}/><div className="protocol-grid">{initialConnections.map((c,i)=><div className="surface-card protocol-card" key={c.name}><div className="protocol-icon"><Icon name="network" size={23}/></div><div className="protocol-index">0{i+1}</div><h3>{c.protocol}</h3><strong>{c.name}</strong><p>{c.notes}</p><div className="protocol-footer"><StatusPill status={c.mode} language={language}/><span>{t.notConfigured}</span></div></div>)}</div><div className="notice-inline"><Icon name="alert"/>{language==='ar'?'قبل تفعيل أي اتصال: يلزم دليل المصنع، وخريطة العناوين، وبيانات الشبكة، وتصريح فني. البداية قراءة فقط.':'Before enabling a connection: obtain vendor interface manuals, register/address maps, network details and engineering authorization. Begin read-only.'}</div></section>}
+      {activeTab === 'connections' && <section className="page-content">
+        <PageIntro eyebrow="INDUSTRIAL NETWORK / INTEGRATION REGISTER" title={language==='ar'?'سجل واجهات الاتصال':'Device integration register'} subtitle={language==='ar'?'إدارة سجلات واجهات الاتصال والبروتوكولات المطلوبة قبل التكليف الفني. لا يتم إنشاء اتصال فعلي من هذه الشاشة.':'Maintain the interface and protocol register required before engineering commissioning. This screen does not create a live connection.'}/>
+        <div className="protocol-grid">
+          {activeConnections.map((endpoint,index)=><article className="surface-card protocol-card" key={endpoint.name}>
+            <div className="protocol-icon"><Icon name="network" size={23}/></div>
+            <div className="protocol-index">{String(index+1).padStart(2,'0')}</div>
+            {editingConnectionName===endpoint.name
+              ? <form className="stack-form record-edit-form" onSubmit={event=>saveConnectionEdit(event,endpoint.name)}>
+                  <label>{language==='ar'?'اسم نقطة الاتصال':'Connection name'}<input name="name" defaultValue={endpoint.name} required/></label>
+                  <label>Protocol<select name="protocol" defaultValue={endpoint.protocol}><option>Modbus TCP</option><option>OPC UA</option><option>MQTT</option><option>REST API</option><option>WebSocket</option><option>BLE</option></select></label>
+                  <label>{t.notes}<textarea name="notes" defaultValue={endpoint.notes}/></label>
+                  <div className="record-actions"><button className="btn-primary" type="submit">{language==='ar'?'حفظ':'Save'}</button><button className="btn-secondary" type="button" onClick={()=>setEditingConnectionName(null)}>{t.cancel}</button></div>
+                </form>
+              : <>
+                  <h3>{endpoint.protocol}</h3>
+                  <strong>{endpoint.name}</strong>
+                  <p>{endpoint.notes}</p>
+                  <div className="protocol-footer"><StatusPill status="UNKNOWN" language={language}/><span>{language==='ar'?'غير مهيأ — للقراءة فقط بعد التكليف':'Not configured · read-only after commissioning'}</span></div>
+                  <div className="record-actions"><button className="btn-secondary" onClick={()=>setEditingConnectionName(endpoint.name)}>{language==='ar'?'تعديل السجل':'Edit record'}</button><button className="btn-danger" onClick={()=>{if(window.confirm(language==='ar'?'أرشفة سجل الاتصال؟':'Archive this connection register entry?')) archiveConnection(endpoint.name);}}>{language==='ar'?'أرشفة':'Archive'}</button></div>
+                </>}
+          </article>)}
+          {activeConnections.length===0&&<div className="surface-card empty-state">{language==='ar'?'لا توجد نقاط اتصال نشطة. أضف سجلًا من النموذج أدناه.':'No active connection records. Add one using the form below.'}</div>}
+        </div>
+        <div className="surface-card add-asset-card">
+          <div className="card-head"><div><span className="eyebrow">REGISTER INTERFACE / NEW</span><h3>{language==='ar'?'إضافة سجل اتصال':'Add connection record'}</h3></div><Icon name="plus" size={20}/></div>
+          <form className="form-grid" onSubmit={addConnection}>
+            <label>{language==='ar'?'اسم نقطة الاتصال':'Connection name'}<input name="name" required placeholder="Approved vendor gateway / PLC interface"/></label>
+            <label>Protocol<select name="protocol"><option>Modbus TCP</option><option>OPC UA</option><option>MQTT</option><option>REST API</option><option>WebSocket</option><option>BLE</option></select></label>
+            <label>{t.notes}<input name="notes" placeholder={language==='ar'?'الموديل، الواجهة المعتمدة، مرجع المستند':'Exact model, approved interface and document reference'}/></label>
+            <button className="btn-primary" type="submit">{language==='ar'?'حفظ سجل الاتصال':'Save connection record'}</button>
+          </form>
+        </div>
+        <div className="surface-card archive-panel">
+          <button className="text-button" type="button" onClick={()=>setShowArchivedConnections(value=>!value)}>{showArchivedConnections?(language==='ar'?'إخفاء أرشيف الاتصالات':'Hide connection archive'):(language==='ar'?'عرض سجلات الاتصال المؤرشفة':'Show archived connection records')} · {archivedConnections.length}</button>
+          {showArchivedConnections&&archivedConnections.map(item=><div className="archive-row" key={item.name}><div><strong>{item.name}</strong><small>{item.protocol} · {item.archivedAt}</small></div><button className="btn-secondary" onClick={()=>restoreConnection(item.name)}>{language==='ar'?'استعادة':'Restore'}</button></div>)}
+        </div>
+        <div className="notice-inline"><Icon name="alert"/>{language==='ar'?'هذه السجلات لا تفتح منفذًا ولا تختبر الشبكة ولا تثبت وجود اتصال حي. قبل أي تكامل: يلزم دليل المصنع، وخريطة العناوين، وبيانات الشبكة، وتصريح فني. البداية قراءة فقط ومن خلال بوابة OT معتمدة.':'These records do not open sockets, probe networks or prove a live connection. Obtain vendor manuals, approved address maps, network details and engineering authorization. Start read-only through an approved OT gateway.'}</div>
+      </section>}
 
       {activeTab === 'ai' && <section className="page-content"><PageIntro eyebrow="ENGINEERING SUPPORT / DECISION ASSISTANCE" title={language==='ar'?'المساعد الفني والهندسي':'Technical engineering assistant'} subtitle={t.aiSub}/><div className="assistant-layout"><div className="surface-card assistant-main"><div className="assistant-mark"><Icon name="spark" size={28}/></div><span className="eyebrow">ENGINEERING CHECKLIST · NOT AI GENERATED</span><h2>{language==='ar'?'مسار فحص مبدئي لعربة Craftsman':'Craftsman field verification checklist'}</h2><p>{language==='ar'?'البلاغات المسجلة تشمل عدم قراءة الطبالي الخشبية، وسحب البطارية، والإنذارات الكاذبة، وانزلاق العجلات على الثلج، وفصل الحساسات والتوقف المفاجئ. لا يمكن تحديد السبب من هذه المعلومات وحدها.':'Reported observations include wooden pallet recognition problems, rapid battery drain, false alarms, wheel slip on ice, sensor cut-outs and sudden stops. These observations alone do not establish a root cause.'}</p><div className="checklist">{['Inspect sensor lenses, mounting and detection field','Verify wooden pallet detection with known-good samples','Capture battery voltage/current trend under controlled load','Inspect wheel tread, bearings and ice contamination','Review safety interlocks and event logs before return to service'].map((x,i)=><div className="check-row" key={x}><span>0{i+1}</span><p>{x}</p><StatusPill status="Unknown" language={language}/></div>)}</div><div className="notice-inline"><Icon name="alert"/> {t.modelDisclaimer}</div></div><div className="surface-card assistant-side"><div className="card-head"><div><span className="eyebrow">ASSISTANT STATUS</span><h3>AI PROVIDER</h3></div><span className="status-pill status-unknown">NOT CONNECTED</span></div><p className="muted-text">{language==='ar'?'لم يتم ربط Gemini أو أي مزود ذكاء اصطناعي. المحتوى المعروض قائمة فحص ثابتة ولا يمثل تشخيصًا آليًا.':'Gemini or another AI provider is not configured. The displayed content is a static checklist, not an automated diagnosis.'}</p><div className="assistant-info"><Detail label="Mode" value="Advisory only"/><Detail label="Source" value="Manual field reports"/><Detail label="Machine control" value="Disabled"/></div></div></div></section>}
 
