@@ -410,6 +410,7 @@ function App({ initialData }: { initialData: AppInitialData }) {
   const [dailyReports, setDailyReports] = useState<DailyReportSnapshot[]>(initialData.dailyReports);
   const [shifts, setShifts] = useState<ShiftRecord[]>(initialData.shifts);
   const routeStackRef = useRef<Tab[]>([tabFromLocation()]);
+  const persistenceQueueRef = useRef<Promise<void>>(Promise.resolve());
 
   const t = copy[language];
   useEffect(() => {
@@ -475,7 +476,7 @@ function App({ initialData }: { initialData: AppInitialData }) {
       { storageKey: 'operational.shifts', collection: 'shifts', value: shifts }
     ];
 
-    void (async () => {
+    const operation = persistenceQueueRef.current.then(async () => {
       for (const entry of values) {
         try {
           await set(entry.storageKey, entry.value as never);
@@ -491,7 +492,8 @@ function App({ initialData }: { initialData: AppInitialData }) {
           }
         }
       }
-    })();
+    });
+    persistenceQueueRef.current = operation.catch(() => undefined);
 
     return () => { active = false; };
   }, [language, theme, sidebarCollapsed, shuttles, batteries, faults, jobs, connections, notifications, settings, dailyReports, shifts]);
