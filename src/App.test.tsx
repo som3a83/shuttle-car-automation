@@ -237,7 +237,7 @@ describe('Shuttle Car Automation V9', () => {
     await user.click(screen.getAllByRole('button', { name: /Fleet Control Center/i })[0]);
     await user.selectOptions(screen.getByLabelText(/Manufacturer/i), 'Craftsman');
     await user.type(screen.getByLabelText(/Operating zone/i), 'Cold room test zone');
-    await user.click(screen.getByRole('button', { name: /Save record/i }));
+    await user.click(screen.getByRole('button', { name: /Save new device/i }));
     expect(screen.getAllByText('SC-06').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Craftsman').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Not recorded').length).toBeGreaterThan(0);
@@ -295,4 +295,96 @@ describe('Shuttle Car Automation V9', () => {
       expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(heading);
     }
   });
+
+  it('edits a shuttle identity record and persists the updated model details', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getAllByRole('button', { name: /Fleet Control Center/i })[0]);
+    await user.click(screen.getByRole('button', { name: /Edit equipment/i }));
+    await user.clear(screen.getByLabelText(/^Model$/i));
+    await user.type(screen.getByLabelText(/^Model$/i), 'Verified test model');
+    await user.clear(screen.getByLabelText(/Manufacturer serial/i));
+    await user.type(screen.getByLabelText(/Manufacturer serial/i), 'SERIAL-TEST-001');
+    await user.click(screen.getByRole('button', { name: /Save changes/i }));
+    expect(screen.getByText('Verified test model')).toBeInTheDocument();
+    expect(screen.getByText('SERIAL-TEST-001')).toBeInTheDocument();
+    const saved = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:shuttles') || '[]') as Array<{id:string;model:string}>;
+    expect(saved.find(item => item.id === 'SC-01')?.model).toBe('Verified test model');
+  });
+
+  it('archives a shuttle without deleting its history and supports restoring it', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getAllByRole('button', { name: /Fleet Control Center/i })[0]);
+    await user.click(screen.getByRole('button', { name: /Archive device/i }));
+    await user.click(screen.getByRole('button', { name: /Confirm archive/i }));
+    expect(screen.queryByRole('button', { name: /SC-01 Cassioli/i })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /Show archived devices/i }));
+    const archive = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:shuttles') || '[]') as Array<{id:string;archivedAt?:string|null}>;
+    expect(archive.find(item => item.id === 'SC-01')?.archivedAt).toBeTruthy();
+    await user.click(screen.getAllByRole('button', { name: /Restore/i })[0]);
+    expect(window.localStorage.getItem('shuttle-car-automation-v7:shuttles')).toContain('"archivedAt":null');
+  });
+
+  it('registers and assigns a new battery to an active shuttle', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getAllByRole('button', { name: /Battery Management/i })[0]);
+    await user.type(screen.getByLabelText(/^Manufacturer$/i), 'ACME');
+    await user.type(screen.getByLabelText(/^Model$/i), 'Pack test A');
+    await user.selectOptions(screen.getByLabelText(/Assign battery to shuttle/i), 'SC-01');
+    await user.click(screen.getByRole('button', { name: /Save battery$/i }));
+    expect(screen.getAllByText('BAT-001').length).toBeGreaterThan(0);
+    expect(screen.getByText('ACME · SC-01')).toBeInTheDocument();
+    const saved = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:batteries') || '[]') as Array<{id:string;assignment:string;status:string}>;
+    expect(saved.find(item => item.id === 'BAT-001')).toMatchObject({assignment:'SC-01',status:'Installed'});
+  });
+
+  it('saves manually entered battery readings without marking them as live telemetry', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getAllByRole('button', { name: /Battery Management/i })[0]);
+    await user.click(screen.getByRole('button', { name: /Edit battery details/i }));
+    await user.clear(screen.getByLabelText(/SOC %/i));
+    await user.type(screen.getByLabelText(/SOC %/i), '12.5');
+    await user.click(screen.getByRole('button', { name: /Save battery data/i }));
+    expect(screen.getByText('12.5% (manual / reported)')).toBeInTheDocument();
+    const saved = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:batteries') || '[]') as Array<{id:string;soc:number|null;connectionMode:string}>;
+    expect(saved.find(item => item.id === 'BAT-ACME-01')).toMatchObject({soc:12.5,connectionMode:'UNKNOWN'});
+  });
+
+  it('generates and retains a daily equipment status snapshot', async () => {
+    const user = userEvent.setup();
+    const first = render(<App />);
+    await user.click(screen.getAllByRole('button', { name: /Reports Center/i })[0]);
+    await user.click(screen.getByRole('button', { name: /Generate today.s report/i }));
+    expect(screen.getByText(/LATEST SAVED DAILY REPORT/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Download daily report CSV/i })).toBeInTheDocument();
+    first.unmount();
+    render(<App />);
+    await user.click(screen.getAllByRole('button', { name: /Reports Center/i })[0]);
+    expect(screen.getByText(/Daily report history/i)).toBeInTheDocument();
+    const reports = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:dailyReports') || '[]') as Array<{shuttleCount:number;verifiedTelemetryCount:number}>;
+    expect(reports[0]).toMatchObject({shuttleCount:5,verifiedTelemetryCount:0});
+  });
+
+  it('provides working in-app back and home navigation controls', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getAllByRole('button', { name: /Fleet Control Center/i })[0]);
+    await user.click(screen.getAllByRole('button', { name: /Engineering Visualization/i })[0]);
+    await user.click(screen.getByRole('button', { name: /Go back/i }));
+    expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent('Fleet Control Center');
+    await user.click(screen.getByRole('button', { name: /Home/i }));
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Dashboard');
+  });
+
+  it('opens system settings directly from the fixed workspace controls', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole('button', { name: /^Settings$/i }));
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('System Settings');
+    expect(screen.getByText(/Backup and restore/i)).toBeInTheDocument();
+  });
+
 });
