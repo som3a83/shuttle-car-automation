@@ -61,6 +61,42 @@ export const AUDIT_ARCHIVE_PENDING_KEY = 'shuttle-car-automation-v1:audit-archiv
 export const AUDIT_GENESIS_HASH = 'GENESIS';
 export const MAX_RECORDS = 5000;
 let appendQueue: Promise<unknown> = Promise.resolve();
+// Keep the async audit layer on legacy storage until the application bootstrap
+// switches the whole application from the compatibility mode. Load the engine
+// only when an async audit operation is invoked; sync node:test consumers stay
+// independent from the browser storage module graph.
+type AsyncAuditEngine = import('../storage/index.ts').StorageEngine;
+let asyncAuditEnginePromise: Promise<AsyncAuditEngine> | null = null;
+
+async function getAsyncAuditEngine(): Promise<AsyncAuditEngine> {
+  if (!asyncAuditEnginePromise) {
+    asyncAuditEnginePromise = import('../storage/index.ts').then(
+      ({ LegacyFallbackEngine }) => new LegacyFallbackEngine()
+    );
+  }
+  return asyncAuditEnginePromise;
+}
+
+function isRevisionConflict(reason: unknown): boolean {
+  return Boolean(reason && typeof reason === 'object' &&
+    'code' in reason && (reason as { code?: unknown }).code === 'STORAGE_CONFLICT');
+}
+
+function auditMarkerStorage(): Storage {
+  if (typeof localStorage === 'undefined') throw new Error('Local audit recovery storage is unavailable.');
+  return localStorage;
+}
+
+async function readAuditArrayWithRevision<T>(
+  key: 'audit.active' | 'audit.archives',
+  label: string
+): Promise<{ records: T[]; revision: number }> {
+  const engine = await getAsyncAuditEngine();
+  const current = await engine.read(key);
+  if (!current) return { records: [], revision: 0 };
+  if (!Array.isArray(current.value)) throw new Error(`${label} root is not an array; integrity cannot be established.`);
+  return { records: current.value as T[], revision: current.revision };
+}
 
 function canonical(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
@@ -369,6 +405,223 @@ export function auditRecordsToCsv(records: readonly AuditRecord[]): string {
     columns.map(quote).join(','),
     ...records.map((record) => columns.map((column) => quote(record[column])).join(','))
   ].join('\r\n');
+}
+
+/**
+ * Recover an interrupted archive transaction using the unified async storage
+ * API. The pending marker remains in its original excluded localStorage key;
+ * it is never imported or rewritten by the resolver.
+ */
+export async function recoverPendingAuditArchiveAsync(
+  storage: Storage = auditMarkerStorage(),
+  cryptoApi: Crypto = globalThis.crypto
+): Promise<boolean> {
+  const pendingRaw = storage.getItem(AUDIT_ARCHIVE_PENDING_KEY);
+  if (pendingRaw === null) return false;
+
+  let pending: { archive: AuditArchiveEntry };
+  try { pending = JSON.parse(pendingRaw) as { archive: AuditArchiveEntry }; }
+  catch { throw new Error('Pending audit archive is unreadable. Export the raw audit storage before attempting recovery.'); }
+  if (!pending?.archive || pending.archive.format !== 'shuttle-audit-archive') {
+    throw new Error('Pending audit archive has an invalid format. No audit data was changed.');
+  }
+
+  const archiveState = await readAuditArrayWithRevision<AuditArchiveEntry>('audit.archives', 'Audit archive');
+  const existing = archiveState.records;
+  const found = existing.some((entry) => entry.archiveHash === pending.archive.archiveHash);
+  const nextArchives = found ? existing : [...existing, pending.archive];
+  const archiveVerification = await verifyArchiveEntries(nextArchives, cryptoApi);
+  if (!archiveVerification.valid) throw new Error(`Pending archive cannot be verified: ${archiveVerification.reason}`);
+
+  const activeState = await readAuditArrayWithRevision<AuditRecord>('audit.active', 'Audit log');
+  if (activeState.records.length > 0) {
+    const digest = await sha256(canonical(activeState.records), cryptoApi);
+    if (digest !== pending.archive.recordsDigest) {
+      throw new Error('Active audit records differ from the pending archive copy. Automatic clearing was refused.');
+    }
+  }
+
+  // Archive first, then clear active. If either write is interrupted, the
+  // pending marker makes this operation safely repeatable on the next read.
+  if (!found) {
+    await (await getAsyncAuditEngine()).write('audit.archives', nextArchives, archiveState.revision);
+  }
+  if (activeState.records.length > 0) {
+    await (await getAsyncAuditEngine()).write('audit.active', [], activeState.revision);
+  }
+  if (!storage.removeItem) throw new Error('Storage removal is unavailable; pending archive marker remains for recovery.');
+  storage.removeItem(AUDIT_ARCHIVE_PENDING_KEY);
+  return true;
+}
+
+export async function readAuditRecordsAsync(
+  cryptoApi: Crypto = globalThis.crypto
+): Promise<AuditRecord[]> {
+  await recoverPendingAuditArchiveAsync(auditMarkerStorage(), cryptoApi);
+  const stored = await readAuditArrayWithRevision<AuditRecord>('audit.active', 'Audit log');
+  return stored.records;
+}
+
+export async function readAuditArchivesAsync(
+  cryptoApi: Crypto = globalThis.crypto
+): Promise<AuditArchiveEntry[]> {
+  await recoverPendingAuditArchiveAsync(auditMarkerStorage(), cryptoApi);
+  const stored = await readAuditArrayWithRevision<AuditArchiveEntry>('audit.archives', 'Audit archive');
+  return stored.records;
+}
+
+export async function verifyAuditLedgerAsync(
+  cryptoApi: Crypto = globalThis.crypto
+): Promise<AuditLedgerVerification> {
+  await recoverPendingAuditArchiveAsync(auditMarkerStorage(), cryptoApi);
+  const archives = await readAuditArrayWithRevision<AuditArchiveEntry>('audit.archives', 'Audit archive');
+  const archived = await verifyArchiveEntries(archives.records, cryptoApi);
+  if (!archived.valid) {
+    return {
+      valid: false, activeChecked: 0, archivedChecked: archived.checked,
+      archiveCount: archives.records.length, brokenArchiveIndex: archived.brokenIndex,
+      brokenRecordIndex: null, reason: archived.reason
+    };
+  }
+
+  let active: AuditRecord[];
+  try {
+    active = (await readAuditArrayWithRevision<AuditRecord>('audit.active', 'Audit log')).records;
+  } catch (reason) {
+    return {
+      valid: false, activeChecked: 0, archivedChecked: archived.checked,
+      archiveCount: archives.records.length, brokenArchiveIndex: null,
+      brokenRecordIndex: null,
+      reason: reason instanceof Error ? reason.message : 'Active audit log could not be read.'
+    };
+  }
+  const activeVerification = await verifyAuditChain(active, cryptoApi, archived.lastRecordHash);
+  return {
+    valid: activeVerification.valid,
+    activeChecked: activeVerification.checked,
+    archivedChecked: archived.checked,
+    archiveCount: archives.records.length,
+    brokenArchiveIndex: null,
+    brokenRecordIndex: activeVerification.brokenIndex,
+    ...(activeVerification.reason ? { reason: activeVerification.reason } : {})
+  };
+}
+
+export async function readAllAuditRecordsAsync(
+  cryptoApi: Crypto = globalThis.crypto
+): Promise<AuditRecord[]> {
+  const ledger = await verifyAuditLedgerAsync(cryptoApi);
+  if (!ledger.valid) throw new Error(ledger.reason || 'Audit ledger integrity verification failed.');
+  const archives = await readAuditArrayWithRevision<AuditArchiveEntry>('audit.archives', 'Audit archive');
+  const active = await readAuditArrayWithRevision<AuditRecord>('audit.active', 'Audit log');
+  return [...archives.records.flatMap((archive) => archive.records), ...active.records];
+}
+
+export async function archiveAuditRecordsAsync(
+  now = new Date(),
+  cryptoApi: Crypto = globalThis.crypto
+): Promise<AuditArchiveEntry> {
+  const storage = auditMarkerStorage();
+  await recoverPendingAuditArchiveAsync(storage, cryptoApi);
+
+  const archivesState = await readAuditArrayWithRevision<AuditArchiveEntry>('audit.archives', 'Audit archive');
+  const archiveVerification = await verifyArchiveEntries(archivesState.records, cryptoApi);
+  if (!archiveVerification.valid) throw new Error(`Audit archive chain is invalid: ${archiveVerification.reason}`);
+
+  const activeState = await readAuditArrayWithRevision<AuditRecord>('audit.active', 'Audit log');
+  const active = activeState.records;
+  if (active.length === 0) throw new Error('There are no active audit records to archive.');
+  const activeVerification = await verifyAuditChain(active, cryptoApi, archiveVerification.lastRecordHash);
+  if (!activeVerification.valid) throw new Error(`Active audit chain is invalid at record ${activeVerification.brokenIndex}.`);
+
+  const unsigned = {
+    format: 'shuttle-audit-archive' as const,
+    version: 1 as const,
+    id: `AUD-ARCH-${now.getTime()}-${cryptoApi.randomUUID?.() || 'local'}`,
+    archivedAt: now.toISOString(),
+    previousArchiveHash: archiveVerification.lastArchiveHash,
+    previousRecordHash: archiveVerification.lastRecordHash,
+    firstRecordId: active[0].id,
+    lastRecordId: active[active.length - 1].id,
+    firstRecordHash: active[0].hash,
+    lastRecordHash: active[active.length - 1].hash,
+    recordCount: active.length,
+    recordsDigest: await sha256(canonical(active), cryptoApi),
+    records: active
+  };
+  const archive: AuditArchiveEntry = {
+    ...unsigned,
+    archiveHash: await sha256(canonical(unsigned), cryptoApi)
+  };
+
+  // Stage a full recovery copy before touching either canonical audit array.
+  storage.setItem(AUDIT_ARCHIVE_PENDING_KEY, JSON.stringify({ archive }));
+  await recoverPendingAuditArchiveAsync(storage, cryptoApi);
+  return archive;
+}
+
+/**
+ * Option C append: a per-tab queue/mutex plus revision-aware compare-and-set.
+ * Cross-tab conflicts are re-read and rebuilt up to three attempts. On the
+ * legacy backend the revision sidecar check is best-effort rather than an
+ * atomic transaction across tabs; the backend limitation remains documented.
+ */
+export function appendAuditRecordAsync(
+  input: AuditRecordInput,
+  now = new Date(),
+  cryptoApi: Crypto = globalThis.crypto
+): Promise<AuditRecord> {
+  const operation = appendQueue.then(async () => {
+    await recoverPendingAuditArchiveAsync(auditMarkerStorage(), cryptoApi);
+
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const activeState = await readAuditArrayWithRevision<AuditRecord>('audit.active', 'Audit log');
+      const archivesState = await readAuditArrayWithRevision<AuditArchiveEntry>('audit.archives', 'Audit archive');
+      const archiveVerification = await verifyArchiveEntries(archivesState.records, cryptoApi);
+      if (!archiveVerification.valid) {
+        throw new Error(`Audit archive chain is invalid: ${archiveVerification.reason}`);
+      }
+      const integrity = await verifyAuditChain(activeState.records, cryptoApi, archiveVerification.lastRecordHash);
+      if (!integrity.valid) {
+        throw new Error(`Audit log integrity check failed at record ${integrity.brokenIndex}. New records were not appended.`);
+      }
+      if (activeState.records.length >= MAX_RECORDS) {
+        throw new Error(`Audit log reached its ${MAX_RECORDS}-record active limit. Archive active records before continuing; records were not truncated.`);
+      }
+
+      const previousHash = activeState.records.length > 0
+        ? activeState.records[activeState.records.length - 1].hash
+        : archiveVerification.lastRecordHash;
+      const randomSuffix = cryptoApi.randomUUID?.() ||
+        Array.from(cryptoApi.getRandomValues(new Uint8Array(12)), (byte) => byte.toString(16).padStart(2, '0')).join('');
+      const unsigned = {
+        id: `AUD-${now.getTime()}-${randomSuffix}`,
+        timestamp: now.toISOString(),
+        actorId: input.actorId.trim(),
+        actorRole: input.actorRole.trim(),
+        action: input.action.trim(),
+        entityType: input.entityType.trim(),
+        entityId: input.entityId.trim(),
+        detail: input.detail?.trim() || '',
+        previousHash
+      };
+      if (![unsigned.actorId, unsigned.actorRole, unsigned.action, unsigned.entityType, unsigned.entityId].every(Boolean)) {
+        throw new Error('Audit actor, role, action, entity type and entity ID are required.');
+      }
+      const record: AuditRecord = { ...unsigned, hash: await sha256(canonical(unsigned), cryptoApi) };
+
+      try {
+        await (await getAsyncAuditEngine()).write('audit.active', [...activeState.records, record], activeState.revision);
+        return record;
+      } catch (reason) {
+        if (!isRevisionConflict(reason)) throw reason;
+        if (attempt === 2) throw new Error('AUDIT_APPEND_FAILED_AFTER_RETRIES');
+      }
+    }
+    throw new Error('AUDIT_APPEND_FAILED_AFTER_RETRIES');
+  });
+  appendQueue = operation.catch(() => undefined);
+  return operation;
 }
 
 export function appendAuditRecord(

@@ -1,15 +1,15 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import type { Language, Role, User } from '../types';
-import { appendAuditRecord, archiveAuditRecords, auditRecordsToCsv, filterAuditRecords, readAllAuditRecords, readAuditArchives, verifyAuditLedger, type AuditRecord } from '../security/auditLog';
+import { appendAuditRecordAsync, archiveAuditRecordsAsync, auditRecordsToCsv, filterAuditRecords, readAllAuditRecordsAsync, readAuditArchivesAsync, verifyAuditLedgerAsync, type AuditRecord } from '../security/auditLog';
 import {
-  authenticateLocalAccount,
-  createLocalAccount,
+  authenticateLocalAccountAsync,
+  createLocalAccountAsync,
   endLocalSession,
-  listLocalAccounts,
-  localAccountRegistryError,
-  updateLocalAccount,
-  setLocalAccountDisabled,
-  changeLocalAccountPassword,
+  listLocalAccountsAsync,
+  localAccountRegistryErrorAsync,
+  updateLocalAccountAsync,
+  setLocalAccountDisabledAsync,
+  changeLocalAccountPasswordAsync,
   generateTemporaryPassword,
   type LocalAccountSummary
 } from '../security/localAuth';
@@ -26,8 +26,9 @@ export default function SecurityCenter({
   onSessionChange: (user: User | null) => void;
 }) {
   const ar = language === 'ar';
-  const [accounts, setAccounts] = useState<LocalAccountSummary[]>(() => listLocalAccounts(localStorage));
-  const [registryError, setRegistryError] = useState<string | null>(() => localAccountRegistryError(localStorage));
+  const [accounts, setAccounts] = useState<LocalAccountSummary[]>([]);
+  const [registryError, setRegistryError] = useState<string | null>(null);
+  const [accountsReady, setAccountsReady] = useState(false);
   const [auditIntegrity, setAuditIntegrity] = useState<{
     valid: boolean;
     activeChecked: number;
@@ -53,16 +54,28 @@ export default function SecurityCenter({
   const isAuthenticated = currentUser.isAuthenticated;
   const isAdministrator = isAuthenticated && !currentUser.mustChangePassword && (currentUser.role === 'Super Admin' || currentUser.role === 'Admin');
   const isSuperAdmin = isAuthenticated && !currentUser.mustChangePassword && currentUser.role === 'Super Admin';
-  const canBootstrap = accounts.length === 0 && !registryError;
+  const canBootstrap = accountsReady && accounts.length === 0 && !registryError;
   const canManageAccounts = canBootstrap || (!registryError && isAuthenticated && !currentUser.mustChangePassword && currentUser.role === 'Super Admin');
 
   const refresh = async () => {
-    setAccounts(listLocalAccounts(localStorage));
-    setRegistryError(localAccountRegistryError(localStorage));
     try {
-      const result = await verifyAuditLedger(localStorage);
+      const [nextAccounts, nextRegistryError] = await Promise.all([
+        listLocalAccountsAsync(),
+        localAccountRegistryErrorAsync()
+      ]);
+      setAccounts(nextAccounts);
+      setRegistryError(nextRegistryError);
+    } catch (reason) {
+      setAccounts([]);
+      setRegistryError(reason instanceof Error ? reason.message : 'Local account registry is unavailable.');
+    } finally {
+      setAccountsReady(true);
+    }
+
+    try {
+      const result = await verifyAuditLedgerAsync();
       setAuditIntegrity(result);
-      setAuditRecords(result.valid ? await readAllAuditRecords(localStorage) : []);
+      setAuditRecords(result.valid ? await readAllAuditRecordsAsync() : []);
     } catch (reason) {
       setAuditIntegrity({
         valid: false, activeChecked: 0, archivedChecked: 0, archiveCount: 0,
@@ -95,11 +108,11 @@ export default function SecurityCenter({
     setAuditBusy(true);
     setError('');
     try {
-      const integrity = await verifyAuditLedger(localStorage);
+      const integrity = await verifyAuditLedgerAsync();
       if (!integrity.valid) throw new Error(integrity.reason || 'Audit ledger integrity verification failed.');
       const [records, archives] = await Promise.all([
-        readAllAuditRecords(localStorage),
-        Promise.resolve(readAuditArchives(localStorage))
+        readAllAuditRecordsAsync(),
+        readAuditArchivesAsync()
       ]);
       downloadAuditFile(
         `shuttle-audit-ledger-${new Date().toISOString().replace(/[:.]/g, '-')}.json`,
@@ -118,9 +131,9 @@ export default function SecurityCenter({
     setAuditBusy(true);
     setError('');
     try {
-      const integrity = await verifyAuditLedger(localStorage);
+      const integrity = await verifyAuditLedgerAsync();
       if (!integrity.valid) throw new Error(integrity.reason || 'Audit ledger integrity verification failed.');
-      const records = await readAllAuditRecords(localStorage);
+      const records = await readAllAuditRecordsAsync();
       downloadAuditFile(`shuttle-audit-ledger-${new Date().toISOString().replace(/[:.]/g, '-')}.csv`, auditRecordsToCsv(records), 'text/csv;charset=utf-8');
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Audit CSV export failed.');
@@ -142,7 +155,7 @@ export default function SecurityCenter({
     setAuditBusy(true);
     setError('');
     try {
-      const archive = await archiveAuditRecords(localStorage);
+      const archive = await archiveAuditRecordsAsync();
       downloadAuditFile(
         `shuttle-audit-archive-${archive.id}.json`,
         JSON.stringify({ format: 'shuttle-audit-archive-export', exportedAt: new Date().toISOString(), archive }, null, 2),
@@ -162,7 +175,7 @@ export default function SecurityCenter({
     setError('');
     setBusy(true);
     try {
-      const result = await authenticateLocalAccount(login.identity, login.password);
+      const result = await authenticateLocalAccountAsync(login.identity, login.password);
       if (!result.ok) {
         const message = result.reason === 'locked'
           ? (ar ? 'تم إيقاف المحاولات مؤقتًا لمدة دقيقة.' : 'Sign-in is temporarily locked for one minute.')
@@ -172,7 +185,7 @@ export default function SecurityCenter({
         setError(message);
         return;
       }
-      await appendAuditRecord({
+      await appendAuditRecordAsync({
         actorId: result.account.id, actorRole: result.account.role, action: 'LOCAL_LOGIN',
         entityType: 'account', entityId: result.account.id,
         detail: result.session.mustChangePassword ? 'Local device session started; password change is required.' : 'Local device session started.'
@@ -207,25 +220,25 @@ export default function SecurityCenter({
     setBusy(true);
     try {
       const actor = canBootstrap ? undefined : { id: currentUser.id, role: currentUser.role };
-      await appendAuditRecord({
+      await appendAuditRecordAsync({
         actorId: canBootstrap ? 'LOCAL-BOOTSTRAP' : currentUser.id,
         actorRole: canBootstrap ? 'Super Admin' : currentUser.role,
         action: canBootstrap ? 'LOCAL_ADMIN_BOOTSTRAP_REQUESTED' : 'LOCAL_ACCOUNT_CREATE_REQUESTED',
         entityType: 'account', entityId: newAccount.username.trim().toLowerCase(),
         detail: `Local account provisioning requested for ${newAccount.username}.`
       });
-      const account = await createLocalAccount({
+      const account = await createLocalAccountAsync({
         name: newAccount.name, email: newAccount.email, username: newAccount.username,
         role: canBootstrap ? 'Super Admin' : newAccount.role, password: newAccount.password
-      }, localStorage, globalThis.crypto, new Date(), actor);
-      await appendAuditRecord({
+      }, globalThis.crypto, new Date(), actor);
+      await appendAuditRecordAsync({
         actorId: canBootstrap ? account.id : currentUser.id,
         actorRole: canBootstrap ? 'Super Admin' : currentUser.role,
         action: canBootstrap ? 'LOCAL_ADMIN_BOOTSTRAPPED' : 'LOCAL_ACCOUNT_CREATED',
         entityType: 'account', entityId: account.id, detail: `Created local account ${account.username}.`
       });
       if (canBootstrap) {
-        const signedIn = await authenticateLocalAccount(account.username, newAccount.password);
+        const signedIn = await authenticateLocalAccountAsync(account.username, newAccount.password);
         if (signedIn.ok) {
           onSessionChange({
             id: signedIn.account.id, name: signedIn.account.name, email: signedIn.account.email,
@@ -255,12 +268,12 @@ export default function SecurityCenter({
     setBusy(true);
     setError('');
     try {
-      await appendAuditRecord({
+      await appendAuditRecordAsync({
         actorId: currentUser.id, actorRole: currentUser.role, action: 'LOCAL_ACCOUNT_UPDATE_REQUESTED',
         entityType: 'account', entityId: editingAccountId, detail: 'Local account identity/role update requested.'
       });
-      updateLocalAccount(editingAccountId, accountDraft, { id: currentUser.id, role: currentUser.role });
-      await appendAuditRecord({
+      await updateLocalAccountAsync(editingAccountId, accountDraft, { id: currentUser.id, role: currentUser.role });
+      await appendAuditRecordAsync({
         actorId: currentUser.id, actorRole: currentUser.role, action: 'LOCAL_ACCOUNT_UPDATED',
         entityType: 'account', entityId: editingAccountId, detail: 'Local account identity/role updated.'
       });
@@ -283,13 +296,13 @@ export default function SecurityCenter({
     setBusy(true);
     setError('');
     try {
-      await appendAuditRecord({
+      await appendAuditRecordAsync({
         actorId: currentUser.id, actorRole: currentUser.role,
         action: disabling ? 'LOCAL_ACCOUNT_DISABLE_REQUESTED' : 'LOCAL_ACCOUNT_REACTIVATE_REQUESTED',
         entityType: 'account', entityId: account.id, detail: 'Account status change requested.'
       });
-      setLocalAccountDisabled(account.id, disabling, { id: currentUser.id, role: currentUser.role });
-      await appendAuditRecord({
+      await setLocalAccountDisabledAsync(account.id, disabling, { id: currentUser.id, role: currentUser.role });
+      await appendAuditRecordAsync({
         actorId: currentUser.id, actorRole: currentUser.role,
         action: disabling ? 'LOCAL_ACCOUNT_DISABLED' : 'LOCAL_ACCOUNT_REACTIVATED',
         entityType: 'account', entityId: account.id, detail: 'Account status updated; credential version incremented.'
@@ -312,12 +325,12 @@ export default function SecurityCenter({
     setError('');
     try {
       const temporaryPassword = generateTemporaryPassword();
-      await appendAuditRecord({
+      await appendAuditRecordAsync({
         actorId: currentUser.id, actorRole: currentUser.role, action: 'LOCAL_PASSWORD_RESET_REQUESTED',
         entityType: 'account', entityId: account.id, detail: 'Super Admin requested a temporary password reset.'
       });
-      await changeLocalAccountPassword(account.id, '', temporaryPassword, { id: currentUser.id, role: currentUser.role });
-      await appendAuditRecord({
+      await changeLocalAccountPasswordAsync(account.id, '', temporaryPassword, { id: currentUser.id, role: currentUser.role });
+      await appendAuditRecordAsync({
         actorId: currentUser.id, actorRole: currentUser.role, action: 'LOCAL_PASSWORD_RESET',
         entityType: 'account', entityId: account.id, detail: 'Temporary password issued; password change is required on next login.'
       });
@@ -344,11 +357,11 @@ export default function SecurityCenter({
     }
     setBusy(true);
     try {
-      await appendAuditRecord({
+      await appendAuditRecordAsync({
         actorId: currentUser.id, actorRole: currentUser.role, action: 'LOCAL_PASSWORD_CHANGE_REQUESTED',
         entityType: 'account', entityId: currentUser.id, detail: 'User initiated a password change.'
       });
-      await changeLocalAccountPassword(
+      await changeLocalAccountPasswordAsync(
         currentUser.id, passwordForm.current, passwordForm.next,
         { id: currentUser.id, role: currentUser.role }
       );
@@ -356,9 +369,9 @@ export default function SecurityCenter({
       // attempting a new session; a failed audit write must leave the user out.
       endLocalSession();
       onSessionChange(null);
-      const signedIn = await authenticateLocalAccount(currentUser.email, passwordForm.next);
+      const signedIn = await authenticateLocalAccountAsync(currentUser.email, passwordForm.next);
       if (!signedIn.ok) throw new Error('Password changed, but a new local session could not be established. Sign in again.');
-      await appendAuditRecord({
+      await appendAuditRecordAsync({
         actorId: currentUser.id, actorRole: currentUser.role, action: 'LOCAL_PASSWORD_CHANGED',
         entityType: 'account', entityId: currentUser.id, detail: 'Password updated; previous local sessions invalidated.'
       });
@@ -378,7 +391,7 @@ export default function SecurityCenter({
 
   const signOut = async () => {
     try {
-      await appendAuditRecord({
+      await appendAuditRecordAsync({
         actorId: currentUser.id, actorRole: currentUser.role, action: 'LOCAL_LOGOUT',
         entityType: 'account', entityId: currentUser.id, detail: 'Local device session ended.'
       });

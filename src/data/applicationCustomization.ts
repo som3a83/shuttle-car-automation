@@ -84,6 +84,25 @@ export const DEFAULT_CUSTOMIZATION: CustomizationConfig = {
 
 export const CUSTOMIZATION_STORAGE_KEY = 'shuttle-car-automation-v7:customization';
 export const CUSTOMIZATION_AUDIT_KEY = 'shuttle-car-automation-v7:customization-audit';
+// The async compatibility layer stays on legacy storage until 2B-3c bootstrap
+// can switch all application consumers together. Load storage lazily so the
+// legacy synchronous functions remain usable from the native Node test runner.
+type AsyncCustomizationEngine = import('../storage/index.ts').StorageEngine;
+let asyncCustomizationEnginePromise: Promise<AsyncCustomizationEngine> | null = null;
+
+async function getAsyncCustomizationEngine(): Promise<AsyncCustomizationEngine> {
+  if (!asyncCustomizationEnginePromise) {
+    asyncCustomizationEnginePromise = import('../storage/index.ts').then(
+      ({ LegacyFallbackEngine }) => new LegacyFallbackEngine()
+    );
+  }
+  return asyncCustomizationEnginePromise;
+}
+
+function isRevisionConflict(reason: unknown): boolean {
+  return Boolean(reason && typeof reason === 'object' &&
+    'code' in reason && (reason as { code?: unknown }).code === 'STORAGE_CONFLICT');
+}
 const cloneDefaults = (): CustomizationConfig => JSON.parse(JSON.stringify(DEFAULT_CUSTOMIZATION)) as CustomizationConfig;
 function isRecord(value: unknown): value is Record<string, unknown> { return Boolean(value && typeof value === 'object' && !Array.isArray(value)); }
 function text(value: unknown, fallback: string, max = 80): string { return typeof value === 'string' && value.trim() ? value.trim().slice(0, max) : fallback; }
@@ -176,6 +195,71 @@ export function appendCustomizationAudit(entry: Omit<AuditEntry, 'id' | 'timesta
   const audit: AuditEntry = { ...entry, id: `AUD-${now.getTime()}-${Math.random().toString(36).slice(2, 8)}`, timestamp: now.toISOString() };
   storage.setItem(CUSTOMIZATION_AUDIT_KEY, JSON.stringify([audit, ...readCustomizationAudit(storage)].slice(0, 500)));
   return audit;
+}
+
+
+/** Async load counterpart used by the backend-driven customization screen. */
+export async function loadCustomizationAsync(): Promise<CustomizationConfig> {
+  const engine = await getAsyncCustomizationEngine();
+  const stored = await engine.read('customization.config');
+  return validateCustomization(stored?.value ?? cloneDefaults());
+}
+
+/** Async save uses the revision sidecar and refuses to overwrite a newer edit. */
+export async function saveCustomizationAsync(config: CustomizationConfig): Promise<void> {
+  const normalized = validateCustomization(config);
+  const engine = await getAsyncCustomizationEngine();
+  const current = await engine.read('customization.config');
+  await engine.write('customization.config', normalized, current?.revision ?? 0);
+}
+
+function validCustomizationAuditEntries(value: unknown): AuditEntry[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is AuditEntry =>
+    isRecord(item) &&
+    typeof item.id === 'string' &&
+    typeof item.timestamp === 'string' &&
+    typeof item.action === 'string' &&
+    typeof item.target === 'string' &&
+    typeof item.detail === 'string'
+  ).slice(0, 500);
+}
+
+/** Async audit read retains the existing entry validation and 500-item limit. */
+export async function readCustomizationAuditAsync(): Promise<AuditEntry[]> {
+  const engine = await getAsyncCustomizationEngine();
+  const stored = await engine.read('customization.audit');
+  return validCustomizationAuditEntries(stored?.value ?? []);
+}
+
+/** Async audit append retries revision conflicts without dropping concurrent entries. */
+export async function appendCustomizationAuditAsync(
+  entry: Omit<AuditEntry, 'id' | 'timestamp'>,
+  now = new Date()
+): Promise<AuditEntry> {
+  const audit: AuditEntry = {
+    ...entry,
+    id: `AUD-${now.getTime()}-${Math.random().toString(36).slice(2, 8)}`,
+    timestamp: now.toISOString()
+  };
+
+  const engine = await getAsyncCustomizationEngine();
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const current = await engine.read('customization.audit');
+    const existing = validCustomizationAuditEntries(current?.value ?? []);
+    try {
+      await engine.write(
+        'customization.audit',
+        [audit, ...existing].slice(0, 500),
+        current?.revision ?? 0
+      );
+      return audit;
+    } catch (reason) {
+      if (!isRevisionConflict(reason)) throw reason;
+      if (attempt === 2) throw new Error('CUSTOMIZATION_AUDIT_APPEND_FAILED_AFTER_RETRIES');
+    }
+  }
+  throw new Error('CUSTOMIZATION_AUDIT_APPEND_FAILED_AFTER_RETRIES');
 }
 
 /** Core operational routes cannot be disabled or hidden from the navigation. */

@@ -4,6 +4,20 @@ export const LOCAL_AUTH_STORAGE_KEY = 'shuttle-car-automation-v1:local-accounts'
 export const LOCAL_SESSION_STORAGE_KEY = 'shuttle-car-automation-v1:session';
 export const LOCAL_AUTH_ITERATIONS = 210_000;
 const SESSION_TTL_MS = 8 * 60 * 60 * 1000;
+// 2B-3b remains on the approved legacy mode while App.tsx still has synchronous
+// compatibility reads. Load storage only when an async account API is used,
+// keeping native Node consumers of the synchronous compatibility API isolated.
+type AsyncAuthEngine = import('../storage/index.ts').StorageEngine;
+let asyncAuthEnginePromise: Promise<AsyncAuthEngine> | null = null;
+
+async function getAsyncAuthEngine(): Promise<AsyncAuthEngine> {
+  if (!asyncAuthEnginePromise) {
+    asyncAuthEnginePromise = import('../storage/index.ts').then(
+      ({ LegacyFallbackEngine }) => new LegacyFallbackEngine()
+    );
+  }
+  return asyncAuthEnginePromise;
+}
 const ALLOWED_ROLES: readonly Role[] = ['Super Admin', 'Admin', 'Supervisor', 'Maintenance Engineer', 'Technician', 'Operator', 'Viewer'];
 
 export interface LocalAccountInput {
@@ -357,6 +371,144 @@ export async function changeLocalAccountPassword(
   storage.setItem(LOCAL_AUTH_STORAGE_KEY, JSON.stringify(accounts));
   return toSummary(updated);
 }
+
+class MemoryAuthStorage implements AuthStorage {
+  private readonly values = new Map<string, string>();
+  getItem(key: string): string | null { return this.values.get(key) ?? null; }
+  setItem(key: string, value: string): void { this.values.set(key, String(value)); }
+  removeItem(key: string): void { this.values.delete(key); }
+}
+
+function isRevisionConflict(reason: unknown): boolean {
+  return Boolean(reason && typeof reason === 'object' &&
+    'code' in reason && (reason as { code?: unknown }).code === 'STORAGE_CONFLICT');
+}
+
+async function withAsyncAccountStorage<T>(
+  operation: (storage: AuthStorage) => T | Promise<T>
+): Promise<T> {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const engine = await getAsyncAuthEngine();
+    const current = await engine.read('auth.accounts');
+    const storage = new MemoryAuthStorage();
+    if (current) storage.setItem(LOCAL_AUTH_STORAGE_KEY, JSON.stringify(current.value));
+    const before = storage.getItem(LOCAL_AUTH_STORAGE_KEY);
+    const result = await operation(storage);
+    const after = storage.getItem(LOCAL_AUTH_STORAGE_KEY);
+    if (after === before) return result;
+
+    let accounts: unknown;
+    try { accounts = JSON.parse(after ?? 'null'); }
+    catch { throw new Error('Local account registry could not be serialized safely.'); }
+
+    try {
+      await engine.write('auth.accounts', accounts, current?.revision ?? 0);
+      return result;
+    } catch (reason) {
+      if (!isRevisionConflict(reason)) throw reason;
+      if (attempt === 2) throw new Error('LOCAL_ACCOUNT_UPDATE_FAILED_AFTER_RETRIES');
+    }
+  }
+  throw new Error('LOCAL_ACCOUNT_UPDATE_FAILED_AFTER_RETRIES');
+}
+
+/** Async account read used by the backend APIs. Password material stays internal. */
+async function readAccountsAsync(): Promise<LocalAccount[]> {
+  const engine = await getAsyncAuthEngine();
+  const current = await engine.read('auth.accounts');
+  if (!current) return [];
+  const storage = new MemoryAuthStorage();
+  storage.setItem(LOCAL_AUTH_STORAGE_KEY, JSON.stringify(current.value));
+  return readAccounts(storage);
+}
+
+/** Async counterpart to the synchronous session resolver. */
+export async function readLocalSessionAsync(
+  sessionStorage: AuthStorage = globalThis.sessionStorage,
+  now = Date.now()
+): Promise<LocalSession | null> {
+  const accounts = await readAccountsAsync();
+  const accountStorage = new MemoryAuthStorage();
+  accountStorage.setItem(LOCAL_AUTH_STORAGE_KEY, JSON.stringify(accounts));
+  return readLocalSession(sessionStorage, accountStorage, now);
+}
+
+/** Async account read for components moving to the backend storage layer. */
+
+export async function listLocalAccountsAsync(): Promise<LocalAccountSummary[]> {
+  return (await readAccountsAsync()).map(toSummary);
+}
+
+export async function localAccountRegistryErrorAsync(): Promise<string | null> {
+  try { await listLocalAccountsAsync(); return null; }
+  catch (reason) {
+    return reason instanceof Error ? reason.message : 'Local account registry is unavailable.';
+  }
+}
+
+export async function createLocalAccountAsync(
+  input: LocalAccountInput,
+  cryptoApi: Crypto = globalThis.crypto,
+  now = new Date(),
+  actor?: LocalAccountActor
+): Promise<LocalAccountSummary> {
+  return withAsyncAccountStorage((storage) => createLocalAccount(input, storage, cryptoApi, now, actor));
+}
+
+export async function authenticateLocalAccountAsync(
+  usernameOrEmail: string,
+  password: string,
+  sessionStorage: AuthStorage = globalThis.sessionStorage,
+  cryptoApi: Crypto = globalThis.crypto,
+  now = Date.now()
+): Promise<AuthResult> {
+  const pendingSession = new MemoryAuthStorage();
+  const result = await withAsyncAccountStorage((storage) =>
+    authenticateLocalAccount(usernameOrEmail, password, storage, pendingSession, cryptoApi, now)
+  );
+
+  if (result.ok) {
+    const sessionRaw = pendingSession.getItem(LOCAL_SESSION_STORAGE_KEY);
+    if (!sessionRaw) throw new Error('Local sign-in completed without creating a session record.');
+    sessionStorage.setItem(LOCAL_SESSION_STORAGE_KEY, sessionRaw);
+  }
+  return result;
+}
+
+export async function updateLocalAccountAsync(
+  accountId: string,
+  patch: LocalAccountPatch,
+  actor: LocalAccountActor
+): Promise<LocalAccountSummary> {
+  return withAsyncAccountStorage((storage) => updateLocalAccount(accountId, patch, actor, storage));
+}
+
+export async function setLocalAccountDisabledAsync(
+  accountId: string,
+  disabled: boolean,
+  actor: LocalAccountActor,
+  now = new Date()
+): Promise<LocalAccountSummary> {
+  return withAsyncAccountStorage((storage) => setLocalAccountDisabled(accountId, disabled, actor, storage, now));
+}
+
+export async function changeLocalAccountPasswordAsync(
+  accountId: string,
+  currentPassword: string,
+  newPassword: string,
+  actor: LocalAccountActor,
+  cryptoApi: Crypto = globalThis.crypto,
+  now = new Date()
+): Promise<LocalAccountSummary> {
+  return withAsyncAccountStorage((storage) =>
+    changeLocalAccountPassword(accountId, currentPassword, newPassword, actor, storage, cryptoApi, now)
+  );
+}
+
+/** Stable async API names for callers that do not need the legacy naming. */
+export const createAccountAsync = createLocalAccountAsync;
+export const updateAccountAsync = updateLocalAccountAsync;
+export const changePasswordAsync = changeLocalAccountPasswordAsync;
 
 export function generateTemporaryPassword(cryptoApi: Crypto = globalThis.crypto): string {
   const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%&*';
