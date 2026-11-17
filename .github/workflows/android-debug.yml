@@ -3,48 +3,51 @@ name: Build Android Debug APK
 on:
   push:
     branches:
-      - 'copilot/complete-shuttle-automation-v6'
+      - main
+      - "development/**"
+      - "copilot/**"
+  pull_request:
+    branches:
+      - main
+      - "development/**"
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: shuttle-android-smoke-${{ github.ref }}
+  group: shuttle-android-smoke-\${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   build-android:
     name: Build, install, and smoke-test Android APK
-    runs-on: ubuntu-26.04
-    timeout-minutes: 35
+    runs-on: macos-15
+    timeout-minutes: 45
     steps:
       - name: Check out repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@v4
 
       - name: Set up Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@v4
         with:
           node-version: 22
-          package-manager-cache: false
 
       - name: Set up Java
-        uses: actions/setup-java@v6
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '21'
+          java-version: "21"
 
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v4
-        with:
-          packages: platform-tools
+        uses: android-actions/setup-android@v3
 
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
       - name: Validate web application
         run: |
-          npx tsc -b
+          npm run check
           npm test
           npm run build
 
@@ -58,17 +61,17 @@ jobs:
         working-directory: android
         run: ./gradlew --no-daemon assembleDebug
 
-      - name: Install and launch APK in Android phone emulator
+      - name: Install and launch APK in Android emulator
         uses: reactivecircus/android-emulator-runner@v2
-        timeout-minutes: 12
+        timeout-minutes: 18
         with:
           api-level: 35
           system-image-api-level: 35
-          arch: x86_64
           target: google_apis
-          profile: pixel_2
-          emulator-boot-timeout: 300
-          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          arch: arm64-v8a
+          profile: pixel_7
+          emulator-boot-timeout: 600
+          emulator-options: -no-snapshot -no-window -noaudio -no-boot-anim
           disable-animations: true
           script: |
             set -euo pipefail
@@ -78,18 +81,16 @@ jobs:
 
             timeout 30s adb wait-for-device
             BOOTED=""
-            for attempt in $(seq 1 90); do
+            for attempt in $(seq 1 45); do
               BOOTED="$(adb shell getprop sys.boot_completed | tr -d '\r' || true)"
-              if [ "$BOOTED" = "1" ]; then
-                break
-              fi
+              if [ "$BOOTED" = "1" ]; then break; fi
               sleep 2
             done
             test "$BOOTED" = "1"
 
             adb shell wm size | tee artifacts/android-smoke/display-size.txt
             adb shell wm density | tee artifacts/android-smoke/display-density.txt
-            timeout 90s adb install -r "$APK"
+            timeout 120s adb install -r "$APK"
             adb logcat -c
             timeout 30s adb shell am force-stop com.shuttlecar.automation
             timeout 45s adb shell am start -W -n com.shuttlecar.automation/.MainActivity | tee artifacts/android-smoke/launch-result.txt
@@ -97,6 +98,7 @@ jobs:
 
             sleep 8
             APP_PID="$(adb shell pidof com.shuttlecar.automation | tr -d '\r' || true)"
+            test -n "$APP_PID"
             timeout 30s adb exec-out screencap -p > artifacts/android-smoke/android-app-screen.png
             test -s artifacts/android-smoke/android-app-screen.png
             timeout 30s adb shell dumpsys activity activities > artifacts/android-smoke/activities.txt
@@ -106,14 +108,12 @@ jobs:
               echo "Android app crash signature found in device log."
               exit 1
             fi
-
-            test -n "$APP_PID"
             grep -F "com.shuttlecar.automation/.MainActivity" artifacts/android-smoke/activities.txt
             echo "Android emulator install, launch, foreground-process, screenshot, and crash-log checks passed."
 
       - name: Upload Android emulator evidence
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v4
         with:
           name: shuttle-android-emulator-evidence
           path: artifacts/android-smoke/
@@ -122,7 +122,7 @@ jobs:
 
       - name: Upload debug APK
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v4
         with:
           name: shuttle-car-automation-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
