@@ -33,10 +33,8 @@ module rounded_block(length, width, height, radius = 5) {
 
 module enclosure() {
   color([0.20, 0.29, 0.34])
-    difference() {
-      translate([0, 0, wall / 2]) rounded_block(pack_length, pack_width, wall, 7);
-      translate([0, 0, wall / 2]) rounded_block(pack_length - 2 * wall, pack_width - 2 * wall, wall + 2, 5);
-    }
+    translate([0, 0, wall / 2])
+      rounded_block(pack_length, pack_width, wall, 7);
 
   color([0.28, 0.38, 0.43]) {
     translate([0, -pack_width / 2 + wall / 2, pack_height / 2])
