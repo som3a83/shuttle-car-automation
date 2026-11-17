@@ -38,7 +38,7 @@ On the audited main commit:
 | Main post-merge CI (run 44074458927) | Passed |
 | Main post-merge CodeQL (run 44074458926) | Passed |
 | Main post-merge secret scan (run 44074458837) | Passed |
-| Fresh Android run on merged main (run 44074458921) | In progress at the time of this audit refresh |
+| Fresh Android run on merged main (run 44074458921) | Passed: all Android setup/build/KVM/emulator install/launch/evidence-upload steps completed successfully |
 
 The PR #24 Android run completed the emulator smoke test successfully: the accelerated emulator booted, installed the APK, launched the main activity, verified the app process, captured a screenshot and uploaded emulator logs. The post-merge main Android run is still being checked independently. A debug build is not a signed Google Play release.
 
@@ -76,7 +76,7 @@ Limitations that must remain visible:
 ## 7. Android and store readiness
 
 - A reproducible Android debug APK build path exists. The APK built and passed install/launch/process/screenshot/log checks in PR #24 run `44073395778`; a fresh post-merge run on `main` is underway.
-- Emulator launch verification passed on PR #24 head `b7ecfd6`; that exact code was merged to `main`. The fresh post-merge Android run `44074458921` is still being verified.
+- Emulator launch verification passed on PR #24 head `b7ecfd6`; that exact code was merged to `main`. The fresh post-merge Android run `44074458921` also passed on the current `main` SHA.
 - Production signing credentials, a signed AAB, Play Console validation, store review, privacy disclosures in the published listing and physical-device acceptance have not been established by this audit.
 - Therefore the project is **not yet certified as Google Play production-ready**.
 
