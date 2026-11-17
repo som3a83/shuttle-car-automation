@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: shuttle-debug-apk-artifact-${{ github.ref }}
@@ -50,23 +50,7 @@ jobs:
           echo "$SDK_ROOT/platform-tools" >> "$GITHUB_PATH"
 
       - name: Install dependencies
-        run: npm install --no-audit --no-fund
-
-      - name: Commit reproducible npm lockfile
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [ ! -f package-lock.json ]; then
-            echo "npm did not produce package-lock.json"
-            exit 1
-          fi
-          git add package-lock.json
-          if ! git diff --cached --quiet; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git commit -m "build: add reproducible npm dependency lockfile"
-            git push origin "HEAD:${GITHUB_REF_NAME}"
-          fi
+        run: npm ci --no-audit --no-fund
 
       - name: Validate web application
         run: |
