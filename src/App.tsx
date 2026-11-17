@@ -459,6 +459,152 @@ function App() {
     showToast(t.done);
   };
 
+  const archiveShuttle = (id: string) => {
+    const archivedAt = new Date().toISOString();
+    setShuttles(prev => prev.map(item => item.id === id ? { ...item, archivedAt } : item));
+    const next = activeShuttles.find(item => item.id !== id);
+    if (selectedId === id) setSelectedId(next?.id || '');
+    setPendingShuttleArchive(null);
+    pushNotification(language === 'ar' ? 'تم أرشفة جهاز' : 'Shuttle archived', `${id} · ${language === 'ar' ? 'تم الاحتفاظ بسجل الأعطال والصيانة' : 'History retained in the local archive'}`, 'warning');
+    showToast(language === 'ar' ? 'تمت الأرشفة مع الاحتفاظ بالسجل' : 'Archived; history retained');
+  };
+
+  const restoreShuttle = (id: string) => {
+    setShuttles(prev => prev.map(item => item.id === id ? { ...item, archivedAt: null } : item));
+    setSelectedId(id);
+    pushNotification(language === 'ar' ? 'تم استعادة جهاز' : 'Shuttle restored', id);
+  };
+
+  const saveShuttleEdit = (event: React.FormEvent<HTMLFormElement>, id: string) => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const patch: Partial<Shuttle> = {
+      manufacturer: String(form.get('manufacturer') || 'Other').trim(),
+      model: String(form.get('model') || 'Not recorded').trim() || 'Not recorded',
+      serialNumber: String(form.get('serialNumber') || 'Not recorded').trim() || 'Not recorded',
+      hardwareVersion: String(form.get('hardwareVersion') || 'Not recorded').trim() || 'Not recorded',
+      firmwareVersion: String(form.get('firmwareVersion') || 'Not recorded').trim() || 'Not recorded',
+      warehouseZone: String(form.get('zone') || 'Not recorded').trim() || 'Not recorded',
+      assignedOperator: String(form.get('operator') || 'Not assigned').trim() || 'Not assigned',
+      notes: String(form.get('notes') || '').trim(),
+      status: String(form.get('status') || 'Unknown') as ShuttleStatus
+    };
+    updateShuttle(id, patch);
+    setEditingShuttle(null);
+    showToast(language === 'ar' ? 'تم حفظ تعديلات الجهاز' : 'Equipment details saved');
+  };
+
+  const addBattery = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const seq = Math.max(0, ...batteries.map(b => Number(b.id.match(/(\d+)$/)?.[1]) || 0)) + 1;
+    const id = 'BAT-' + String(seq).padStart(3, '0');
+    const assignment = String(form.get('assignment') || '').trim() || 'Unassigned';
+    const record: Battery = {
+      id,
+      manufacturer: String(form.get('manufacturer') || 'Not recorded').trim(),
+      model: String(form.get('model') || 'Not recorded').trim() || 'Not recorded',
+      chemistry: String(form.get('chemistry') || 'Not verified').trim() || 'Not verified',
+      nominalVoltage: String(form.get('voltage') || 'Not recorded').trim() || 'Not recorded',
+      capacity: String(form.get('capacity') || 'Not recorded').trim() || 'Not recorded',
+      soc: null, soh: null, temperature: null, voltage: null, current: null, cycles: null,
+      installationDate: 'Not recorded', lastMaintenance: 'Not recorded', assignment, 
+      notes: String(form.get('notes') || '').trim() || 'New local battery register entry. Technical specifications and telemetry are not verified.',
+      status: assignment === 'Unassigned' ? 'Spare' : 'Installed',
+      connectionMode: 'UNKNOWN'
+    };
+    setBatteries(prev => [...prev, record]);
+    setSelectedBatteryId(id);
+    if (assignment !== 'Unassigned') {
+      setShuttles(prev => prev.map(shuttle => shuttle.id === assignment ? { ...shuttle, installedBattery: id } : shuttle));
+    }
+    event.currentTarget.reset();
+    pushNotification(language === 'ar' ? 'تم تسجيل بطارية جديدة' : 'New battery registered', `${id} · ${assignment}`);
+    showToast(language === 'ar' ? 'تم تسجيل البطارية' : 'Battery registered');
+  };
+
+  const archiveBattery = (id: string) => {
+    setBatteries(prev => prev.map(item => item.id === id ? { ...item, archivedAt: new Date().toISOString() } : item));
+    setShuttles(prev => prev.map(item => item.installedBattery === id ? { ...item, installedBattery: 'Not recorded' } : item));
+    setSelectedBatteryId(activeBatteries.find(item => item.id !== id)?.id || '');
+    setPendingBatteryArchive(null);
+    pushNotification(language === 'ar' ? 'تمت أرشفة بطارية' : 'Battery archived', id, 'warning');
+    showToast(language === 'ar' ? 'تمت أرشفة البطارية' : 'Battery archived');
+  };
+
+  const restoreBattery = (id: string) => {
+    setBatteries(prev => prev.map(item => item.id === id ? { ...item, archivedAt: null } : item));
+    setSelectedBatteryId(id);
+    pushNotification(language === 'ar' ? 'تمت استعادة بطارية' : 'Battery restored', id);
+  };
+
+  const generateDailyReport = () => {
+    const now = new Date();
+    const reportDate = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+    const report: DailyReportSnapshot = {
+      id: 'RPT-' + now.getTime(),
+      reportDate,
+      generatedAt: now.toISOString(),
+      shuttleCount: activeShuttles.length,
+      runningCount: activeShuttles.filter(item => item.status === 'Running').length,
+      readyCount: activeShuttles.filter(item => item.status === 'Ready').length,
+      disconnectedCount: activeShuttles.filter(item => item.connectivity !== 'REAL').length,
+      openFaultCount: faults.filter(item => item.status !== 'Resolved').length,
+      openMaintenanceCount: jobs.filter(item => item.status !== 'Completed').length,
+      batteryCount: activeBatteries.length,
+      faultedBatteryCount: activeBatteries.filter(item => item.status === 'Fault').length,
+      verifiedTelemetryCount: activeShuttles.filter(item => item.connectivity === 'REAL').length + activeBatteries.filter(item => item.connectionMode === 'REAL').length,
+      shuttles: activeShuttles.map(item => ({ id: item.id, manufacturer: item.manufacturer, status: item.status, connectivity: item.connectivity, warehouseZone: item.warehouseZone })),
+      batteries: activeBatteries.map(item => ({ id: item.id, manufacturer: item.manufacturer, status: item.status, assignment: item.assignment, soc: item.soc, connectionMode: item.connectionMode }))
+    };
+    setDailyReports(prev => [report, ...prev].slice(0, 90));
+    pushNotification(language === 'ar' ? 'تم إصدار التقرير اليومي' : 'Daily report generated', `${report.id} · ${report.reportDate}`);
+    showToast(language === 'ar' ? 'تم حفظ التقرير اليومي' : 'Daily report saved locally');
+  };
+
+  const downloadDailyReport = (report: DailyReportSnapshot) => {
+    const rows: Array<Array<string | number>> = [
+      ['SHUTTLE OPERATIONS · DAILY DEVICE STATUS', report.reportDate],
+      ['Generated at', report.generatedAt],
+      ['Active shuttle units', report.shuttleCount],
+      ['Running', report.runningCount],
+      ['Ready', report.readyCount],
+      ['Not connected / unverified', report.disconnectedCount],
+      ['Open fault reports', report.openFaultCount],
+      ['Open maintenance orders', report.openMaintenanceCount],
+      ['Active batteries', report.batteryCount],
+      ['Faulted batteries', report.faultedBatteryCount],
+      ['Verified telemetry sources', report.verifiedTelemetryCount],
+      [],
+      ['SHUTTLES', 'Manufacturer', 'Status', 'Connectivity', 'Zone'],
+      ...report.shuttles.map(item => [item.id, item.manufacturer, item.status, item.connectivity, item.warehouseZone]),
+      [],
+      ['BATTERIES', 'Manufacturer', 'Status', 'Assignment', 'SOC', 'Connection'],
+      ...report.batteries.map(item => [item.id, item.manufacturer, item.status, item.assignment, item.soc === null ? 'Not verified' : item.soc + '%', item.connectionMode])
+    ];
+    const csv = rows.map(row => row.map(value => '"' + String(value ?? '').replace(/"/g,'""') + '"').join(',')).join('\r\n');
+    const url = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `shuttle-daily-report-${report.reportDate}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const assignSelectedBattery = (shuttleId: string) => {
+    if (!selectedBattery) return;
+    const previousAssignment = selectedBattery.assignment;
+    setBatteries(prev => prev.map(item => item.id === selectedBattery.id ? {
+      ...item, assignment: shuttleId || 'Unassigned', status: shuttleId ? 'Installed' : 'Spare'
+    } : item));
+    setShuttles(prev => prev.map(item => {
+      if (item.id === previousAssignment && item.installedBattery === selectedBattery.id) return { ...item, installedBattery: 'Not recorded' };
+      if (item.id === shuttleId) return { ...item, installedBattery: selectedBattery.id };
+      return item;
+    }));
+    pushNotification(language === 'ar' ? 'تم تحديث تخصيص البطارية' : 'Battery assignment updated', `${selectedBattery.id} → ${shuttleId || 'Unassigned'}`);
+  };
+
   const addFault = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
@@ -529,6 +675,47 @@ function App() {
     const data = { schemaVersion: 9, exportedAt: new Date().toISOString(), warning: 'Local demo/record data only. Not a live PLC telemetry export.', shuttles, batteries, faults, jobs, notifications, settings, dailyReports };
     const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
     const link = document.createElement('a'); link.href = url; link.download = 'shuttle-local-backup.json'; link.click(); URL.revokeObjectURL(url);
+  };
+
+  const importBackup = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(String(reader.result)) as Record<string, unknown>;
+        if (!Array.isArray(data.shuttles) || !Array.isArray(data.batteries) || !Array.isArray(data.faults) || !Array.isArray(data.jobs)) {
+          throw new Error('Backup structure is incomplete');
+        }
+        setShuttles(data.shuttles as Shuttle[]);
+        setBatteries(data.batteries as Battery[]);
+        setFaults(data.faults as Fault[]);
+        setJobs(data.jobs as MaintenanceJob[]);
+        setNotifications(Array.isArray(data.notifications) ? data.notifications as NotificationItem[] : []);
+        setDailyReports(Array.isArray(data.dailyReports) ? data.dailyReports as DailyReportSnapshot[] : []);
+        if (data.settings && typeof data.settings === 'object') setSettings(data.settings as AppSettings);
+        setSelectedId((data.shuttles as Shuttle[]).find(item => !item.archivedAt)?.id || '');
+        setSelectedBatteryId((data.batteries as Battery[]).find(item => !item.archivedAt)?.id || '');
+        showToast(language === 'ar' ? 'تم استيراد النسخة الاحتياطية' : 'Backup restored');
+      } catch {
+        showToast(language === 'ar' ? 'ملف النسخة الاحتياطية غير صالح' : 'Backup file is invalid');
+      }
+      event.target.value = '';
+    };
+    reader.readAsText(file);
+  };
+
+  const resetLocalData = () => {
+    if (!window.confirm(language === 'ar' ? 'سيتم حذف السجلات المحلية وإعادة بيانات البداية. هل تريد المتابعة؟' : 'Delete local records and restore seed data?')) return;
+    setShuttles(initialShuttles);
+    setBatteries(initialBatteries);
+    setFaults(initialFaults);
+    setJobs(initialMaintenance);
+    setNotifications(initialNotifications);
+    setDailyReports([]);
+    setSelectedId('SC-01');
+    setSelectedBatteryId('BAT-ACME-01');
+    showToast(language === 'ar' ? 'تمت إعادة بيانات البداية' : 'Seed data restored');
   };
 
   const header = navItems.find(n => n.id === activeTab);
