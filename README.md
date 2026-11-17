@@ -1,4 +1,4 @@
-# Shuttle Car Automation V9
+# Shuttle Car Automation V10
 
 Shuttle Car Automation is a React, Vite, TypeScript and Capacitor application for documenting and inspecting a shuttle-car fleet. It is currently an **offline-first local engineering prototype**. Local records and simulation controls do not communicate with, or control, physical shuttle cars.
 
@@ -14,29 +14,26 @@ npm run build
 ## Application workspaces
 
 - **Dashboard:** fleet overview and local record indicators.
-- **Fleet:** searchable shuttle register for the reported 3 Cassioli, 1 Craftsman and 1 ACME units.
+- **Fleet:** searchable active register, edit manufacturer/model/serial/hardware/firmware/zone/operator/status, add units, and archive/restore records while retaining service history.
 - **Engineering:** interactive Three.js conceptual shuttle assembly, camera presets, pointer rotation, zoom, exploded view and selectable component inspection; a 2D schematic fallback is provided when WebGL is unavailable.
-- **Batteries:** Three.js conceptual lithium battery assembly and local battery register.
+- **Batteries:** Three.js conceptual lithium battery assembly; add/edit/archive/restore batteries, assign them to shuttle units, record manual SOC/SOH/temperature/voltage/current/cycles, and track local status.
 - **Faults:** manually reported observations, investigation status and corrective-action requirement before closure.
 - **Maintenance:** work-order creation and local status transitions.
 - **Connections:** protocol architecture reference for Modbus TCP, OPC UA, MQTT, REST API, WebSocket and BLE; no endpoint is configured.
 - **Technical assistant:** static field-inspection guidance, not an AI-generated diagnosis.
-- **Reports:** CSV export, local JSON backup and print / Save as PDF.
+- **Reports:** generate immutable daily device-status snapshots, review daily report history, export each snapshot to CSV, export the complete local register, and print / Save as PDF.
 - **Notifications:** local events from fault, battery and maintenance record changes, with dismiss / clear actions and configurable alert preferences.
-- **Users and settings:** role preview, language, theme and local alert preferences.
+- **Users and settings:** role preview, language, theme, local alert preferences, JSON backup import/export, visible local-data inventory and seed-data reset.
 
 ## Navigation and interface
 
-Application workspaces use URL hash routes, for example `#/fleet`, `#/engineering` and `#/notifications`. Browser back / forward navigation is supported. The interface supports Arabic RTL, English LTR, dark and light themes, desktop navigation, and a mobile quick-navigation bar with an all-modules drawer.
+Application workspaces use URL hash routes, for example `#/fleet`, `#/engineering` and `#/notifications`. Browser back / forward navigation is supported. The interface supports Arabic RTL, English LTR, dark and light themes, desktop navigation, mobile quick-navigation, a modules drawer, and in-app back/home/settings controls.
 
 ## Automated validation
 
-The latest verified CI run on the development feature branch passed:
-- TypeScript project check.
-- **25 automated tests across 3 test files** (navigation, local workflows, WebGL fallback behavior and persistence).
-- Production Vite build.
+The current feature branch adds regression coverage for equipment editing and archival, battery creation and assignment, manually recorded readings, daily report snapshots, settings access and in-app back navigation. GitHub Actions validates TypeScript, tests and the production web bundle, then builds a Capacitor debug APK. A separate Android emulator smoke test attempts to install and launch the APK and capture screen/log evidence. Emulator success and a physical-device test must be checked from the matching workflow run; a build alone is not proof of Android usability.
 
-The Android debug workflow builds the Capacitor wrapper and publishes a debug APK artifact. A debug APK is for evaluation and is **not** a signed Play Store release.
+A debug APK is for evaluation and is **not** a signed Play Store release.
 
 ## Data, connectivity and safety limits
 
@@ -48,6 +45,15 @@ The Android debug workflow builds the Capacitor wrapper and publishes a debug AP
 - Role selection is a user-interface preview only. There is no real authentication or server-enforced RBAC.
 - The technical assistant is a static checklist. No AI provider is connected, and diagnostic possibilities must be verified by a qualified technician.
 - The application does not issue shuttle movement, charging, PLC-write or other machine-control commands.
+
+
+## V10 operations and data lifecycle
+
+- Equipment and battery removal is implemented as **soft archival**. Archived records are hidden from active operations but can be restored; fault and maintenance history is not automatically deleted.
+- Daily reports are immutable local snapshots generated on demand. Later status changes do not rewrite previously generated reports.
+- JSON import checks the required record collections before replacing local records. Export a backup before resetting or replacing local data.
+- Manually entered battery readings retain their connection mode and are not promoted to live telemetry.
+- CAD-like Three.js assemblies now include additional frame reinforcements, drivetrain details, tread blocks, service points, battery cell/BMS details and engineering callouts. They remain conceptual models, not vendor-certified drawings or dimensionally validated CAD.
 
 ## Before real equipment integration
 
