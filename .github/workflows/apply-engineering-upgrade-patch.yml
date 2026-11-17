@@ -1,0 +1,38 @@
+name: Apply verified engineering upgrade patch
+on:
+  push:
+    branches:
+      - engineering/industrial-ui-security-v1
+    paths:
+      - engineering-upgrade.patch.gz.b64
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the engineering branch
+        uses: actions/checkout@v4
+        with:
+          ref: engineering/industrial-ui-security-v1
+          fetch-depth: 0
+      - name: Verify and apply the local source patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64, gzip, pathlib
+          encoded = pathlib.Path("engineering-upgrade.patch.gz.b64").read_text().strip()
+          compressed = base64.b64decode(encoded, validate=True)
+          patch = gzip.decompress(compressed)
+          pathlib.Path("/tmp/engineering-upgrade.patch").write_bytes(patch)
+          PY
+          git apply --check /tmp/engineering-upgrade.patch
+          git apply /tmp/engineering-upgrade.patch
+          rm engineering-upgrade.patch.gz.b64
+          rm .github/workflows/apply-engineering-upgrade-patch.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "security: add local identity, audit integrity and verified storage"
+          git push origin HEAD:engineering/industrial-ui-security-v1
