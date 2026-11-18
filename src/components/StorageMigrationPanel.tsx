@@ -71,8 +71,7 @@ export default function StorageMigrationPanel({ language, canMigrate }: { langua
       {needsReload ? (
         <div className="notice-inline" role="status">
           <strong>{ar ? 'اكتمل الترحيل والتحقق من السجلات.' : 'Migration and record verification completed.'}</strong>
-          <span>{ar ? 'أعد تشغيل التطبيق لتفعيل محرك IndexedDB في جميع الوحدات.' : 'Restart the application to activate IndexedDB across all modules.'}</span>
-          <button className="btn-primary" type="button" onClick={() => window.location.reload()}>{ar ? 'إعادة تشغيل التطبيق الآن' : 'Reload and activate IndexedDB'}</button>
+          <span>{ar ? 'تم قفل واجهة التطبيق حتى إعادة التحميل لمنع حفظ تعديلات جديدة في محرك التخزين القديم.' : 'The application is locked until reload so no new edits can be written to the old storage engine.'}</span>
         </div>
       ) : mode === 'indexeddb' ? (
         <p className="notice-inline" role="status">{ar ? 'IndexedDB هو محرك التخزين النشط. فحص الإقلاع يتحقق من وجود مجموعات التشغيل الـ12 قبل تحميل التطبيق.' : 'IndexedDB is active. Startup validation checks all 12 operational collections before mounting the application.'}</p>
@@ -84,6 +83,18 @@ export default function StorageMigrationPanel({ language, canMigrate }: { langua
       {result && <p className="muted-text" role="status">{ar ? 'النتيجة: ' : 'Result: '}{result.state} · {result.completedKeyCount}/{result.expectedKeyCount} {ar ? 'سجلًا' : 'records'}</p>}
       {error && <div className="security-error" role="alert">{error}</div>}
       <p className="muted-text">{ar ? 'هذا الترحيل محلي على الجهاز ولا ينشئ مزامنة سحابية.' : 'This is a local-device migration. It does not create cloud synchronization.'}</p>
+      {needsReload && (
+        <div className="storage-migration-blocker" role="alertdialog" aria-modal="true" aria-labelledby="storage-migration-blocker-title">
+          <div className="storage-migration-blocker-card">
+            <span className="eyebrow">MIGRATION COMMITTED / RELOAD REQUIRED</span>
+            <h2 id="storage-migration-blocker-title">{ar ? 'تم نقل البيانات بنجاح' : 'Data migration completed'}</h2>
+            <p>{ar ? 'تم التحقق من السجلات وتبديل محرك التخزين النشط. أعد تشغيل التطبيق الآن لتبدأ كل الوحدات باستخدام IndexedDB. تم إيقاف التفاعل مؤقتًا لمنع الكتابة إلى النسخة القديمة.' : 'The records were verified and the active storage preference was switched. Reload now so every module starts on IndexedDB. Interaction is blocked to prevent any further write to the old storage engine.'}</p>
+            <button className="btn-primary" type="button" autoFocus onClick={() => window.location.reload()}>
+              {ar ? 'إعادة تشغيل التطبيق وتفعيل التخزين الجديد' : 'Reload and activate the new storage engine'}
+            </button>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
