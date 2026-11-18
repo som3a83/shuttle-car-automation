@@ -43,6 +43,20 @@ export default function StorageMigrationPanel({
     return () => { active = false; };
   }, []);
 
+  function downloadBackupFile(created: LegacyStorageBackup): void {
+    const filename = `shuttle-pre-migration-backup-${created.exportedAt.replace(/[:.]/g, '-')}.json`;
+    const blob = new Blob([JSON.stringify(created, null, 2)], { type: 'application/json' });
+    const objectUrl = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = objectUrl;
+    anchor.download = filename;
+    anchor.style.display = 'none';
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+  }
+
   async function createBackup(): Promise<void> {
     if (backupBusy || busy) return;
     setError('');
@@ -51,17 +65,7 @@ export default function StorageMigrationPanel({
     try {
       await beforeBackup?.();
       const created = await createLegacyStorageBackup(window.localStorage);
-      const filename = `shuttle-pre-migration-backup-${created.exportedAt.replace(/[:.]/g, '-')}.json`;
-      const blob = new Blob([JSON.stringify(created, null, 2)], { type: 'application/json' });
-      const objectUrl = URL.createObjectURL(blob);
-      const anchor = document.createElement('a');
-      anchor.href = objectUrl;
-      anchor.download = filename;
-      anchor.style.display = 'none';
-      document.body.appendChild(anchor);
-      anchor.click();
-      anchor.remove();
-      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+      downloadBackupFile(created);
       setBackup(created);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'A complete verified backup could not be created.');
@@ -71,11 +75,27 @@ export default function StorageMigrationPanel({
   }
 
   async function runMigration(): Promise<void> {
-    if (!backupConfirmed || busy || mode === 'indexeddb' || mode === 'readonly-recovery') return;
+    if (!backup || !backupConfirmed || busy || mode === 'indexeddb' || mode === 'readonly-recovery') return;
     setError('');
     setBusy(true);
     onLockChange?.(true);
     try {
+      // Freeze the application, flush every queued write, then compare the exact
+      // persisted source with the backup the operator already confirmed.
+      await beforeBackup?.();
+      const latest = await createLegacyStorageBackup(window.localStorage);
+      if (JSON.stringify(latest.records) !== JSON.stringify(backup.records)) {
+        downloadBackupFile(latest);
+        setBackup(latest);
+        setBackupConfirmed(false);
+        setError(ar
+          ? 'تغيّرت البيانات بعد النسخة السابقة. تم تنزيل نسخة أحدث؛ احفظها وأكّدها قبل الترحيل.'
+          : 'Application data changed after the previous backup. A fresh backup was downloaded; save and confirm it before migrating.');
+        setBusy(false);
+        onLockChange?.(false);
+        return;
+      }
+
       const result = await migrateToIndexedDb();
       if (!result.success || result.state !== 'COMPLETE') {
         throw new Error(result.error || `Storage migration stopped in state ${result.state}.`);
