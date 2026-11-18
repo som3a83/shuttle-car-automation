@@ -15,6 +15,7 @@ import { getManufacturerReference } from './data/manufacturerReferences';
 import ShiftOperations from './components/ShiftOperations';
 import LiveGatewayPanel from './components/LiveGatewayPanel';
 import SecurityCenter from './components/SecurityCenter';
+import StorageMigrationPanel from './components/StorageMigrationPanel';
 import { loadCustomizationAsync, validateCustomization, type CustomizationConfig } from './data/applicationCustomization';
 import { archiveBatteryAndDetach, assignBatteryToShuttle, restoreBatteryRecord } from './data/batteryLifecycle';
 import { validateOperationalBackup } from './data/backupValidation';
@@ -194,8 +195,8 @@ export interface AppInitialData {
 /**
  * Runs only after operational bootstrap/recovery has completed. All synchronous
  * compatibility reads are deliberately contained here, before App is mounted.
- * TODO(2B-4): async auth/audit/customization modules still construct LegacyFallbackEngine;
- * route those APIs through storage/index.ts before enabling IndexedDB across the whole application.
+ * Local authentication, chained audit and customization async APIs share the selected
+ * storage engine. IndexedDB activation remains explicit after verified migration and reload.
  */
 export async function hydrateApplicationState(): Promise<AppInitialData> {
   const [session, accounts, customization] = await Promise.all([
@@ -399,6 +400,8 @@ function App({ initialData }: { initialData: AppInitialData }) {
   const [mobileNav, setMobileNav] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(initialData.sidebarCollapsed);
   const [toast, setToast] = useState('');
+  const [storageMigrationLocked, setStorageMigrationLocked] = useState(false);
+  const [storageMigrationComplete, setStorageMigrationComplete] = useState(false);
   const [storageIssues] = useState<string[]>(initialData.storageIssues);
   const [newAsset, setNewAsset] = useState({ manufacturer: 'Cassioli', zone: '', model: '', serialNumber: '', hardwareVersion: '', firmwareVersion: '', assignedOperator: '', notes: '' });
   const [editingShuttle, setEditingShuttle] = useState<Shuttle | null>(null);
@@ -1310,6 +1313,7 @@ function App({ initialData }: { initialData: AppInitialData }) {
     showToast(language === 'ar' ? 'تمت إعادة بيانات البداية' : 'Seed data restored');
   };
 
+  const heroShuttle = selected || initialShuttles[0];
   const header = navItems.find(n => n.id === activeTab);
   const headerPreference = visibleNavigation.find(item => item.id === activeTab);
   const statusOptions: ShuttleStatus[] = ['Ready','Running','Idle','Charging','Maintenance','Fault','Disconnected','Unknown'];
@@ -1356,7 +1360,27 @@ function App({ initialData }: { initialData: AppInitialData }) {
       {activeTab === 'dashboard' && <section className="page-content">
         <div className="hero-panel">
           <div className="hero-copy"><div className="eyebrow"><span/> PRECISION INDUSTRIAL · MECHANICAL INTELLIGENCE</div><h2>{language === 'ar' ? 'تحكم هندسي في أسطول الشاتل' : 'Precision control for your shuttle fleet'}</h2><p>{language === 'ar' ? 'مركز موحد لمتابعة العربات والبطاريات والأعطال والصيانة، مع رسومات ميكانيكية تفاعلية.' : 'A unified workspace for shuttle assets, battery records, faults and maintenance — with interactive mechanical visualization.'}</p><div className="hero-actions"><button className="btn-primary" onClick={() => go('fleet')}>{t.openFleet}<Icon name="arrow" size={16}/></button><button className="btn-secondary" onClick={() => go('engineering')}>{t.openEngineering}</button></div><div className="hero-footnote"><span className="pulse-dot"/> {language === 'ar' ? 'عدد الأجهزة النشطة: ' + metrics.total : metrics.total + ' active units in the local fleet register'}</div></div>
-          <div className="hero-machine"><div className="machine-orbit orbit-one"/><div className="machine-orbit orbit-two"/><div className="machine-label label-top">SHUTTLE / ASRS</div><ShuttleModel shuttle={selected || initialShuttles[0]} view="iso" exploded={false} animated={animated}/><div className="machine-label label-bottom">{selected?.manufacturer || 'CASSIOLI'} · {selected?.id || 'SC-01'}</div></div>
+          <div className="hero-machine">
+            <div className="machine-orbit orbit-one"/>
+            <div className="machine-orbit orbit-two"/>
+            <div className="dashboard-shuttle-viewer">
+              <Suspense fallback={<ShuttleModel shuttle={heroShuttle} view="iso" exploded={false} animated={false}/>}>
+                <Shuttle3DViewer
+                  manufacturer={heroShuttle.manufacturer}
+                  shuttleId={heroShuttle.id}
+                  status={heroShuttle.status}
+                  view="iso"
+                  exploded={false}
+                  animated={false}
+                  selectedPart="chassis"
+                  zoom={1.12}
+                  resetKey={0}
+                  onSelectPart={() => undefined}
+                  fallback={<ShuttleModel shuttle={heroShuttle} view="iso" exploded={false} animated={false}/>}
+                />
+              </Suspense>
+            </div>
+          </div>
         </div>
         <div className="section-heading"><div><span className="eyebrow">FLEET TELEMETRY / LOCAL RECORDS</span><h2>{language === 'ar' ? 'مؤشرات الأسطول' : 'Fleet at a glance'}</h2></div><button className="text-button" onClick={() => go('fleet')}>{t.viewRegister}<Icon name="chevron" size={15}/></button></div>
         <div className="dashboard-composition">
@@ -1527,7 +1551,7 @@ function App({ initialData }: { initialData: AppInitialData }) {
             {selectedBattery ? <>
               <div className="card-head"><div><span className="eyebrow">BATTERY MODULE / {selectedBattery.id}</span><h3>{t.batteryIllustration}</h3></div><StatusPill status={selectedBattery.status} language={language}/></div>
               <Suspense fallback={<div className="viewer-loading" role="status">{language==='ar'?'جارٍ تحميل رسم البطارية…':'Loading battery assembly…'}</div>}>
-                <Battery3DViewer battery={selectedBattery} fallback={<BatteryPack battery={selectedBattery}/>} />
+                <Battery3DViewer battery={selectedBattery} language={language} fallback={<BatteryPack battery={selectedBattery}/>} />
               </Suspense>
               <div className="battery-stat-grid">
                 <Detail label={t.charge} value={selectedBattery.soc === null ? t.unknown : selectedBattery.soc + '% (manual / reported)'}/>
@@ -1839,6 +1863,7 @@ function App({ initialData }: { initialData: AppInitialData }) {
           ]).map(item=><label className="setting-toggle" key={item.key}><span><strong>{language==='ar'?item.ar:item.en}</strong><small>{language==='ar'?item.descAr:item.descEn}</small></span><input type="checkbox" checked={settings[item.key]} onChange={event=>setSettings(prev=>({...prev,[item.key]:event.target.checked}))}/></label>)}
         </div>
         <div className="surface-card"><h3>{language==='ar'?'النسخ الاحتياطي واستعادة البيانات':'Backup and restore'}</h3><p className="muted-text">{language==='ar'?'صدّر كل سجلات الأجهزة والبطاريات والأعطال والصيانة والتقارير. يمكن استيراد ملف JSON صادر من التطبيق.':'Export shuttle, battery, fault, maintenance and daily report data. Restore a JSON backup previously exported by this app.'}</p><div className="settings-action-row"><button className="btn-primary" onClick={exportBackup}>{t.backup}</button><label className="file-import-button">{language==='ar'?'استعادة من ملف JSON':'Restore from JSON'}<input aria-label={language==='ar'?'استعادة نسخة احتياطية':'Restore backup'} type="file" accept="application/json,.json" onChange={importBackup}/></label></div></div>
+        <StorageMigrationPanel language={language} canMigrate={currentUser.isAuthenticated && currentUser.role === 'Super Admin'} beforeBackup={flushApplicationPersistence} onLockChange={setStorageMigrationLocked} onMigrationComplete={() => setStorageMigrationComplete(true)} />
         <div className="surface-card"><h3>{language==='ar'?'حالة قاعدة البيانات المحلية':'Local data store'}</h3><div className="spec-list"><Detail label={language==='ar'?'أجهزة نشطة':'Active shuttles'} value={activeShuttles.length}/><Detail label={language==='ar'?'أجهزة مؤرشفة':'Archived shuttles'} value={archivedShuttles.length}/><Detail label={language==='ar'?'بطاريات نشطة':'Active batteries'} value={activeBatteries.length}/><Detail label={language==='ar'?'تقارير يومية محفوظة':'Saved daily reports'} value={dailyReports.length}/><Detail label={language==='ar'?'مكان التخزين':'Storage'} value="This device · Local browser storage"/></div><p className="muted-text">{language==='ar'?'لا توجد مزامنة سحابية أو قاعدة بيانات مشتركة حاليًا. احتفظ بنسخة احتياطية على وسيط خارجي.':'There is no cloud sync or shared database yet. Keep a backup on a separate storage location.'}</p></div>
         <div className="surface-card privacy-policy-card"><h3>{language==='ar'?'الخصوصية والتعامل مع البيانات':'Privacy & data handling'}</h3><p>{language==='ar'?'يعمل الإصدار الحالي محليًا على هذا الجهاز. لا توجد حسابات أو مزامنة سحابية أو خادم للتطبيق، ولا يتم إرسال سجلات المعدات أو أسماء المشغلين أو الملاحظات إلى ناشر التطبيق.':'Local accounts and operational records are stored on this device. There is no cloud sync or centralized identity backend, and equipment records, operator names and notes are not sent to the publisher.'}</p><p>{language==='ar'?'قد تتضمن السجلات أسماء العاملين وبيانات تشغيلية. التخزين المحلي ليس تشفيرًا متخصصًا؛ لا تدخل كلمات مرور أو مفاتيح أو أسرارًا حساسة. ملفات النسخ الاحتياطي والتصدير تكون تحت سيطرتك وقد تحتوي على البيانات نفسها.':'Operational records and account metadata are stored locally. Passwords are stored as PBKDF2-SHA-256 derived hashes, but browser storage is not a server security boundary or full-disk encryption. Do not store production credentials or secrets. Exported backups remain under your control and may contain operational information.'}</p><p>{language==='ar'?'لحذف البيانات المحلية استخدم إعدادات Android لمسح بيانات التطبيق. زر إعادة الضبط هنا يعيد بيانات البداية ولا يضمن المسح الآمن.':'To remove local data, clear this app’s storage in Android settings. The reset button restores starter records and does not perform secure erasure.'}</p><p><a href="https://github.com/som3a83/shuttle-car-automation/blob/main/PRIVACY_POLICY.md" target="_blank" rel="noreferrer">{language==='ar'?'قراءة سياسة الخصوصية الكاملة':'Read the full privacy policy'}</a> · <a href="https://github.com/som3a83/shuttle-car-automation/blob/main/TERMS_OF_USE.md" target="_blank" rel="noreferrer">{language==='ar'?'شروط الاستخدام':'Terms of use'}</a></p></div>
         <div className="surface-card danger-settings"><h3>{language==='ar'?'إعادة بيانات التطبيق':'Reset local records'}</h3><p className="muted-text">{language==='ar'?'إعادة السجلات المحلية إلى بيانات البداية. لا يمكن التراجع عن ذلك دون نسخة احتياطية.':'Restore local records to the original seed data. This cannot be undone without a backup.'}</p><button className="btn-danger" onClick={resetLocalData}>{language==='ar'?'إعادة بيانات البداية':'Reset local records'}</button></div>
@@ -1848,6 +1873,14 @@ function App({ initialData }: { initialData: AppInitialData }) {
     </main>
     {mobileNav && <button className="nav-scrim" onClick={()=>setMobileNav(false)} aria-label="Close navigation overlay"/>}
     {toast && <div className="toast"><Icon name="check"/>{toast}</div>}
+    {storageMigrationLocked && <div className="storage-migration-blocker" role="alertdialog" aria-modal="true" aria-labelledby="storage-migration-blocker-title">
+      <section className="storage-migration-blocker-card">
+        <span className="eyebrow">{language === 'ar' ? 'سلامة قاعدة البيانات' : 'DATABASE SAFETY'}</span>
+        <h2 id="storage-migration-blocker-title">{storageMigrationComplete ? (language === 'ar' ? 'اكتمل ترحيل البيانات' : 'Data migration completed') : (language === 'ar' ? 'جارٍ ترحيل بيانات التطبيق' : 'Application data migration in progress')}</h2>
+        <p>{storageMigrationComplete ? (language === 'ar' ? 'تم التحقق من السجلات وتفعيل محرك التخزين الجديد. أعد تحميل التطبيق الآن.' : 'Records were verified and the new storage engine was activated. Reload the app now.') : (language === 'ar' ? 'يتم نقل السجلات والتحقق منها. لا تغلق التطبيق أو تغيّر بياناته أثناء العملية.' : 'Records are being copied and verified. Do not close the app or modify its data during this operation.')}</p>
+        {storageMigrationComplete && <button type="button" className="btn-primary" onClick={() => window.location.reload()}>{language === 'ar' ? 'إعادة تحميل التطبيق الآن' : 'Reload application now'}</button>}
+      </section>
+    </div>}
   </div>;
 }
 

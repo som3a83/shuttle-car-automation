@@ -215,6 +215,9 @@ async function runMigration(options: MigrationOptions): Promise<MigrationResult>
       throw new Error('The preserved audit-archive-pending marker exists. Resolve it explicitly before migration.');
     }
     const fingerprint = await sourceFingerprint(legacyStorage);
+    if (options.expectedSourceFingerprint && fingerprint !== options.expectedSourceFingerprint) {
+      throw new Error('Legacy source changed after the verified backup was created. Create and confirm a fresh backup before migrating.');
+    }
 
     const pending = await listPendingMigrationJournals();
     if (!migrationId) {

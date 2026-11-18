@@ -516,6 +516,11 @@ async function engine(): Promise<StorageEngine> {
   }
   return productionEnginePromise;
 }
+/** Returns the single active application backend selected by the persisted storage preference. */
+export async function getStorageEngine(): Promise<StorageEngine> {
+  return engine();
+}
+
 export function __resetStorageForTesting(): void { injectedEngine = null; productionEnginePromise = null; cachedStorageModePreference = null; }
 
 /**

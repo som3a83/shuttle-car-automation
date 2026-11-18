@@ -4,17 +4,12 @@ export const LOCAL_AUTH_STORAGE_KEY = 'shuttle-car-automation-v1:local-accounts'
 export const LOCAL_SESSION_STORAGE_KEY = 'shuttle-car-automation-v1:session';
 export const LOCAL_AUTH_ITERATIONS = 210_000;
 const SESSION_TTL_MS = 8 * 60 * 60 * 1000;
-// 2B-3b remains on the approved legacy mode while App.tsx still has synchronous
-// compatibility reads. Load storage only when an async account API is used,
-// keeping native Node consumers of the synchronous compatibility API isolated.
+// Resolve the active application backend lazily so synchronous compatibility callers remain isolated.
 type AsyncAuthEngine = import('../storage/index.ts').StorageEngine;
 let asyncAuthEnginePromise: Promise<AsyncAuthEngine> | null = null;
-
 async function getAsyncAuthEngine(): Promise<AsyncAuthEngine> {
   if (!asyncAuthEnginePromise) {
-    asyncAuthEnginePromise = import('../storage/index.ts').then(
-      ({ LegacyFallbackEngine }) => new LegacyFallbackEngine()
-    );
+    asyncAuthEnginePromise = import('../storage/index.ts').then(({ getStorageEngine }) => getStorageEngine());
   }
   return asyncAuthEnginePromise;
 }
