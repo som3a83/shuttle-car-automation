@@ -43,6 +43,7 @@ export interface MigrationResult {
 export interface MigrationOptions {
   legacyStorage?: { getItem(key: string): string | null };
   migrationId?: string;
+  expectedSourceFingerprint?: string;
   ownerToken?: string;
   lockExpiresAt?: number;
   now?: () => Date;
