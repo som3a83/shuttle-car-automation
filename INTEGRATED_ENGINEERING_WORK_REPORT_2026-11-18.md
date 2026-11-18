@@ -1,34 +1,81 @@
-# Shuttle Car Automation — Integrated Engineering Work Report
-Updated: 2026-11-18
+# Shuttle Car Automation — Final Integration and Build Report
+Updated: 18 November 2026
 
-## Integration baseline
-- Repository: `som3a83/shuttle-car-automation`
-- Base branch: `main` at `5ba2fa25c94571bcf07c1c235a7dff07bd3f8933`
-- Anila archive baseline: `faff09f63779e70074209dd1d8f808768a2c6021` (36 commits behind current main when the archive was reviewed).
-- Integration branch: `integrated-2b-4a2-industrial-ux-20261118`
-- No force-push, history rewrite, or direct write to `main` was performed.
+## Repository result
 
-## Integrated changes
-1. Ported the seven Phase 2B-4a-2 storage migration orchestration modules and tests from existing PR #46 onto the latest `main`.
-2. Replaced permissive storage placeholder interfaces with canonical application types for local accounts, audit records, archived audit records, and customization.
-3. Added keyboard rotation/reset controls and accessibility hints to the conceptual shuttle and lithium-battery 3D viewers.
-4. Gated shuttle wheel movement on explicit user activation and recorded `Running` status; the label explicitly identifies it as simulated movement, not live machine feedback.
-5. Disabled unsolicited motion on initial load and applied the same state gate to the 2D fallback viewer.
-6. Corrected the notification-dismissal test to assert that the selected notification disappears without requiring all seeded demo notifications to be cleared.
-7. Clarified the CI comment for the unresolved upstream picomatch security advisory.
+- Repository: https://github.com/som3a83/shuttle-car-automation
+- Default branch: `main`
+- Merge commit: `a10d0efb8c986cc84d6e5c6ae7325819578a2623`
+- Merged PR: #47 — storage migration orchestration and industrial viewer safeguards.
+- Superseded draft PR: #46 — closed without merge to prevent duplicate integration.
+- PR #47 was squash-merged only after its full CI, Android emulator, CAD and security checks passed.
 
-## Existing CI evidence before this branch
-- PR #46 head `8a34dc8d5b672fc3ff9b734e9e770a8376e3a81b` had 255/256 tests passing; its single failure was the notification-dismissal assertion corrected here.
-- Its observed workflows passed the TypeScript project check, Android Debug APK workflow, CAD validation, CodeQL, secret scan, dependency review, and Phase 2B-1 storage tests.
-- The dependency audit reported six high-severity findings in the Vite/Vitest toolchain through picomatch. This integration does not claim the advisory is fixed; the audit remains visible and non-blocking while no patched upstream version is available.
-- The integrated branch still requires fresh CI before merge. No APK/AAB or Play Store submission is claimed by this report.
+## What was integrated
 
-## Repository protection state observed
-- Active ruleset `main` (ID `27423825`) currently requires pull requests and rejects non-fast-forward updates.
-- The live ruleset does not yet require status checks, an independent approval, CODEOWNERS approval, or resolved review threads. The updated `GITHUB_SECURITY_SETUP.md` records the missing gates and the exact checks to require.
-- The GitHub integration did not expose a ruleset write operation, so those repository settings were not changed by this integration.
+1. Seven Phase 2B-4a-2 IndexedDB migration-generation/orchestration modules and their tests.
+2. Canonical local-account, audit, audit-archive and customization types in storage schema definitions.
+3. Asynchronous UI test corrections for notification dismissal, fleet registration and shuttle archive/restore.
+4. Keyboard rotation/reset and interaction guidance for shuttle and battery 3D viewers.
+5. A safety gate for wheel motion: simulation starts disabled and can be enabled only when the recorded state is `Running`. The interface labels it simulated, not live.
+6. Updated project execution and GitHub security documentation.
 
-## Industrial and deployment boundaries
-- The 3D models are conceptual references, not manufacturer-certified CAD.
-- No physical shuttle is connected by this integration. Live telemetry or control requires verified vendor documentation, approved read-only adapters, and commissioning.
-- Local account/storage protections remain device-local. Multi-device use needs trusted backend identity, server-side authorization, and centralized audit storage.
+The uploaded Anila archive was not copied over the newer application tree: its source baseline was 36 commits behind the then-current `main`. Only reviewed changes were carried across.
+
+## Verified main-branch workflow results
+
+All checks below completed successfully for merge commit `a10d0efb8c986cc84d6e5c6ae7325819578a2623`:
+
+| Workflow | Run ID | Result |
+|---|---:|---|
+| Shuttle Car Automation CI: TypeScript, full test suite, release config, store assets and production build | 44309184782 | PASS |
+| CodeQL JavaScript/TypeScript | 44309184966 | PASS |
+| Secret Leak Scan | 44309185052 | PASS |
+| Industrial read-only gateway validation | 44309184706 | PASS |
+| Parametric CAD validation: shuttle + battery | 44309184851 | PASS |
+| Android Debug APK + install/launch/emulator smoke test | 44309185073 | PASS |
+| Android Debug APK packaging + checksum | 44309184828 | PASS |
+
+Dependency Review and Phase 2B-1 storage tests also passed on the PR #47 head before merge.
+
+## Build deliverables
+
+### Android debug APK
+
+- GitHub artifact: `shuttle-car-automation-1.0.0-debug-apk`
+- Artifact ID: `14428554218`
+- File: `shuttle-car-automation-1.0.0-debug.apk`
+- Size: 5,332,016 bytes
+- SHA-256: `5fae4943de7744776ea2744daa648bcc46a494ea6e98bcfa62e1a416553075b5`
+
+### Android emulator evidence
+
+- Artifact: `shuttle-android-emulator-evidence`
+- Artifact ID: `14429632301`
+- Contains dashboard screenshot, engineering-view screenshot, activity information, display metrics, launch result and device logcat.
+- Emulator workflow installed and launched the app and completed its smoke checks successfully.
+
+### Parametric CAD
+
+- Artifact: `shuttle-parametric-cad-reference`
+- Artifact ID: `14430015938`
+- Contains editable OpenSCAD source for the shuttle reference assembly and lithium battery pack, plus rendered STL outputs.
+- These are conceptual reference models, not manufacturer-certified CAD.
+
+## Security, privacy and industrial boundary
+
+- The active `main` ruleset (ID `27423825`) requires pull requests and rejects non-fast-forward changes.
+- It still does not require status checks, an independent approval, CODEOWNERS approval or review-thread resolution. The repository protection guide records the missing gates. A repository administrator must complete these settings because the available GitHub integration had no ruleset-write operation.
+- Dependency Review remains temporarily non-blocking while GitHub Dependency Graph is unavailable. The previously observed picomatch advisory remains a dependency follow-up; a green workflow does not mean that advisory has been patched.
+- `PRIVACY_POLICY.md` contains Arabic and English disclosures. It accurately describes device-local records, absence of publisher cloud synchronization, the optional separate read-only OT gateway, and the lack of in-app advertising/analytics.
+- No physical shuttle is connected by this build. The app does not issue PLC writes, movement, charge or reset commands.
+
+## Not yet a Google Play release
+
+The successful APK is a **debug/testing build**, not a signed Play Store AAB. The release workflow exists at `.github/workflows/android-release.yml` and builds a signed AAB/APK only after these GitHub Actions secrets are configured:
+
+- `ANDROID_KEYSTORE_BASE64`
+- `ANDROID_KEYSTORE_PASSWORD`
+- `ANDROID_KEY_ALIAS`
+- `ANDROID_KEY_PASSWORD`
+
+No signed AAB workflow was run and no Play Console upload is claimed. Before publishing, complete the signing setup, verify the final privacy-policy URL, store listing, screenshots/feature graphic, Data safety, content rating, target audience and app-access declarations, then test the signed release on physical Android devices.
