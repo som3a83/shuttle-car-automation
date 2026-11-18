@@ -73,6 +73,18 @@ Configure the gateway environment:
 
 The asset's `transports` list must include the selected transport (for example `ethernet` or `wifi`) and its `protocols` list must include `modbus-tcp`. The adapter declares the selected path for every reading; the gateway rejects readings from undeclared transports or protocols and persists those fields with the sample.
 
+### Generic OPC UA client — secure, read only
+
+`industrial-gateway/adapters/opc_ua.py` adds a generic OPC UA client for any shuttle controller or upstream WCS/gateway that exposes documented OPC UA nodes. It uses `opc.tcp://host:port`, a pinned server certificate, a client certificate/private key and `Basic256Sha256,SignAndEncrypt`. A vendor-approved read-only account can also be configured. The exact node map must match the asset's `allowed_tags`; each returned `DataValue` must have a good status and a timezone-aware `SourceTimestamp`. No writes, method calls or control endpoints are included.
+
+Set `SHUTTLE_ADAPTER_FACTORY=adapters.opc_ua:create_adapter`. In the protected settings file provide:
+- `endpoint_url`, plus `allowed_hosts` if a DNS name is used;
+- `client_certificate`, `client_private_key`, and pinned `server_certificate` paths;
+- a separate vendor-provisioned read-only `username` / `password` if required;
+- a `nodes` map whose exact keys are the commissioned `allowed_tags` and whose values contain the documented `node_id` and engineering `unit`.
+
+The OPC UA client configures security before opening the session. A missing certificate or untrusted server is a connection failure, not a reason to fall back to an unencrypted channel.
+
 ### Generic MQTT telemetry adapter — read only
 
 `industrial-gateway/adapters/mqtt.py` is a generic MQTT subscriber for any manufacturer or shuttle gateway that publishes timestamped JSON telemetry to MQTT. It subscribes only to the concrete topic names in the commissioned asset's exact approved tag map. Wildcard subscriptions are rejected. Every payload must include a value and timezone-aware source timestamp; optional unit and data-quality fields are preserved. TLS certificate validation is required for non-loopback brokers, hostname allowlisting is required for DNS names, and credentials belong in the protected gateway settings / secret store. The adapter has no publish method and cannot send commands to the shuttle.
@@ -133,7 +145,7 @@ Use this explorer to confirm that a machine or vendor gateway actually exposes B
 
 - Bluetooth Classic / RFCOMM is not supported by the BLE GATT plugin and needs a separate Android native Classic serial implementation plus device pairing and protocol specification.
 - Modbus RTU is now implemented as a generic read-only Linux serial adapter; it still requires a real serial/RS-485 interface and exact OEM-approved register map.
-- MQTT now has a generic read-only subscriber; OPC UA, REST, WebSocket, S7, EtherNet/IP, PROFINET and CANopen still require separate protocol adapters and tested dependencies.
+- OPC UA and MQTT now have generic read-only adapters; MQTT uses a secure subscriber OPC UA, REST, WebSocket, S7, EtherNet/IP, PROFINET and CANopen still require separate protocol adapters and tested dependencies.
 - USB serial has a Modbus RTU edge-gateway adapter path when used with a compatible serial/RS-485 converter; native direct USB from the Android phone is not implemented.
 - Industrial RF requires the exact vendor radio receiver/gateway, frequency, modulation, pairing, encryption and application protocol. A phone cannot generically decode proprietary RF traffic.
 - Industrial RF requires the exact vendor radio receiver/gateway, frequency, modulation, pairing, encryption and application protocol. A phone cannot generically decode proprietary RF traffic.
