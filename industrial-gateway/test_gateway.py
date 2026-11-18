@@ -22,7 +22,7 @@ class GatewayValidationTests(unittest.TestCase):
         self.sample = {
             "assetId": "SC-01", "manufacturer": "Cassioli", "model": "Verified model",
             "firmware": "1.2.3", "adapterId": "cassioli-ro-01", "adapterVersion": "0.1.0",
-            "tag": "battery.soc", "value": 73.5, "unit": "%",
+            "transport": "wifi", "protocol": "modbus-tcp", "tag": "battery.soc", "value": 73.5, "unit": "%",
             "sourceTimestamp": "2026-11-17T00:00:00Z", "quality": "GOOD"
         }
 
@@ -45,6 +45,12 @@ class GatewayValidationTests(unittest.TestCase):
         bad_model = {**self.sample, "model": "guessed-model"}
         with self.assertRaises(gateway.GatewayError):
             gateway.validate_ingest(bad_model, self.config)
+
+    def test_unapproved_transport_or_protocol_is_rejected(self):
+        with self.assertRaises(gateway.GatewayError):
+            gateway.validate_ingest({**self.sample, "transport": "unknown-radio"}, self.config)
+        with self.assertRaises(gateway.GatewayError):
+            gateway.validate_ingest({**self.sample, "protocol": "plc-write"}, self.config)
 
     def test_null_nan_and_naive_timestamps_are_rejected(self):
         for value in (None, float("nan"), float("inf")):
