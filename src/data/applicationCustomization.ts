@@ -84,16 +84,15 @@ export const DEFAULT_CUSTOMIZATION: CustomizationConfig = {
 
 export const CUSTOMIZATION_STORAGE_KEY = 'shuttle-car-automation-v7:customization';
 export const CUSTOMIZATION_AUDIT_KEY = 'shuttle-car-automation-v7:customization-audit';
-// The async compatibility layer stays on legacy storage until 2B-3c bootstrap
-// can switch all application consumers together. Load storage lazily so the
-// legacy synchronous functions remain usable from the native Node test runner.
+// Share the configured storage backend with operational, account and audit records.
+// Load storage lazily so native Node tests for synchronous compatibility remain isolated.
 type AsyncCustomizationEngine = import('../storage/index.ts').StorageEngine;
 let asyncCustomizationEnginePromise: Promise<AsyncCustomizationEngine> | null = null;
 
 async function getAsyncCustomizationEngine(): Promise<AsyncCustomizationEngine> {
   if (!asyncCustomizationEnginePromise) {
     asyncCustomizationEnginePromise = import('../storage/index.ts').then(
-      ({ LegacyFallbackEngine }) => new LegacyFallbackEngine()
+      ({ getStorageEngine }) => getStorageEngine()
     );
   }
   return asyncCustomizationEnginePromise;
