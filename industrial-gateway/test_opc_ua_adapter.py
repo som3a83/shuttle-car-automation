@@ -26,7 +26,6 @@ class OpcUaReadOnlyAdapterTests(unittest.TestCase):
 
     def test_reads_only_approved_nodes_using_pinned_sign_and_encrypt(self):
         fake = MagicMock()
-        fake.__enter__.return_value = fake
         fake.get_node.return_value.read_data_value.return_value = SimpleNamespace(
             Value=SimpleNamespace(Value=79.5),
             SourceTimestamp=datetime(2026, 11, 18, 16, 0, tzinfo=timezone.utc)
@@ -37,6 +36,7 @@ class OpcUaReadOnlyAdapterTests(unittest.TestCase):
         fake.set_security_string.assert_called_once_with(
             "Basic256Sha256,SignAndEncrypt,/secure/client-cert.pem,/secure/client-key.pem,/secure/server-cert.pem"
         )
+        fake.connect.assert_called_once_with()
         fake.set_user.assert_called_once_with("read-only")
         fake.set_password.assert_called_once_with("secret-from-vault")
         fake.get_node.assert_called_once_with("ns=4;s=Battery.StateOfCharge")
@@ -45,6 +45,7 @@ class OpcUaReadOnlyAdapterTests(unittest.TestCase):
         self.assertEqual(result[0].unit, "%")
         self.assertEqual(result[0].quality, "GOOD")
         self.assertTrue(result[0].source_timestamp.endswith("Z"))
+        fake.disconnect.assert_called_once_with()
 
     def test_rejects_unpinned_or_unapproved_endpoint_and_insecure_configuration(self):
         with self.assertRaises(ValueError):
@@ -61,7 +62,6 @@ class OpcUaReadOnlyAdapterTests(unittest.TestCase):
     def test_rejects_node_without_server_source_timestamp(self):
         with patch("adapters.opc_ua.Client") as client_class:
             fake = client_class.return_value
-            fake.__enter__.return_value = fake
             fake.get_node.return_value.read_data_value.return_value = SimpleNamespace(
                 Value=SimpleNamespace(Value=12), SourceTimestamp=None
             )
