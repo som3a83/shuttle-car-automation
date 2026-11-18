@@ -984,6 +984,32 @@ function App({ initialData }: { initialData: AppInitialData }) {
     formElement.reset(); showToast(t.done);
   };
 
+  const addFaultFromDiagnostic = async (draft: { shuttleId: string; title: string; severity: Fault['severity']; description: string; probableCauses: string[]; diagnosticProcedure: string }) => {
+    if (!await authorize('faults.create', 'fault', 'new')) return;
+    const record: Fault = {
+      id: 'FLT-' + Date.now(),
+      shuttleId: draft.shuttleId,
+      title: draft.title,
+      severity: draft.severity,
+      status: 'Open',
+      timestamp: new Date().toISOString(),
+      description: draft.description,
+      probableCauses: draft.probableCauses,
+      diagnosticProcedure: draft.diagnosticProcedure,
+      correctiveAction: '',
+      assignedTechnician: currentUser.name || 'Not assigned'
+    };
+    setFaults(prev => [record, ...prev]);
+    recordAudit('FAULT_CREATED_FROM_DIAGNOSTIC', 'fault', record.id, record.title);
+    pushNotification(
+      language === 'ar' ? 'تم إنشاء بلاغ من مساحة الفحص' : 'Diagnostic inspection registered as a fault report',
+      `${record.id} · ${record.shuttleId} · ${record.title} · ${record.severity}`,
+      record.severity === 'Critical' || record.severity === 'Major' ? 'error' : 'warning'
+    );
+    showToast(language === 'ar' ? 'تم تسجيل البلاغ في سجل الأعطال' : 'Fault report added to the fault register');
+    go('faults');
+  };
+
   const addJob = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formElement = event.currentTarget;
@@ -1788,7 +1814,7 @@ function App({ initialData }: { initialData: AppInitialData }) {
 
       {activeTab === 'ai' && <section className="page-content">
         <PageIntro eyebrow="ENGINEERING SUPPORT / EVIDENCE-BASED INSPECTION" title={language==='ar'?'المساعد الفني ومساحة الفحص':'Technical assistant & diagnostic workbench'} subtitle={language==='ar'?'قوائم فحص تفاعلية مبنية على الأعراض المبلغ عنها. الفرضيات تحتاج تحققًا فنيًا ولا تمثل تشخيصًا آليًا.':'Interactive inspection checklists based on reported symptoms. Hypotheses require technical verification and are not automated diagnoses.'}/>
-        <DiagnosticWorkbench language={language} shuttles={activeShuttles}/>
+        <DiagnosticWorkbench language={language} shuttles={activeShuttles} canCreateFault={canPerformAction(currentUser, 'faults.create')} onCreateFault={addFaultFromDiagnostic}/>
       </section>}
 
       {activeTab === 'reports' && <section className="page-content">
