@@ -236,7 +236,7 @@ async function runMigration(options: MigrationOptions): Promise<MigrationResult>
     await acquireMigrationLock(
       migrationId,
       ownerToken,
-      now.getTime() + LOCK_LEASE_MS,
+      options.lockExpiresAt ?? now.getTime() + LOCK_LEASE_MS,
       now.getTime()
     );
     lockAcquired = true;
