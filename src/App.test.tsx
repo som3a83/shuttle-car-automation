@@ -118,7 +118,7 @@ beforeEach(async () => {
   it('does not show a global demo banner or imply live equipment telemetry', () => {
     renderApp();
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
-    expect(screen.getByText(/No live equipment connection|لا يوجد اتصال حي/i)).toBeUndefined();
+    expect(screen.queryByText(/No live equipment connection|لا يوجد اتصال حي/i)).not.toBeInTheDocument();
   });
 
   it('persists the selected appearance across a reload', async () => {
