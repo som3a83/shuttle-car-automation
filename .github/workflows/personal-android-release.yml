@@ -145,7 +145,13 @@ jobs:
           disable-animations: true
           script: |
             set -euo pipefail
-            APK="$GITHUB_WORKSPACE/artifacts/personal-release/Shuttle-Car-Automation-6.0.0.apk"
+            set -x
+            APK="$(find "$GITHUB_WORKSPACE" -type f -name 'Shuttle-Car-Automation-6.0.0.apk' -print -quit)"
+            echo "Workspace: $GITHUB_WORKSPACE"
+            echo "APK candidate: $APK"
+            test -n "$APK"
+            test -s "$APK"
+            file "$APK"
             adb wait-for-device
             adb install -r "$APK"
             adb logcat -c
