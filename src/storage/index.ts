@@ -3,13 +3,16 @@ import type {
   CommunicationEndpoint, NotificationItem, AppSettings, DailyReportSnapshot, ShiftRecord,
 } from '../types';
 import { resolveLegacyKey } from './adapters/legacyKeyResolver';
+import type { LocalAccount } from '../security/localAuth';
+import type { AuditRecord as ChainedAuditRecord, AuditArchiveEntry as ChainedAuditArchiveEntry } from '../security/auditLog';
+import type { CustomizationConfig as AppCustomizationConfig, AuditEntry as CustomizationAuditEntry } from '../data/applicationCustomization';
 
-/** Local placeholders; align with existing domain types in 2B-2. */
-export interface LocalAccountRecord { id: string; [field: string]: unknown } // TODO: align with existing type in 2B-2
-export interface AuditRecord { id: string; [field: string]: unknown } // TODO: align with existing type in 2B-2
-export interface AuditArchiveEntry { id: string; [field: string]: unknown } // TODO: align with existing type in 2B-2
-export interface CustomizationConfig { [field: string]: unknown } // TODO: align with existing type in 2B-2
-export interface CustomizationAuditEntry { id: string; [field: string]: unknown } // TODO: align with existing type in 2B-2
+/** Storage schema aliases reuse the application's canonical domain records. */
+export type LocalAccountRecord = LocalAccount;
+export type AuditRecord = ChainedAuditRecord;
+export type AuditArchiveEntry = ChainedAuditArchiveEntry;
+export type CustomizationConfig = AppCustomizationConfig;
+export type { CustomizationAuditEntry };
 
 export interface StorageSchema {
   'operational.language': Language;
