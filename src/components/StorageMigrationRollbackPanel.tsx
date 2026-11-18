@@ -4,7 +4,8 @@ import {
   assessMigrationRollback,
   rollbackToLegacyStorage,
   sha256Canonical,
-  type MigrationRollbackAssessment
+  type MigrationRollbackAssessment,
+  type RollbackProgress
 } from '../storage/migration';
 import './StorageMigrationRollbackPanel.css';
 
@@ -28,6 +29,29 @@ function downloadSafetyBackup(value: unknown): void {
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+function progressLabel(progress: RollbackProgress, ar: boolean): string {
+  const stageLabels: Record<RollbackProgress['stage'], string> = ar
+    ? {
+        preflight: 'فحص ما قبل التنفيذ',
+        staging: 'تجهيز نسخة مرحلية',
+        'verifying-staging': 'التحقق من النسخة المرحلية',
+        'writing-legacy': 'كتابة البيانات إلى التخزين السابق',
+        'verifying-legacy': 'التحقق من مفاتيح التخزين السابقة',
+        'switching-mode': 'اعتماد محرك التخزين',
+        complete: 'اكتمل الرجوع'
+      }
+    : {
+        preflight: 'Pre-flight checks',
+        staging: 'Staging current values',
+        'verifying-staging': 'Verifying staged data',
+        'writing-legacy': 'Writing legacy storage',
+        'verifying-legacy': 'Verifying legacy keys',
+        'switching-mode': 'Switching storage mode',
+        complete: 'Rollback complete'
+      };
+  return stageLabels[progress.stage] + ' — ' + progress.completedKeys + '/' + progress.totalKeys;
+}
+
 export default function StorageMigrationRollbackPanel({
   language,
   canRollback,
@@ -41,6 +65,7 @@ export default function StorageMigrationRollbackPanel({
   const [backupConfirmed, setBackupConfirmed] = useState(false);
   const [rollbackBusy, setRollbackBusy] = useState(false);
   const [completed, setCompleted] = useState(false);
+  const [progress, setProgress] = useState<RollbackProgress | null>(null);
   const [error, setError] = useState('');
 
   const ar = language === 'ar';
@@ -86,7 +111,7 @@ export default function StorageMigrationRollbackPanel({
         format: 'shuttle-pre-rollback-safety-backup',
         schemaVersion: 1,
         exportedAt: new Date().toISOString(),
-        warning: 'Contains local operational data and account metadata. Unencrypted; store securely.',
+        warning: 'Contains current local operational data and account metadata. Unencrypted; store securely.',
         sha256,
         data: value
       });
@@ -106,113 +131,137 @@ export default function StorageMigrationRollbackPanel({
   async function rollback(): Promise<void> {
     if (!assessment?.eligible || !backupReady || !backupConfirmed || rollbackBusy) return;
     const accepted = window.confirm(ar
-      ? 'سيعود التطبيق إلى بيانات localStorage التي تم حفظها وقت الترحيل. لن يتم حذف بيانات IndexedDB، لكنها ستظل خارج الاستخدام. هل تؤكد؟'
-      : 'The app will return to the preserved localStorage data from migration time. IndexedDB records will be retained but deactivated. Continue?');
+      ? 'سيتم نسخ أحدث بيانات IndexedDB إلى مفاتيح localStorage المعتمدة، والتحقق من المفاتيح السبعة عشر، ثم تحويل التشغيل إلى التخزين السابق. لن تُحذف مفاتيح التخزين القديمة أو أجيال IndexedDB. هل تؤكد؟'
+      : 'The latest IndexedDB data will be copied to all 17 approved localStorage keys and verified before switching the next startup to legacy storage. No legacy keys or IndexedDB generations will be deleted. Continue?');
     if (!accepted) return;
 
     setError('');
+    setProgress(null);
     setRollbackBusy(true);
     try {
       await beforeRollback?.();
       const latest = await assessMigrationRollback();
-      if (!latest.eligible) {
-        setAssessment(latest);
-        throw new Error(latest.reason || 'Rollback is no longer safe.');
-      }
-      await rollbackToLegacyStorage();
+      setAssessment(latest);
+      if (!latest.eligible) throw new Error(latest.reason || 'Reverse migration is no longer eligible.');
+
+      await rollbackToLegacyStorage(window.localStorage, setProgress);
       setCompleted(true);
       onRollbackComplete?.();
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Storage rollback failed. The current backend remains selected unless the transaction completed.');
+      setError(reason instanceof Error ? reason.message : 'Reverse migration failed. IndexedDB remains selected unless the final mode-switch transaction completed.');
       await refreshAssessment();
     } finally {
       setRollbackBusy(false);
     }
   }
 
+  const progressPercent = progress && progress.totalKeys > 0
+    ? Math.min(100, Math.round((progress.completedKeys / progress.totalKeys) * 100))
+    : 0;
+
   return (
     <section className="surface-card storage-rollback-panel" aria-labelledby="storage-rollback-title">
       <div className="storage-rollback-heading">
         <div>
           <span className="eyebrow">{ar ? 'استرداد التخزين / تحكم المسؤول' : 'STORAGE RECOVERY / ADMIN CONTROL'}</span>
-          <h3 id="storage-rollback-title">{ar ? 'الرجوع الآمن إلى التخزين السابق' : 'Verified storage rollback'}</h3>
+          <h3 id="storage-rollback-title">{ar ? 'الرجوع العكسي الموثّق' : 'Verified reverse migration'}</h3>
         </div>
         <span className={assessment?.eligible ? 'storage-rollback-status is-ready' : 'storage-rollback-status'}>
-          {loading ? (ar ? 'جارٍ الفحص' : 'CHECKING') : assessment?.eligible ? (ar ? 'مؤهل للرجوع' : 'ELIGIBLE') : (ar ? 'الرجوع محظور' : 'BLOCKED')}
+          {loading ? (ar ? 'جارٍ الفحص' : 'CHECKING') : assessment?.eligible ? (ar ? 'جاهز للتنفيذ' : 'READY') : (ar ? 'التنفيذ محظور' : 'BLOCKED')}
         </span>
       </div>
 
       <p className="muted-text">
         {ar
-          ? 'يعيد تشغيل التطبيق على نسخة localStorage الأصلية التي لم تُحذف أثناء الترحيل. لا يُسمح بالرجوع إذا ظهرت تغييرات أحدث في IndexedDB أو إذا لم تتطابق بصمة المصدر القديم.'
-          : 'Switches the next application startup to the preserved original localStorage source. Rollback is blocked if IndexedDB has newer writes or the legacy source fingerprint no longer matches.'}
+          ? 'يقرأ أحدث القيم من IndexedDB، ويجهزها في مفاتيح مرحلية، ويتحقق من JSON، ثم يكتبها إلى مفاتيح localStorage السبعة عشر ويعيد التحقق منها. لا يتغير محرك التشغيل إلا بعد نجاح جميع عمليات الكتابة والتحقق.'
+          : 'Reads the latest IndexedDB values, stages and verifies their JSON, writes them to all 17 approved localStorage keys, and verifies them again. The active backend preference changes only after every write and verification succeeds.'}
       </p>
 
       <div className="storage-rollback-preflight" role="status" aria-live="polite">
         {loading
-          ? (ar ? 'يتم فحص سجل الترحيل وبصمة البيانات وإصدارات السجلات…' : 'Checking migration history, source fingerprint and record revisions…')
+          ? (ar ? 'يتم فحص سجل الترحيل، ومحرك التخزين، وصلاحية مفاتيح المصدر…' : 'Checking migration history, storage mode and approved legacy keys…')
           : assessment?.eligible
-            ? (ar ? 'اجتاز فحص ما قبل التنفيذ: مصدر localStorage مطابق، ولم تتغير سجلات IndexedDB منذ الترحيل.' : 'Preflight passed: the legacy source matches the migration fingerprint and IndexedDB records have not changed since migration.')
-            : (assessment?.reason || (ar ? 'لا توجد عملية ترحيل قابلة للرجوع.' : 'No eligible migration rollback is available.'))}
+            ? (ar
+                ? `اجتاز فحص ما قبل التنفيذ: ${assessment.keyCount} مفتاحًا معتمدًا جاهزًا للنسخ، وسيتم استخدام ${assessment.defaultedKeyCount} قيمة افتراضية للمفاتيح الغائبة.`
+                : `Preflight passed: ${assessment.keyCount} approved keys are ready; ${assessment.defaultedKeyCount} missing IndexedDB keys will use their approved defaults.`)
+            : (assessment?.reason || (ar ? 'لا توجد عملية ترحيل قابلة للعكس.' : 'No eligible reverse migration is available.'))}
       </div>
 
       {assessment?.snapshot && (
         <div className="storage-rollback-meta">
           <span><strong>{ar ? 'معرّف الترحيل' : 'Migration ID'}</strong>{assessment.snapshot.migrationId}</span>
-          <span><strong>{ar ? 'الأجيال المستهدف' : 'Active generation'}</strong>{assessment.activeGeneration}</span>
-          <span><strong>{ar ? 'عدد المفاتيح' : 'Verified keys'}</strong>{assessment.snapshot.keyCount}</span>
-          <span><strong>{ar ? 'بصمة المصدر' : 'Source SHA-256'}</strong>{assessment.snapshot.sourceFingerprint.slice(0, 20)}…</span>
+          <span><strong>{ar ? 'الجيل النشط' : 'Active generation'}</strong>{assessment.activeGeneration}</span>
+          <span><strong>{ar ? 'مفاتيح الرجوع' : 'Reverse keys'}</strong>{assessment.keyCount} / 17</span>
+          <span><strong>{ar ? 'قيم افتراضية' : 'Approved defaults'}</strong>{assessment.defaultedKeyCount}</span>
         </div>
       )}
 
       <div className="storage-rollback-warning" role="note">
         {ar
-          ? 'تنبيه: بيانات localStorage لم يتم تحديثها بعد الترحيل. إذا تغيّرت سجلات IndexedDB، سيرفض النظام الرجوع تلقائيًا حتى لا تضيع التعديلات الجديدة. ملف الأمان غير مشفر وقد يحتوي بيانات حسابات وتشغيل.'
-          : 'Important: localStorage is the preserved pre-migration copy and may be stale. If IndexedDB changed, the system refuses rollback rather than discard newer records. The downloaded safety backup is unencrypted and may contain account and operational data.'}
+          ? 'النسخ المرحلي والكتابة لا يحذفان أي مفتاح قديم أو سجل من IndexedDB. عند انقطاع العملية قبل اعتماد المحرك، يبقى IndexedDB هو المصدر النشط ويمكن إعادة المحاولة. ملف نسخة الأمان غير مشفر وقد يحتوي بيانات الحسابات والتشغيل.'
+          : 'Staging and reverse writes never delete legacy keys or IndexedDB records. If interrupted before the final mode switch, IndexedDB remains the selected backend and the operation can be retried. The safety backup is unencrypted and may contain account and operational data.'}
+      </div>
+
+      <div className="storage-rollback-retention" role="note">
+        <strong>{ar ? 'سياسة الاحتفاظ بالأجيال السابقة' : 'Previous-generation retention'}</strong>
+        <p>{ar
+          ? 'لا يوجد حذف تلقائي للأجيال أو النسخ المرحلية. ستظل الأجيال السابقة محفوظة؛ وأي سياسة تنظيف مستقبلية يجب ألا تسمح بالحذف قبل مرور 90 يومًا وخمس مرات تشغيل ناجحة على الأقل.'
+          : 'No automatic generation or staging cleanup is performed. Previous generations remain retained. Any future cleanup policy must require both at least 90 days and five successful application launches before deletion.'}</p>
       </div>
 
       {error && <div className="security-error" role="alert">{error}</div>}
 
-      {!completed ? (
-        <>
-          <div className="storage-rollback-actions">
-            <button
-              type="button"
-              className="btn-secondary"
-              disabled={!assessment?.eligible || loading || backupBusy || rollbackBusy}
-              onClick={() => void createSafetyBackup()}
-            >
-              {backupBusy
-                ? (ar ? 'جارٍ إنشاء نسخة الأمان…' : 'Creating safety backup…')
-                : (ar ? 'تنزيل نسخة أمان من IndexedDB' : 'Download IndexedDB safety backup')}
-            </button>
-            {backupReady && (
-              <label className="storage-rollback-confirm">
-                <input
-                  type="checkbox"
-                  checked={backupConfirmed}
-                  disabled={rollbackBusy || !assessment?.eligible}
-                  onChange={(event) => setBackupConfirmed(event.target.checked)}
-                />
-                <span>{ar ? 'حفظت نسخة الأمان خارج التطبيق في مكان آمن.' : 'I saved the safety backup outside the application in a secure location.'}</span>
-              </label>
-            )}
-            <button
-              type="button"
-              className="btn-danger"
-              disabled={!assessment?.eligible || !backupReady || !backupConfirmed || rollbackBusy || loading}
-              onClick={() => void rollback()}
-            >
-              {rollbackBusy
-                ? (ar ? 'جارٍ تنفيذ الرجوع الذري…' : 'Applying atomic rollback…')
-                : (ar ? 'تأكيد الرجوع إلى التخزين السابق' : 'Confirm rollback to legacy storage')}
-            </button>
+      {progress && rollbackBusy && (
+        <div className="storage-rollback-progress" role="status" aria-live="polite">
+          <div className="storage-rollback-progress-head">
+            <strong>{progressLabel(progress, ar)}</strong>
+            <span>{progressPercent}%</span>
           </div>
-        </>
+          <div className="storage-rollback-progress-track">
+            <span style={{ width: progressPercent + '%' }}/>
+          </div>
+          <p>{progress.message}</p>
+        </div>
+      )}
+
+      {!completed ? (
+        <div className="storage-rollback-actions">
+          <button
+            type="button"
+            className="btn-secondary"
+            disabled={!assessment?.eligible || loading || backupBusy || rollbackBusy}
+            onClick={() => void createSafetyBackup()}
+          >
+            {backupBusy
+              ? (ar ? 'جارٍ إنشاء نسخة الأمان…' : 'Creating safety backup…')
+              : (ar ? 'تنزيل نسخة أمان من IndexedDB' : 'Download IndexedDB safety backup')}
+          </button>
+          {backupReady && (
+            <label className="storage-rollback-confirm">
+              <input
+                type="checkbox"
+                checked={backupConfirmed}
+                disabled={rollbackBusy || !assessment?.eligible}
+                onChange={(event) => setBackupConfirmed(event.target.checked)}
+              />
+              <span>{ar ? 'حفظت نسخة الأمان خارج التطبيق في مكان آمن.' : 'I saved the safety backup outside the application in a secure location.'}</span>
+            </label>
+          )}
+          <button
+            type="button"
+            className="btn-danger"
+            disabled={!assessment?.eligible || !backupReady || !backupConfirmed || rollbackBusy || loading}
+            onClick={() => void rollback()}
+          >
+            {rollbackBusy
+              ? (ar ? 'جارٍ نسخ البيانات والتحقق منها…' : 'Copying and verifying current data…')
+              : (ar ? 'بدء الرجوع العكسي إلى التخزين السابق' : 'Start verified reverse migration')}
+          </button>
+        </div>
       ) : (
         <div className="storage-rollback-success" role="status">
-          <strong>{ar ? 'تم اعتماد الرجوع بنجاح.' : 'Rollback committed successfully.'}</strong>
-          <p>{ar ? 'تم الاحتفاظ بأجيال IndexedDB وتعطيل الكتابة إلى المحرك القديم في علامات التبويب المفتوحة. أعد تحميل التطبيق لاستخدام بيانات localStorage الأصلية.' : 'IndexedDB generations were retained and writes from stale open tabs are blocked. Reload the application to use the preserved localStorage data.'}</p>
+          <strong>{ar ? 'تم نسخ البيانات والتحقق منها واعتماد الرجوع.' : 'Reverse migration verified and committed.'}</strong>
+          <p>{ar ? 'تم التحقق من مفاتيح التخزين السبعة عشر. لم تُحذف مفاتيح localStorage أو أجيال IndexedDB. أعد تحميل التطبيق لاستخدام التخزين السابق.' : 'All 17 legacy keys were verified. No localStorage keys or IndexedDB generations were deleted. Reload the application to use legacy storage.'}</p>
           <button type="button" className="btn-primary" onClick={() => window.location.reload()}>
             {ar ? 'إعادة تحميل التطبيق الآن' : 'Reload application now'}
           </button>
