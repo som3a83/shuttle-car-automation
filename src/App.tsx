@@ -16,6 +16,7 @@ import ShiftOperations from './components/ShiftOperations';
 import LiveGatewayPanel from './components/LiveGatewayPanel';
 import BleReadOnlyExplorer from './components/BleReadOnlyExplorer';
 import DiagnosticWorkbench from './components/DiagnosticWorkbench';
+import ImmersiveWarehouse from './components/ImmersiveWarehouse';
 import { CONNECTION_OPTIONS, getConnectionOption } from './industrial/connectionCatalog';
 import SecurityCenter from './components/SecurityCenter';
 import { loadCustomizationAsync, validateCustomization, type CustomizationConfig } from './data/applicationCustomization';
@@ -46,12 +47,13 @@ import type {
   ShiftRecord
 } from './types';
 
-type Tab = 'dashboard' | 'fleet' | 'shifts' | 'engineering' | 'batteries' | 'faults' | 'maintenance' | 'connections' | 'ai' | 'reports' | 'notifications' | 'users' | 'settings';
+type Tab = 'dashboard' | 'warehouse' | 'fleet' | 'shifts' | 'engineering' | 'batteries' | 'faults' | 'maintenance' | 'connections' | 'ai' | 'reports' | 'notifications' | 'users' | 'settings';
 type ModelView = 'iso' | 'side' | 'front' | 'top';
 type EngineeringPart = 'chassis' | 'drive' | 'wheels' | 'battery' | 'sensors';
 
 const navItems: { id: Tab; en: string; ar: string; icon: string; group: string }[] = [
   { id: 'dashboard', en: 'Dashboard', ar: 'لوحة القيادة', icon: 'grid', group: 'OPERATIONS' },
+  { id: 'warehouse', en: '3D Warehouse Experience', ar: 'المخزن ثلاثي الأبعاد', icon: 'warehouse', group: 'OPERATIONS' },
   { id: 'fleet', en: 'Fleet Control Center', ar: 'إدارة الأسطول', icon: 'truck', group: 'OPERATIONS' },
   { id: 'shifts', en: 'Shift Operations & Handover', ar: 'الورديات وتسليم التشغيل', icon: 'clock', group: 'OPERATIONS' },
   { id: 'engineering', en: 'Engineering Visualization', ar: 'التصور الهندسي', icon: 'blueprint', group: 'ENGINEERING' },
@@ -1458,7 +1460,7 @@ function App({ initialData }: { initialData: AppInitialData }) {
         </div>
       </section>}
 
-      {activeTab === 'fleet' && <section className="page-content">
+      {activeTab === 'warehouse' && <ImmersiveWarehouse shuttles={activeShuttles} language={language}/>}\n\n      {activeTab === 'fleet' && <section className="page-content">
         <PageIntro eyebrow="ASSET MANAGEMENT / REGISTER" title={t.fleet} subtitle={t.fleetSub}/>
         <div className="fleet-layout">
           <div className="surface-card fleet-list-card">
