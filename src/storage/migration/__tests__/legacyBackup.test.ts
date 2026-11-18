@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { webcrypto } from 'node:crypto';
 import { createLegacyStorageBackup } from '../legacyBackup';
+import { listImportableLegacyKeys } from '../../adapters/legacyKeyMap';
+import { sha256Canonical } from '../verification';
 
 function createStorage(values: Record<string, string>): Storage {
   const entries = Object.entries(values);
@@ -32,6 +34,14 @@ describe('complete legacy localStorage migration backup', () => {
       recordCount: 3
     });
     expect(backup.migrationSourceFingerprint).toMatch(/^[a-f0-9]{64}$/);
+    const expectedFingerprint = await sha256Canonical(
+      listImportableLegacyKeys().map((definition) => ({
+        key: definition.legacyKey,
+        raw: storage.getItem(definition.legacyKey)
+      })),
+      webcrypto as unknown as Crypto
+    );
+    expect(backup.migrationSourceFingerprint).toBe(expectedFingerprint);
     expect(backup.records).toEqual([
       { key: 'private.audit.marker', value: '{"pending":true}' },
       { key: 'shuttle-car-automation-v1:local-accounts', value: '[{"username":"operator"}]' },
