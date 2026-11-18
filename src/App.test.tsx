@@ -510,7 +510,7 @@ beforeEach(async () => {
     await user.click(screen.getByRole('button', { name: /SC-04 Craftsman/i }));
     await user.click(screen.getByRole('button', { name: /Archive device/i }));
     await user.click(screen.getByRole('button', { name: /Confirm archive/i }));
-    expect(screen.getByText(/Resolve open fault reports and complete active work orders/i)).toBeInTheDocument();
+    await screen.findByText(/Resolve open fault reports and complete active work orders/i);
     expect(screen.getByRole('button', { name: /SC-04 Craftsman/i })).toBeInTheDocument();
   });
 
