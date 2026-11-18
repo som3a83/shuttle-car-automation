@@ -1,0 +1,175 @@
+name: Personal Android Release APK
+
+on:
+  push:
+    branches:
+      - release/personal-android-v6
+
+permissions:
+  contents: read
+
+concurrency:
+  group: shuttle-personal-release
+  cancel-in-progress: false
+
+jobs:
+  personal-release:
+    name: Build, sign, and smoke-test personal release APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Set up Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Install Android SDK packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-$HOME/Android/Sdk}"
+          SDKMANAGER="$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          set +o pipefail
+          yes | "$SDKMANAGER" --licenses >/dev/null
+          set -o pipefail
+          "$SDKMANAGER" "platform-tools" "platforms;android-36" "build-tools;36.0.0" "emulator" "system-images;android-35;google_apis;x86_64"
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "$SDK_ROOT/platform-tools" >> "$GITHUB_PATH"
+          echo "$SDK_ROOT/emulator" >> "$GITHUB_PATH"
+
+      - name: Install dependencies and validate application
+        run: |
+          npm ci --no-audit --no-fund
+          npm run check
+          npm test
+          npm run check:release
+          npm run assets:render
+          npm run build
+
+      - name: Generate Android project and branded assets
+        run: |
+          npx cap add android
+          npx capacitor-assets generate --android --iconBackgroundColor '#111820' --iconBackgroundColorDark '#111820' --splashBackgroundColor '#111820' --splashBackgroundColorDark '#111820'
+
+      - name: Stamp personal release version
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const versionCode = 6000000 + Number(process.env.GITHUB_RUN_NUMBER);
+          const file = 'android/app/build.gradle';
+          let gradle = fs.readFileSync(file, 'utf8');
+          if (!/\\bversionCode\\s+\\d+/.test(gradle) || !/\\bversionName\\s+['"][^'"]+['"]/.test(gradle)) {
+            throw new Error('Android Gradle version fields were not found');
+          }
+          gradle = gradle.replace(/(\\bversionCode\\s+)\\d+/, '$1' + versionCode);
+          gradle = gradle.replace(/(\\bversionName\\s+)['"][^'"]+['"]/, '$1"6.0.0"');
+          fs.writeFileSync(file, gradle);
+          console.log('Personal release version: 6.0.0 (' + versionCode + ')');
+          NODE
+          npx cap sync android
+
+      - name: Create personal signing key and build release APK
+        shell: bash
+        working-directory: android
+        run: |
+          set -euo pipefail
+          mkdir -p ../artifacts/personal-release
+          KS_PASS="$(openssl rand -hex 24)"
+          echo "::add-mask::$KS_PASS"
+          keytool -genkeypair -v -keystore ../artifacts/personal-release/personal-release-key.jks \
+            -storepass "$KS_PASS" -keypass "$KS_PASS" -alias shuttle-personal \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -dname "CN=Shuttle Car Automation Personal, OU=Personal, O=Private Use, L=Unknown, ST=Unknown, C=EG"
+          ./gradlew --no-daemon assembleRelease
+          UNSIGNED="app/build/outputs/apk/release/app-release-unsigned.apk"
+          test -s "$UNSIGNED"
+          "$ANDROID_HOME/build-tools/36.0.0/zipalign" -f -p 4 "$UNSIGNED" ../artifacts/personal-release/Shuttle-Car-Automation-6.0.0-aligned.apk
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" sign \
+            --ks ../artifacts/personal-release/personal-release-key.jks \
+            --ks-key-alias shuttle-personal --ks-pass "pass:$KS_PASS" --key-pass "pass:$KS_PASS" \
+            --out ../artifacts/personal-release/Shuttle-Car-Automation-6.0.0.apk \
+            ../artifacts/personal-release/Shuttle-Car-Automation-6.0.0-aligned.apk
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs ../artifacts/personal-release/Shuttle-Car-Automation-6.0.0.apk
+          rm ../artifacts/personal-release/Shuttle-Car-Automation-6.0.0-aligned.apk
+          printf '%s\n' "$KS_PASS" > ../artifacts/personal-release/KEEP-THIS-KEY-PASSWORD.txt
+          cat > ../artifacts/personal-release/README-INSTALL.txt <<'TXT'
+          Shuttle Car Automation — Personal Android Release
+          Version: 6.0.0
+          Package: com.shuttlecar.automation
+
+          Install Shuttle-Car-Automation-6.0.0.apk on your Android phone.
+          If Android asks, allow installation from this source.
+
+          IMPORTANT:
+          Keep personal-release-key.jks and KEEP-THIS-KEY-PASSWORD.txt private and backed up.
+          Future updates must be signed with this exact same key or Android will refuse the update.
+          This is a private-use release; it is not published to Google Play.
+          TXT
+          cd ../artifacts/personal-release
+          sha256sum Shuttle-Car-Automation-6.0.0.apk > SHA256SUMS.txt
+
+      - name: Enable Android emulator hardware acceleration
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -e /dev/kvm
+          sudo chmod 666 /dev/kvm
+          test -r /dev/kvm
+          test -w /dev/kvm
+
+      - name: Install and launch signed release on Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        timeout-minutes: 18
+        with:
+          api-level: 35
+          system-image-api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_7
+          emulator-boot-timeout: 600
+          emulator-options: -no-snapshot -no-window -noaudio -no-boot-anim
+          disable-animations: true
+          script: |
+            set -euo pipefail
+            APK="$GITHUB_WORKSPACE/artifacts/personal-release/Shuttle-Car-Automation-6.0.0.apk"
+            adb wait-for-device
+            adb install -r "$APK"
+            adb logcat -c
+            adb shell am force-stop com.shuttlecar.automation
+            adb shell am start -W -n com.shuttlecar.automation/.MainActivity | tee "$GITHUB_WORKSPACE/artifacts/personal-release/emulator-launch.txt"
+            grep -F "Status: ok" "$GITHUB_WORKSPACE/artifacts/personal-release/emulator-launch.txt"
+            sleep 45
+            test -n "$(adb shell pidof com.shuttlecar.automation | tr -d '\r')"
+            adb exec-out screencap -p > "$GITHUB_WORKSPACE/artifacts/personal-release/emulator-screen.png"
+            adb logcat -d -t 5000 > "$GITHUB_WORKSPACE/artifacts/personal-release/emulator-logcat.txt"
+            if grep -E "FATAL EXCEPTION|Process: com\\.shuttlecar\\.automation" "$GITHUB_WORKSPACE/artifacts/personal-release/emulator-logcat.txt"; then
+              echo "Android application crash detected"
+              exit 1
+            fi
+
+      - name: Package personal install bundle
+        if: success()
+        run: |
+          cd artifacts
+          zip -r Shuttle-Car-Automation-6.0.0-PERSONAL-INSTALL.zip personal-release
+
+      - name: Upload signed personal APK and private signing key bundle
+        if: success()
+        uses: actions/upload-artifact@v7
+        with:
+          name: Shuttle-Car-Automation-6.0.0-PERSONAL-INSTALL
+          path: artifacts/Shuttle-Car-Automation-6.0.0-PERSONAL-INSTALL.zip
+          if-no-files-found: error
+          retention-days: 30
