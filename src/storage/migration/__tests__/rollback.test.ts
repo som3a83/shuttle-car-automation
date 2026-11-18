@@ -116,7 +116,7 @@ describe('verified reverse migration to legacy storage', () => {
     expect(result.writtenKeyCount).toBe(17);
     expect(localStorage.getItem(OPERATIONAL_LEGACY_KEY_MAP[0].legacyKey)).toBe(JSON.stringify('ar'));
     expect(JSON.parse(localStorage.getItem(OPERATIONAL_LEGACY_KEY_MAP[1].legacyKey) || 'null')).toBe('light');
-    expect(getStorageModePreference()).toBe('legacy');
+    expect(getStorageModePreference()).toBe('indexeddb'); // The active engine is pinned until reload.
     expect(localStorage.getItem(STORAGE_MODE_KEY)).toBe('legacy');
   });
 
