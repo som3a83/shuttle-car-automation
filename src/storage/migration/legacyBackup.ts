@@ -82,6 +82,24 @@ export async function createLegacyStorageBackup(
   }
   const migrationSourceFingerprint = await sha256Canonical(migrationSourceValues, cryptoApi);
 
+  // The migration fingerprint is computed in a separate pass over the approved
+  // 17-key allow-list. Revalidate the complete export once more so the backup
+  // envelope and migration fingerprint cannot represent different source moments.
+  const finalKeys: string[] = [];
+  for (let index = 0; index < storage.length; index += 1) {
+    const key = storage.key(index);
+    if (key !== null) finalKeys.push(key);
+  }
+  finalKeys.sort((left, right) => left.localeCompare(right));
+  if (finalKeys.length !== keys.length || finalKeys.some((key, index) => key !== keys[index])) {
+    throw new Error('Local storage changed while creating the backup. Retry before migrating.');
+  }
+  for (const record of records) {
+    if (storage.getItem(record.key) !== record.value) {
+      throw new Error(`Local storage changed while creating the backup (key: ${record.key}). Retry before migrating.`);
+    }
+  }
+
   const payload = {
     format: 'shuttle-legacy-storage-backup' as const,
     schemaVersion: 1 as const,
