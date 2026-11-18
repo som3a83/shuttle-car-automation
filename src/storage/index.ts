@@ -134,6 +134,7 @@ const STORE_METADATA = 'metadata';
 const STORE_SNAPSHOTS = 'snapshots';
 const STORE_QUARANTINE = 'quarantine';
 const ACTIVE_GENERATION_KEY = 'activeGeneration';
+const STORAGE_DEACTIVATED_KEY = 'storageDeactivated';
 const LEGACY_PREFIX = '';
 const LEGACY_REVISION_PREFIX = 'shuttle.storage.revision.';
 
@@ -276,6 +277,15 @@ class IndexedDbEngine implements StorageEngine {
       tx.objectStore(STORE_METADATA).get(ACTIVE_GENERATION_KEY));
     return row?.value ?? 'generation-1';
   }
+  /** Prevent an already-open tab from writing to IndexedDB after an admin rollback. */
+  private async assertStorageActive(tx: IDBTransaction): Promise<void> {
+    const row = await requestResult<{ key: string; value: boolean } | undefined>(
+      tx.objectStore(STORE_METADATA).get(STORAGE_DEACTIVATED_KEY));
+    if (row?.value === true) {
+      tx.abort();
+      fail('STORAGE_CONFLICT', 'IndexedDB was rolled back to the preserved local storage backend. Reload the application before continuing.');
+    }
+  }
   async read(key: StorageKey): Promise<RevisionedValue<unknown> | null> {
     try {
       const db = await this.dbPromise;
@@ -297,6 +307,7 @@ class IndexedDbEngine implements StorageEngine {
     try {
       const db = await this.dbPromise;
       tx = db.transaction([STORE_RECORDS, STORE_METADATA], 'readwrite');
+      await this.assertStorageActive(tx);
       const generation = await this.activeGeneration(tx);
       const store = tx.objectStore(STORE_RECORDS);
       const id = generation + ':' + key;
@@ -320,6 +331,7 @@ class IndexedDbEngine implements StorageEngine {
     try {
       const db = await this.dbPromise;
       const tx = db.transaction([STORE_RECORDS, STORE_METADATA], 'readwrite');
+      await this.assertStorageActive(tx);
       const generation = await this.activeGeneration(tx);
       tx.objectStore(STORE_RECORDS).delete(generation + ':' + key);
       await transactionDone(tx);
@@ -349,6 +361,7 @@ class IndexedDbEngine implements StorageEngine {
     try {
       const db = await this.dbPromise;
       tx = db.transaction([STORE_RECORDS, STORE_METADATA, STORE_SNAPSHOTS], 'readwrite');
+      await this.assertStorageActive(tx);
       const metadata = tx.objectStore(STORE_METADATA);
       const current = await this.activeGeneration(tx);
       const next = 'generation-' + Date.now() + '-' + Math.random().toString(36).slice(2);

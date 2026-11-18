@@ -29,3 +29,12 @@ test('an unauthenticated preview identity cannot perform mutations, even with an
   assert.equal(canPerformAction({ role: 'Super Admin', isAuthenticated: true }, 'fleet.manage'), true);
   assert.equal(canPerformAction({ role: 'Viewer', isAuthenticated: true }, 'fleet.manage'), false);
 });
+
+
+test('only Super Admin can execute verified storage rollback', () => {
+  assert.equal(can('Super Admin', 'storage.rollback'), true);
+  assert.equal(can('Admin', 'storage.rollback'), false);
+  assert.equal(canPerformAction({ role: 'Super Admin', isAuthenticated: false }, 'storage.rollback'), false);
+  assert.equal(canPerformAction({ role: 'Super Admin', isAuthenticated: true }, 'storage.rollback'), true);
+  assert.equal(canPerformAction({ role: 'Admin', isAuthenticated: true }, 'storage.rollback'), false);
+});

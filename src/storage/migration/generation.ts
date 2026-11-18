@@ -8,6 +8,7 @@ const STORE_METADATA = 'metadata';
 const STORE_SNAPSHOTS = 'snapshots';
 export const ACTIVE_GENERATION_METADATA_KEY = 'activeGeneration';
 export const MIGRATION_LOCK_METADATA_KEY = 'migrationLock';
+export const STORAGE_DEACTIVATED_METADATA_KEY = 'storageDeactivated';
 
 export type JournalRecord = MigrationJournal & {
   previousGeneration?: string;
@@ -27,6 +28,10 @@ export interface GenerationSnapshot {
   sourceFingerprint: string;
   createdAt: string;
   keyCount: number;
+  /** Exact post-import revisions used to refuse rollback after any later write. */
+  recordRevisions?: Record<string, number>;
+  rolledBackAt?: string;
+  rollbackGeneration?: string;
 }
 export interface PointerSwitchOptions {
   migrationId: string;
@@ -119,6 +124,36 @@ export async function getGenerationRecordCount(generationId: string): Promise<nu
 
 export async function isGenerationEmpty(generationId: string): Promise<boolean> {
   return (await getGenerationRecordCount(generationId)) === 0;
+}
+
+/** Return the active logical-key revision map for a generation. */
+export async function getGenerationRecordRevisions(generationId: string): Promise<Record<string, number>> {
+  const db = await openMigrationDatabase();
+  const tx = db.transaction([STORE_RECORDS], 'readonly');
+  const rows = await requestResult<Array<{ id: string; revision: number }>>(tx.objectStore(STORE_RECORDS).getAll());
+  await transactionDone(tx);
+  const prefix = generationId + ':';
+  const revisions: Record<string, number> = {};
+  for (const row of rows) {
+    if (!row.id.startsWith(prefix)) continue;
+    const key = row.id.slice(prefix.length);
+    if (!Number.isSafeInteger(row.revision) || row.revision < 0) {
+      throw new Error('Generation contains invalid revision metadata for ' + key + '.');
+    }
+    revisions[key] = row.revision;
+  }
+  return revisions;
+}
+
+/** List successful generation snapshots in reverse chronological order. */
+export async function listGenerationSnapshots(): Promise<GenerationSnapshot[]> {
+  const db = await openMigrationDatabase();
+  const tx = db.transaction([STORE_SNAPSHOTS], 'readonly');
+  const rows = await requestResult<GenerationSnapshot[]>(tx.objectStore(STORE_SNAPSHOTS).getAll());
+  await transactionDone(tx);
+  return rows
+    .filter((row) => row && typeof row.id === 'string' && row.id.startsWith('migration-snapshot:'))
+    .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
 }
 
 export async function getMigrationJournal(migrationId: string): Promise<JournalRecord | null> {
@@ -279,6 +314,11 @@ export async function switchActiveGeneration(options: PointerSwitchOptions): Pro
     }
 
     const createdAt = now().toISOString();
+    const recordRevisions: Record<string, number> = {};
+    for (const row of allRecords) {
+      const prefix = options.nextGeneration + ':';
+      if (row.id.startsWith(prefix)) recordRevisions[row.id.slice(prefix.length)] = row.revision;
+    }
     const snapshot: GenerationSnapshot = {
       id: 'migration-snapshot:' + options.migrationId,
       migrationId: options.migrationId,
@@ -286,7 +326,8 @@ export async function switchActiveGeneration(options: PointerSwitchOptions): Pro
       nextGeneration: options.nextGeneration,
       sourceFingerprint: options.journal.sourceFingerprint,
       createdAt,
-      keyCount: options.expectedKeys.length
+      keyCount: options.expectedKeys.length,
+      recordRevisions
     };
     const committedJournal: JournalRecord = {
       ...options.journal,
@@ -295,6 +336,8 @@ export async function switchActiveGeneration(options: PointerSwitchOptions): Pro
     };
 
     metadata.put({ key: ACTIVE_GENERATION_METADATA_KEY, value: options.nextGeneration });
+    // A successful new migration explicitly reactivates the IndexedDB writer.
+    metadata.put({ key: STORAGE_DEACTIVATED_METADATA_KEY, value: false });
     metadata.put({
       key: 'generation:' + options.previousGeneration,
       value: { generationId: options.previousGeneration, status: 'previous', previousAt: createdAt }
@@ -315,4 +358,87 @@ export async function switchActiveGeneration(options: PointerSwitchOptions): Pro
 
 export async function isMigrationGenerationActive(generationId: string): Promise<boolean> {
   return (await getActiveGeneration()) === generationId;
+}
+
+/**
+ * Atomically retires a generation after its current values have been copied and
+ * verified in localStorage, then points stale IndexedDB sessions at a fresh generation.
+ * All application writes are serialized through the records+metadata stores and are
+ * rejected after the deactivation marker commits.
+ */
+export async function deactivateActiveGenerationForRollback(
+  snapshotId: string,
+  expectedActiveGeneration: string,
+  expectedRecordRevisions: Record<string, number>,
+  now = new Date()
+): Promise<{ snapshot: GenerationSnapshot; rollbackGeneration: string }> {
+  const db = await openMigrationDatabase();
+  const tx = db.transaction([STORE_RECORDS, STORE_METADATA, STORE_SNAPSHOTS], 'readwrite');
+  const records = tx.objectStore(STORE_RECORDS);
+  const metadata = tx.objectStore(STORE_METADATA);
+  const snapshots = tx.objectStore(STORE_SNAPSHOTS);
+  try {
+    const activeRow = await requestResult<{ key: string; value: string } | undefined>(
+      metadata.get(ACTIVE_GENERATION_METADATA_KEY)
+    );
+    if ((activeRow?.value ?? 'generation-1') !== expectedActiveGeneration) {
+      throw new Error('The active generation changed after rollback preflight.');
+    }
+    const snapshot = await requestResult<GenerationSnapshot | undefined>(snapshots.get(snapshotId));
+    if (!snapshot || snapshot.id !== snapshotId || snapshot.nextGeneration !== expectedActiveGeneration ||
+        snapshot.rolledBackAt || !snapshot.recordRevisions) {
+      throw new Error('The selected migration snapshot is missing, already rolled back, or is not revision-aware.');
+    }
+    const lockRow = await requestResult<{ key: string; value: MigrationLockRecord } | undefined>(
+      metadata.get(MIGRATION_LOCK_METADATA_KEY)
+    );
+    if (lockRow && lockRow.value.expires_at > now.getTime()) {
+      throw new Error('Rollback is blocked while a storage migration lock is active.');
+    }
+    const allRecords = await requestResult<Array<{ id: string; value: unknown; revision: number }>>(records.getAll());
+    const prefix = expectedActiveGeneration + ':';
+    const activeRows = allRecords.filter((row) => row.id.startsWith(prefix));
+    const actualRevisions: Record<string, number> = {};
+    for (const row of activeRows) actualRevisions[row.id.slice(prefix.length)] = row.revision;
+    // Compare against the revision manifest captured at reverse-migration preflight,
+    // not the original import revisions. Legitimate operational writes after migration
+    // are copied back to legacy storage; only writes concurrent with this rollback block it.
+    const suppliedKeys = Object.keys(expectedRecordRevisions).sort();
+    const actualKeys = Object.keys(actualRevisions).sort();
+    if (suppliedKeys.length !== actualKeys.length ||
+        suppliedKeys.some((key, index) => key !== actualKeys[index] ||
+          actualRevisions[key] !== expectedRecordRevisions[key])) {
+      throw new Error('IndexedDB records changed during reverse migration. Retry rollback after writes are quiescent.');
+    }
+
+    const rolledBackAt = now.toISOString();
+    const rollbackGeneration = 'generation-rollback-' + now.getTime() + '-' + Math.random().toString(36).slice(2, 10);
+    const updatedSnapshot: GenerationSnapshot = { ...snapshot, rolledBackAt, rollbackGeneration };
+    metadata.put({ key: ACTIVE_GENERATION_METADATA_KEY, value: rollbackGeneration });
+    metadata.put({ key: STORAGE_DEACTIVATED_METADATA_KEY, value: true });
+    metadata.put({
+      key: 'generation:' + snapshot.nextGeneration,
+      value: { generationId: snapshot.nextGeneration, migrationId: snapshot.migrationId, status: 'rolled-back', rolledBackAt }
+    });
+    metadata.put({
+      key: 'generation:' + rollbackGeneration,
+      value: { generationId: rollbackGeneration, migrationId: snapshot.migrationId, status: 'active-legacy-rollback', createdAt: rolledBackAt }
+    });
+    snapshots.put(updatedSnapshot);
+    snapshots.put({
+      id: 'rollback:' + snapshot.migrationId + ':' + now.getTime(),
+      kind: 'legacy-storage-rollback',
+      migrationId: snapshot.migrationId,
+      fromGeneration: snapshot.nextGeneration,
+      toGeneration: rollbackGeneration,
+      snapshotId,
+      createdAt: rolledBackAt,
+      result: 'committed'
+    });
+    await transactionDone(tx);
+    return { snapshot: updatedSnapshot, rollbackGeneration };
+  } catch (error) {
+    try { tx.abort(); } catch { /* Transaction may already be closed. */ }
+    throw error;
+  }
 }

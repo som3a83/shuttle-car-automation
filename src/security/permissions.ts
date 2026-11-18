@@ -14,7 +14,7 @@ export type Permission =
   | 'notifications.view' | 'notifications.manage'
   | 'users.view' | 'users.manage'
   | 'settings.view' | 'settings.manage'
-  | 'data.backup' | 'data.restore' | 'data.reset';
+  | 'data.backup' | 'data.restore' | 'data.reset' | 'storage.rollback';
 
 export type ApplicationRoute =
   | 'dashboard' | 'fleet' | 'shifts' | 'engineering' | 'batteries' | 'faults'
@@ -26,12 +26,12 @@ const allPermissions: readonly Permission[] = [
   'maintenance.view', 'maintenance.create', 'maintenance.update', 'maintenance.complete',
   'connections.view', 'connections.manage', 'ai.view', 'reports.view', 'reports.export',
   'notifications.view', 'notifications.manage', 'users.view', 'users.manage', 'settings.view',
-  'settings.manage', 'data.backup', 'data.restore', 'data.reset'
+  'settings.manage', 'data.backup', 'data.restore', 'data.reset', 'storage.rollback'
 ];
 
 const permissionMatrix: Record<Role, readonly Permission[]> = {
   'Super Admin': allPermissions,
-  Admin: allPermissions.filter((permission) => permission !== 'data.reset'),
+  Admin: allPermissions.filter((permission) => permission !== 'data.reset' && permission !== 'storage.rollback'),
   Supervisor: [
     'dashboard.view', 'fleet.view', 'engineering.view', 'shifts.view', 'shifts.manage',
     'batteries.view', 'faults.view', 'faults.create', 'faults.update', 'faults.resolve',

@@ -46,6 +46,19 @@ beforeEach(async () => resetDatabase());
 afterEach(async () => resetDatabase());
 
 describe('explicit IndexedDB migration orchestrator', () => {
+  it('Test 27: shares one migration promise across StrictMode/double-trigger calls', async () => {
+    const first = migrateToIndexedDb({ migrationId: 'strict-mode-single-flight' });
+    const second = migrateToIndexedDb({ migrationId: 'duplicate-trigger-must-not-start' });
+
+    expect(second).toBe(first);
+    const result = await first;
+
+    expect(result.success).toBe(true);
+    expect(result.state).toBe(MigrationState.COMPLETE);
+    expect(result.completedKeyCount).toBe(17);
+    expect(await getActiveGeneration()).toBe('generation-migration-strict-mode-single-flight');
+  });
+
   it('migrates all 17 keys in the approved order and preserves the legacy source', async () => {
     const raw = JSON.stringify([{ id: 'CS-01', manufacturer: 'Cassioli' }]);
     localStorage.setItem(OPERATIONAL_LEGACY_KEY_MAP[3].legacyKey, raw);

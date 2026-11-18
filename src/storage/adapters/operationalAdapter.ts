@@ -4,7 +4,7 @@ import type { AppSettings, Language, Theme } from '../../types';
 
 type OperationalLegacyKey = (typeof OPERATIONAL_LEGACY_KEY_MAP)[number]['legacyKey'];
 
-const OPERATIONAL_DEFAULTS: Record<OperationalLegacyKey, unknown> = {
+export const OPERATIONAL_DEFAULTS: Record<OperationalLegacyKey, unknown> = {
   'shuttle-car-automation-v7:language': 'en',
   'shuttle-car-automation-v7:theme': 'light',
   'shuttle-car-automation-v7:sidebarCollapsed': false,

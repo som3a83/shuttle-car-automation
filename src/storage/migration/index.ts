@@ -5,10 +5,13 @@ export {
   createStagingGeneration,
   getActiveGeneration,
   getGenerationRecordCount,
+  getGenerationRecordRevisions,
   getMigrationJournal,
   isGenerationEmpty,
   isMigrationGenerationActive,
   listPendingMigrationJournals,
+  listGenerationSnapshots,
+  deactivateActiveGenerationForRollback,
   releaseMigrationLock,
   renewMigrationLock,
   saveMigrationJournal,
@@ -34,3 +37,5 @@ export type {
   MigrationVerificationStatus
 } from './types';
 export type { MigrationStorageContext } from '../index';
+
+export { assessMigrationRollback, rollbackToLegacyStorage, type MigrationRollbackAssessment, type RollbackProgress, type RollbackProgressStage, type MigrationRollbackResult, type LegacyStorageRollbackAdapter } from './rollback';
