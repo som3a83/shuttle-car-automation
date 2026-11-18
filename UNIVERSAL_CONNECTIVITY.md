@@ -73,6 +73,12 @@ Configure the gateway environment:
 
 The asset's `transports` list must include the selected transport (for example `ethernet` or `wifi`) and its `protocols` list must include `modbus-tcp`. The adapter declares the selected path for every reading; the gateway rejects readings from undeclared transports or protocols and persists those fields with the sample.
 
+### Generic REST API client — read only
+
+`industrial-gateway/adapters/rest_api.py` reads a vendor's documented JSON REST endpoints using GET only. It enforces HTTPS for non-loopback endpoints, validates private OT IPs or an exact DNS hostname allowlist, refuses redirects to other origins, bounds response size and timeout, and supports bearer or Basic credentials from protected gateway settings. Each tag must have an exact approved relative path and JSON Pointer. The selected payload must contain a value and timezone-aware source timestamp; arbitrary JSON or missing timestamps are not converted into live readings.
+
+Set `SHUTTLE_ADAPTER_FACTORY=adapters.rest_api:create_adapter`. Configure `base_url`, `allowed_hosts` for DNS, `transport`, protected `bearer_token` or Basic credentials, and an `endpoints` map whose keys exactly match `allowed_tags`. Use only vendor-documented GET routes and payload paths.
+
 ### Generic OPC UA client — secure, read only
 
 `industrial-gateway/adapters/opc_ua.py` adds a generic OPC UA client for any shuttle controller or upstream WCS/gateway that exposes documented OPC UA nodes. It uses `opc.tcp://host:port`, a pinned server certificate, a client certificate/private key and `Basic256Sha256,SignAndEncrypt`. A vendor-approved read-only account can also be configured. The exact node map must match the asset's `allowed_tags`; each returned `DataValue` must have a good status and a timezone-aware `SourceTimestamp`. No writes, method calls or control endpoints are included.
