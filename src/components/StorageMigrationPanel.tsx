@@ -5,6 +5,7 @@ import { createLegacyStorageBackup, type LegacyStorageBackup } from '../storage/
 
 interface StorageMigrationPanelProps {
   language: 'ar' | 'en';
+  beforeBackup?: () => Promise<void>;
   onLockChange?: (locked: boolean) => void;
   onMigrationComplete?: () => void;
 }
@@ -18,6 +19,7 @@ function modeLabel(mode: StorageMode | null, language: 'ar' | 'en'): string {
 
 export default function StorageMigrationPanel({
   language,
+  beforeBackup,
   onLockChange,
   onMigrationComplete
 }: StorageMigrationPanelProps) {
@@ -47,6 +49,7 @@ export default function StorageMigrationPanel({
     setBackupConfirmed(false);
     setBackupBusy(true);
     try {
+      await beforeBackup?.();
       const created = await createLegacyStorageBackup(window.localStorage);
       const filename = `shuttle-pre-migration-backup-${created.exportedAt.replace(/[:.]/g, '-')}.json`;
       const blob = new Blob([JSON.stringify(created, null, 2)], { type: 'application/json' });
