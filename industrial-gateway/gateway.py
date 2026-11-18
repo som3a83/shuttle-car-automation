@@ -31,6 +31,7 @@ MAX_SAMPLES = int(os.environ.get("SHUTTLE_GATEWAY_MAX_SAMPLES", "500000"))
 ALLOWED_QUALITIES = {"GOOD", "UNCERTAIN", "BAD", "STALE"}
 ASSET_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 TAG_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
+CONNECTION_ID_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,63}$")
 DB_LOCK = threading.Lock()
 
 
@@ -74,8 +75,17 @@ def load_config() -> dict[str, Any]:
         if not isinstance(asset_id, str) or not ASSET_ID_RE.fullmatch(asset_id) or asset_id in assets:
             raise RuntimeError(f"Invalid or duplicate asset id: {asset_id!r}")
         manufacturer = asset.get("manufacturer")
-        if manufacturer not in {"Cassioli", "Craftsman", "ACME"}:
-            raise RuntimeError(f"Unsupported manufacturer for {asset_id}.")
+        if (not isinstance(manufacturer, str) or not manufacturer.strip() or len(manufacturer.strip()) > 100
+                or any(ord(char) < 32 for char in manufacturer)):
+            raise RuntimeError(f"Invalid manufacturer for {asset_id}.")
+        manufacturer = manufacturer.strip()
+        transports = asset.get("transports", [])
+        protocols = asset.get("protocols", [])
+        for field, values in (("transports", transports), ("protocols", protocols)):
+            if (not isinstance(values, list) or len(values) > 12
+                    or any(not isinstance(item, str) or not CONNECTION_ID_RE.fullmatch(item) for item in values)
+                    or len(set(values)) != len(values)):
+                raise RuntimeError(f"Invalid {field} for {asset_id}; use unique lowercase connection identifiers.")
         tags = asset.get("allowed_tags", [])
         if not isinstance(tags, list) or any(not isinstance(tag, str) or not TAG_RE.fullmatch(tag) for tag in tags):
             raise RuntimeError(f"Invalid allowed_tags for {asset_id}.")
@@ -85,6 +95,8 @@ def load_config() -> dict[str, Any]:
             "model": str(asset.get("model", "")).strip(),
             "firmware": str(asset.get("firmware", "")).strip(),
             "adapter_id": str(asset.get("adapter_id", "")).strip(),
+            "transports": list(transports),
+            "protocols": list(protocols),
             "allowed_tags": set(tags),
             "enabled": asset.get("enabled") is True,
         }
@@ -93,7 +105,8 @@ def load_config() -> dict[str, Any]:
 
 def commissioned(asset: dict[str, Any]) -> bool:
     return bool(asset["enabled"] and asset["model"] and asset["firmware"]
-                and asset["adapter_id"] and asset["allowed_tags"])
+                and asset["adapter_id"] and asset["transports"] and asset["protocols"]
+                and asset["allowed_tags"])
 
 
 def init_db() -> None:
@@ -315,10 +328,12 @@ class GatewayHandler(BaseHTTPRequestHandler):
             "id": asset["id"], "manufacturer": asset["manufacturer"],
             "model": asset["model"] or None, "firmware": asset["firmware"] or None,
             "adapterId": asset["adapter_id"] or None, "enabled": asset["enabled"],
+            "transports": asset["transports"], "protocols": asset["protocols"],
             "commissioned": commissioned(asset),
             "missing": [name for name, value in (
                 ("exact model", asset["model"]), ("firmware", asset["firmware"]),
-                ("adapter id", asset["adapter_id"]), ("approved tag map", asset["allowed_tags"]), ("enabled flag", asset["enabled"])
+                ("adapter id", asset["adapter_id"]), ("transport", asset["transports"]),
+                ("protocol", asset["protocols"]), ("approved tag map", asset["allowed_tags"]), ("enabled flag", asset["enabled"])
             ) if not value]
         }
 
