@@ -106,6 +106,23 @@ describe('explicit IndexedDB migration orchestrator', () => {
     expect(await getGenerationRecordCount('generation-migration-invalid-account-registry')).toBe(12);
   });
 
+  it('rejects a legacy source that differs from the confirmed backup fingerprint', async () => {
+    const before = await getActiveGeneration();
+    localStorage.setItem(OPERATIONAL_LEGACY_KEY_MAP[3].legacyKey, JSON.stringify([
+      { id: 'SC-01', manufacturer: 'Cassioli' }
+    ]));
+
+    const result = await migrateToIndexedDb({
+      migrationId: 'stale-confirmed-backup',
+      legacyStorage: localStorage,
+      expectedSourceFingerprint: '0'.repeat(64)
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/changed after the verified backup/i);
+    expect(await getActiveGeneration()).toBe(before);
+  });
+
   it('Test 8: blocks duplicate usernames in the local account registry', async () => {
     const account = (id: string, username: string) => ({
       id,
