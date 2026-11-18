@@ -96,7 +96,7 @@ export default function StorageMigrationPanel({
         return;
       }
 
-      const result = await migrateToIndexedDb();
+      const result = await migrateToIndexedDb({ expectedSourceFingerprint: backup.migrationSourceFingerprint });
       if (!result.success || result.state !== 'COMPLETE') {
         throw new Error(result.error || `Storage migration stopped in state ${result.state}.`);
       }
