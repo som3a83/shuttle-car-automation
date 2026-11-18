@@ -147,9 +147,10 @@ See [PRIVACY_POLICY.md](PRIVACY_POLICY.md) for the current data handling notice.
 ## Industrial connectivity and safety boundaries
 
 - The Connections workspace now includes an optional HTTPS client for a separate read-only OT edge gateway. The app does not itself open PLC sockets or scan plant networks.
-- The Python standard-library gateway is in [industrial-gateway](industrial-gateway/README.md). It exposes authenticated status/read APIs and a separate authenticated telemetry-ingest route for vendor-approved adapters.
+- The Python read-only gateway is in [industrial-gateway](industrial-gateway/README.md). It exposes authenticated status/read APIs and a separate authenticated telemetry-ingest route for approved adapters. The gateway accepts arbitrary manufacturer names and exact model/firmware registrations; it is not hard-coded to the current five-asset fleet.
+- A universal transport/protocol catalog and its implementation status are documented in [UNIVERSAL_CONNECTIVITY.md](UNIVERSAL_CONNECTIVITY.md). This development branch adds a generic read-only Modbus TCP adapter. It still requires the exact OEM-approved register/tag map for the target model.
 - The gateway ships with the five known asset identities, but every asset is disabled and uncommissioned. Exact model, controller/firmware, adapter identity and the manufacturer-approved tag map must be documented before readings are accepted.
-- No Cassioli, Craftsman or ACME driver is supplied yet: the manufacturers' exact interface documents and hardware details have not been provided. Therefore no physical shuttle is connected by this code change alone.
+- No manufacturer-specific Cassioli, Craftsman or ACME driver is supplied yet. The generic Modbus TCP adapter can only be used when the exact shuttle controller supports Modbus TCP and the OEM-approved register map is available. Bluetooth, serial, proprietary radio and other protocol entries are extension points until their native/edge drivers are implemented and tested. Therefore no physical shuttle is connected by this code change alone.
 - The app accepts a gateway read token for the current screen session only; it is not persisted to localStorage. Plant access must use HTTPS, network segmentation and the approved VPN/identity layer.
 - Battery SOC/SOH, voltage, current, temperature, cycles and shuttle status remain manual, simulated or unknown unless a fresh, good-quality sample comes from a commissioned vendor adapter.
 - Do not invent register maps, device addresses, network parameters or vendor credentials.
