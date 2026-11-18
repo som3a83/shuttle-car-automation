@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import type { Language, Shuttle } from '../types';
+import type { FaultSeverity, Language, Shuttle } from '../types';
 import './DiagnosticWorkbench.css';
 
 type SymptomKey = 'wooden-pallet' | 'battery-drain' | 'false-alarm' | 'wheel-slip' | 'sensor-cutout' | 'sudden-stop';
@@ -97,12 +97,13 @@ const SYMPTOMS: { id: SymptomKey; en: string; ar: string }[] = [
   { id: 'sudden-stop', en: 'Unexpected shuttle stop', ar: 'توقف مفاجئ للشاتل' }
 ];
 
-export default function DiagnosticWorkbench({ language, shuttles }: { language: Language; shuttles: Shuttle[] }) {
+export default function DiagnosticWorkbench({ language, shuttles, canCreateFault, onCreateFault }: { language: Language; shuttles: Shuttle[]; canCreateFault: boolean; onCreateFault: (draft: { shuttleId: string; title: string; severity: FaultSeverity; description: string; probableCauses: string[]; diagnosticProcedure: string }) => Promise<void> }) {
   const ar = language === 'ar';
   const [shuttleId, setShuttleId] = useState(shuttles[0]?.id ?? '');
   const [symptom, setSymptom] = useState<SymptomKey>('wooden-pallet');
   const [checked, setChecked] = useState<string[]>([]);
   const [findings, setFindings] = useState('');
+  const [severity, setSeverity] = useState<FaultSeverity | ''>('');
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'unavailable'>('idle');
   const path = PATHS[symptom];
   const selected = shuttles.find((item) => item.id === shuttleId) ?? shuttles[0];
@@ -112,7 +113,22 @@ export default function DiagnosticWorkbench({ language, shuttles }: { language: 
     setSymptom(value);
     setChecked([]);
     setFindings('');
+    setSeverity('');
     setCopyState('idle');
+  };
+
+  const createFaultRecord = async () => {
+    if (!selected || !severity) return;
+    const completedSteps = path.checks.map((item, index) => `${checked.includes(String(index)) ? '[x]' : '[ ]'} ${ar ? item.ar : item.en}`).join('\\n');
+    const description = [ar ? 'العَرَض المبلغ عنه:' : 'Reported symptom:', ar ? path.titleAr : path.title, ar ? 'الملاحظات الميدانية:' : 'Field findings:', findings.trim() || (ar ? 'لم تسجل ملاحظات إضافية.' : 'No additional field findings recorded.')].join('\\n');
+    await onCreateFault({
+      shuttleId: selected.id,
+      title: ar ? path.titleAr : path.title,
+      severity,
+      description,
+      probableCauses: [`${ar ? path.hypothesesAr : path.hypotheses} — ${ar ? 'فرضية تحتاج تحققًا فنيًا' : 'hypothesis requiring technical verification'}`],
+      diagnosticProcedure: completedSteps
+    });
   };
 
   const copyReport = async () => {
@@ -182,6 +198,16 @@ export default function DiagnosticWorkbench({ language, shuttles }: { language: 
       </label>)}
     </div>
 
+    <label className="diagnostic-severity">{ar ? 'تقدير أولي لشدة البلاغ' : 'Initial report severity'}
+      <select aria-label={ar ? 'تقدير أولي لشدة البلاغ' : 'Initial report severity'} value={severity} onChange={(event) => setSeverity(event.target.value as FaultSeverity | '')}>
+        <option value="">{ar ? 'اختر الشدة' : 'Select severity'}</option>
+        <option value="Critical">{ar ? 'حرج' : 'Critical'}</option>
+        <option value="Major">{ar ? 'كبير' : 'Major'}</option>
+        <option value="Moderate">{ar ? 'متوسط' : 'Moderate'}</option>
+        <option value="Minor">{ar ? 'بسيط' : 'Minor'}</option>
+      </select>
+    </label>
+
     <label className="diagnostic-findings">{ar ? 'الملاحظات والنتائج الميدانية' : 'Field findings and measurements'}
       <textarea value={findings} onChange={(event) => setFindings(event.target.value)} rows={4} placeholder={ar ? 'اكتب كود الإنذار، وقت حدوثه، ظروف التشغيل، ونتائج الفحص...' : 'Record alarm codes, timestamps, operating conditions and inspection results...'}/>
     </label>
@@ -189,6 +215,8 @@ export default function DiagnosticWorkbench({ language, shuttles }: { language: 
     <div className="diagnostic-actions">
       <button type="button" className="btn-secondary" onClick={() => { setChecked([]); setFindings(''); setCopyState('idle'); }}>{ar ? 'إعادة ضبط القائمة' : 'Reset checklist'}</button>
       <button type="button" className="btn-primary" onClick={() => void copyReport()}>{ar ? 'نسخ تقرير الفحص' : 'Copy inspection report'}</button>
+      <button type="button" className="btn-primary" disabled={!canCreateFault || !severity || !selected} onClick={() => void createFaultRecord()}>{ar ? 'تسجيل بلاغ عطل' : 'Create fault report'}</button>
+      {!canCreateFault && <span className="diagnostic-permission-note">{ar ? 'سجّل الدخول بصلاحية إنشاء الأعطال لتسجيل البلاغ.' : 'Sign in with fault-creation permission to register this report.'}</span>}
       <span role="status" aria-live="polite">{copyState === 'copied' ? (ar ? 'تم نسخ التقرير' : 'Report copied') : copyState === 'unavailable' ? (ar ? 'النسخ غير متاح على هذا الجهاز' : 'Clipboard is unavailable on this device') : ''}</span>
     </div>
 
