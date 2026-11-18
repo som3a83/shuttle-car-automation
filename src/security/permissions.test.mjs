@@ -6,6 +6,9 @@ test('viewer is read-only and cannot enter administrative destinations', () => {
   assert.equal(can('Viewer', 'fleet.view'), true);
   assert.equal(can('Viewer', 'fleet.manage'), false);
   assert.equal(canAccessRoute('Viewer', 'dashboard'), true);
+  for (const route of ['fleet', 'shifts', 'engineering', 'batteries', 'faults', 'maintenance', 'connections', 'ai', 'reports', 'notifications']) {
+    assert.equal(canAccessRoute('Viewer', route), true, `Viewer should open read-only route: ${route}`);
+  }
   assert.equal(canAccessRoute('Viewer', 'settings'), false);
   assert.equal(canAccessRoute('Viewer', 'users'), false);
 });

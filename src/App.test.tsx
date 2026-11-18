@@ -98,12 +98,15 @@ beforeEach(async () => {
     expect(screen.getByText('SHUTTLE CAR AUTOMATION · V1.0.0')).toBeInTheDocument();
   });
 
-  it('keeps protected destinations unavailable when the local session is missing', () => {
+  it('allows an unauthenticated Viewer to open operational destinations in read-only mode', () => {
     window.sessionStorage.clear();
     renderApp();
-    expect(screen.queryByRole('button', { name: /Battery Management/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /Maintenance Management/i })).not.toBeInTheDocument();
-    expect(screen.getByRole('status')).toHaveTextContent(/DEMO MODE/i);
+    for (const name of [/Fleet Control Center/i, /Battery Management/i, /Maintenance Management/i, /Fault & Diagnostics/i, /Device Connections/i, /AI Technical Assistant/i, /Reports Center/i]) {
+      expect(screen.getAllByRole('button', { name })[0]).toBeInTheDocument();
+    }
+    // Users & Security remains the first-run sign-in/account bootstrap entry; administrative settings stay restricted.
+    expect(screen.getAllByRole('button', { name: /Users & Security/i })[0]).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /System Settings/i })).not.toBeInTheDocument();
   });
 
   it('switches to Arabic and updates interface direction', async () => {
@@ -113,10 +116,10 @@ beforeEach(async () => {
     expect(screen.getAllByText(/لوحة القيادة/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/إجمالي عربات النقل/i)).toBeInTheDocument();
   });
-  it('clearly identifies the interface as a demo without live equipment access', () => {
+  it('does not show a global demo banner or imply live equipment telemetry', () => {
     renderApp();
-    expect(screen.getByRole('status')).toHaveTextContent(/DEMO MODE/i);
-    expect(screen.getByRole('status')).toHaveTextContent(/No live equipment connection/i);
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    expect(screen.queryByText(/No live equipment connection|لا يوجد اتصال حي/i)).not.toBeInTheDocument();
   });
 
   it('persists the selected appearance across a reload', async () => {
