@@ -40,7 +40,7 @@ jobs:
         run: python -m pip install --disable-pip-version-check --requirement requirements.txt
       - name: Compile gateway source
         working-directory: industrial-gateway
-        run: python -m py_compile gateway.py adapter_contract.py adapter_runner.py adapters/__init__.py adapters/modbus_tcp.py adapters/modbus_rtu.py adapters/mqtt.py adapters/opc_ua.py test_gateway.py test_adapter_runner.py test_modbus_tcp_adapter.py test_modbus_rtu_adapter.py test_mqtt_adapter.py test_opc_ua_adapter.py
+        run: python -m py_compile gateway.py adapter_contract.py adapter_runner.py adapters/__init__.py adapters/modbus_tcp.py adapters/modbus_rtu.py adapters/mqtt.py adapters/opc_ua.py adapters/rest_api.py test_gateway.py test_adapter_runner.py test_modbus_tcp_adapter.py test_modbus_rtu_adapter.py test_mqtt_adapter.py test_opc_ua_adapter.py test_rest_api_adapter.py
       - name: Run gateway validation tests
         working-directory: industrial-gateway
         run: python -m unittest -v
