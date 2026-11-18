@@ -21,6 +21,11 @@ interface Shuttle3DViewerProps {
 const isPart = (value: unknown): value is EngineeringPart =>
   value === 'chassis' || value === 'drive' || value === 'wheels' || value === 'battery' || value === 'sensors';
 
+/** Motion is visual simulation only and requires the recorded machine state to be Running. */
+export function shouldAnimateShuttleMotion(animationEnabled: boolean, status: string): boolean {
+  return animationEnabled && status === 'Running';
+}
+
 export default function Shuttle3DViewer({
   manufacturer, shuttleId, status, view, exploded, animated, selectedPart, zoom, resetKey, onSelectPart, fallback
 }: Shuttle3DViewerProps) {
@@ -32,10 +37,12 @@ export default function Shuttle3DViewer({
   const wheelMeshesRef = useRef<THREE.Mesh[]>([]);
   const callbackRef = useRef(onSelectPart);
   const animatedRef = useRef(animated);
+  const statusRef = useRef(status);
   const [webglAvailable, setWebglAvailable] = useState<boolean | null>(null);
 
   useEffect(() => { callbackRef.current = onSelectPart; }, [onSelectPart]);
   useEffect(() => { animatedRef.current = animated; }, [animated]);
+  useEffect(() => { statusRef.current = status; }, [status]);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -61,7 +68,9 @@ export default function Shuttle3DViewer({
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     host.appendChild(renderer.domElement);
     renderer.domElement.className = 'shuttle-webgl-canvas';
-    renderer.domElement.setAttribute('aria-label', `Interactive conceptual 3D shuttle model ${shuttleId}`);
+    renderer.domElement.setAttribute('aria-label', `Interactive conceptual 3D shuttle model ${shuttleId}. Drag or use arrow keys to rotate; press Home to reset the view.`);
+    renderer.domElement.tabIndex = 0;
+    renderer.domElement.setAttribute('aria-keyshortcuts', 'ArrowLeft ArrowRight ArrowUp ArrowDown Home');
 
     const scene = new THREE.Scene();
     sceneRef.current = scene;
@@ -301,11 +310,22 @@ export default function Shuttle3DViewer({
       camera.updateProjectionMatrix();
       camera.lookAt(0, 0, 0);
     };
+    const onKeyDown = (event: KeyboardEvent) => {
+      const step = 0.14;
+      if (event.key === 'ArrowLeft') root.rotation.y -= step;
+      else if (event.key === 'ArrowRight') root.rotation.y += step;
+      else if (event.key === 'ArrowUp') root.rotation.x = THREE.MathUtils.clamp(root.rotation.x - step, -0.38, 0.42);
+      else if (event.key === 'ArrowDown') root.rotation.x = THREE.MathUtils.clamp(root.rotation.x + step, -0.38, 0.42);
+      else if (event.key === 'Home') root.rotation.set(0.12, -0.48, 0);
+      else return;
+      event.preventDefault();
+    };
     renderer.domElement.addEventListener('pointerdown', onPointerDown);
     renderer.domElement.addEventListener('pointermove', onPointerMove);
     renderer.domElement.addEventListener('pointerup', onPointerUp);
     renderer.domElement.addEventListener('pointercancel', onPointerUp);
     renderer.domElement.addEventListener('wheel', onWheel, { passive: false });
+    renderer.domElement.addEventListener('keydown', onKeyDown);
 
     const resize = () => {
       const width = Math.max(1, host.clientWidth);
@@ -326,7 +346,9 @@ export default function Shuttle3DViewer({
     let frame = 0;
     const renderFrame = () => {
       frame = window.requestAnimationFrame(renderFrame);
-      if (animatedRef.current) wheelMeshesRef.current.forEach((wheel) => { wheel.rotation.x += 0.018; });
+      if (shouldAnimateShuttleMotion(animatedRef.current, statusRef.current)) {
+        wheelMeshesRef.current.forEach((wheel) => { wheel.rotation.x += 0.018; });
+      }
       renderer.render(scene, camera);
     };
     renderFrame();
@@ -339,6 +361,7 @@ export default function Shuttle3DViewer({
       renderer.domElement.removeEventListener('pointerup', onPointerUp);
       renderer.domElement.removeEventListener('pointercancel', onPointerUp);
       renderer.domElement.removeEventListener('wheel', onWheel);
+      renderer.domElement.removeEventListener('keydown', onKeyDown);
       scene.traverse((object) => {
         if (object instanceof THREE.Mesh) {
           object.geometry.dispose();
@@ -425,8 +448,9 @@ export default function Shuttle3DViewer({
     <div className="three-viewer-shell">
       <div ref={hostRef} className="three-canvas-host" style={{ display: webglAvailable === false ? 'none' : 'block' }} />
       {webglAvailable === false && <div className="three-fallback">{fallback}</div>}
-      <div className="three-viewer-badge"><span className="three-live-dot" />{animated ? 'SIMULATION PREVIEW' : 'STATIC ENGINEERING VIEW'}</div>
+      <div className="three-viewer-badge"><span className="three-live-dot" />{shouldAnimateShuttleMotion(animated, status) ? 'SIMULATED MOTION · NOT LIVE' : 'STATIC ENGINEERING VIEW'}</div>
       <div className="three-viewer-id">{manufacturer.toUpperCase()} / {shuttleId}</div>
+      <div className="three-viewer-help" aria-hidden="true">DRAG / ARROWS TO ROTATE · WHEEL TO ZOOM</div>
       <div className="shuttle-cad-overlay" aria-hidden="true">
         <span><i/>LOAD DECK / FRAME</span><span><i/>DRIVE TRAIN</span><span><i/>TRACTION SET</span><span><i/>ENERGY TRAY</span><span><i/>SAFETY SENSORS</span>
       </div>
