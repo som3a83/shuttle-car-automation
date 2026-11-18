@@ -119,37 +119,43 @@ export const initialNotifications: NotificationItem[] = [];
 export const initialConnections: CommunicationEndpoint[] = [
   {
     name: 'Shuttle PLC interface',
-    protocol: 'Modbus TCP',
+    transport: 'ethernet',
+    protocol: 'modbus-tcp',
     mode: 'UNKNOWN',
     notes: 'Not configured. Manufacturer register map, address, network and authorization are required.'
   },
   {
     name: 'Industrial controller interface',
-    protocol: 'OPC UA',
+    transport: 'ethernet',
+    protocol: 'opc-ua',
     mode: 'UNKNOWN',
     notes: 'Not configured. No endpoint or security certificate has been supplied.'
   },
   {
     name: 'Telemetry message bus',
-    protocol: 'MQTT',
+    transport: 'ethernet',
+    protocol: 'mqtt',
     mode: 'UNKNOWN',
     notes: 'Not configured. No broker, topic map or credentials are available.'
   },
   {
     name: 'Manufacturer / gateway API',
-    protocol: 'REST API',
+    transport: 'wifi',
+    protocol: 'rest-api',
     mode: 'UNKNOWN',
     notes: 'Not configured. No supported vendor endpoint or documentation is available.'
   },
   {
     name: 'Tablet bridge',
-    protocol: 'WebSocket',
+    transport: 'wifi',
+    protocol: 'websocket',
     mode: 'UNKNOWN',
     notes: 'Not configured. ACME tablet interface details are not yet verified.'
   },
   {
     name: 'Local service interface',
-    protocol: 'BLE',
+    transport: 'bluetooth-le',
+    protocol: 'ble-gatt',
     mode: 'UNKNOWN',
     notes: 'Not configured. No approved service adapter or pairing procedure is available.'
   }
