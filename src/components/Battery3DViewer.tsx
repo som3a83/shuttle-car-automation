@@ -310,6 +310,10 @@ export default function Battery3DViewer({ battery, fallback, language = 'en' }: 
   }, [resetVersion]);
 
   useEffect(() => {
+    rootRef.current?.rotation.set(0, view === 'iso' ? -0.45 : 0, 0);
+  }, [view]);
+
+  useEffect(() => {
     const offsets: Record<BatteryPart, number> = {
       enclosure: 0,
       cells: exploded ? 0.9 : 0,

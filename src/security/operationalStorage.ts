@@ -144,21 +144,24 @@ function parseLegacy(collection: OperationalCollection, raw: string | null): {
  * store contains a missing, damaged, or incompatible collection.
  */
 export async function bootstrapOperationalStorage(storage: StorageLike = globalThis.localStorage): Promise<OperationalBootstrapResult> {
-  // After migration, IndexedDB is authoritative; retained legacy bytes are a recovery source, not a live mirror.
-  const activeStorage = await (await import('../storage/index.ts')).getStorageEngine();
-  if (await activeStorage.getMode() === 'indexeddb') {
-    const missing: string[] = [];
-    for (const collection of OPERATIONAL_COLLECTIONS) {
-      const key = ('operational.' + collection) as import('../storage/index.ts').StorageKey;
-      const record = await activeStorage.read(key);
-      if (!record || !isLegacyShape(collection, record.value)) missing.push(collection);
+  // Avoid importing the TypeScript IndexedDB module in legacy-only runtimes. The persisted
+  // preference is the gate; after it is selected, IndexedDB becomes authoritative and is checked.
+  if (storage.getItem('shuttle-car-automation:storage-mode-preference') === 'indexeddb') {
+    const activeStorage = await (await import('../storage/index.ts')).getStorageEngine();
+    if (await activeStorage.getMode() === 'indexeddb') {
+      const missing: string[] = [];
+      for (const collection of OPERATIONAL_COLLECTIONS) {
+        const key = ('operational.' + collection) as import('../storage/index.ts').StorageKey;
+        const record = await activeStorage.read(key);
+        if (!record || !isLegacyShape(collection, record.value)) missing.push(collection);
+      }
+      if (missing.length > 0) {
+        throw new Error('IndexedDB is selected but required operational collections are missing or invalid: ' +
+          missing.join(', ') + '. Startup is paused. Original localStorage source copies were not deleted; export and inspect them before recovery.');
+      }
+      try { storage.setItem(OPERATIONAL_PREFIX + 'storage-issues', '[]'); } catch { /* Read-only health display remains empty. */ }
+      return { status: 'ready', issues: [] };
     }
-    if (missing.length > 0) {
-      throw new Error('IndexedDB is selected but required operational collections are missing or invalid: ' +
-        missing.join(', ') + '. Startup is paused. Original localStorage source copies were not deleted; export and inspect them before recovery.');
-    }
-    try { storage.setItem(OPERATIONAL_PREFIX + 'storage-issues', '[]'); } catch { /* Read-only health display remains empty. */ }
-    return { status: 'ready', issues: [] };
   }
 
   const inspections = await Promise.all(OPERATIONAL_COLLECTIONS.map(async (collection) => {
@@ -279,9 +282,11 @@ export async function resolveOperationalRecovery(
   source: RecoverySource,
   storage: StorageLike = globalThis.localStorage
 ): Promise<{ revision: number; checksum: string }> {
-  const activeStorage = await (await import('../storage/index.ts')).getStorageEngine();
-  if (await activeStorage.getMode() === 'indexeddb') {
-    throw new Error('Legacy localStorage recovery is disabled while IndexedDB is active. Do not overwrite the active database with an older compatibility copy. Use an exported verified database backup and a dedicated IndexedDB recovery procedure.');
+  if (storage.getItem('shuttle-car-automation:storage-mode-preference') === 'indexeddb') {
+    const activeStorage = await (await import('../storage/index.ts')).getStorageEngine();
+    if (await activeStorage.getMode() === 'indexeddb') {
+      throw new Error('Legacy localStorage recovery is disabled while IndexedDB is active. Do not overwrite the active database with an older compatibility copy. Use an exported verified database backup and a dedicated IndexedDB recovery procedure.');
+    }
   }
   const engine = getEngine(storage, collection);
   const snapshot = await engine.inspect();
