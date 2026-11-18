@@ -31,6 +31,6 @@ export type {
   MigrationJournal,
   MigrationOptions,
   MigrationResult,
-  MigrationStorageContext,
   MigrationVerificationStatus
 } from './types';
+export type { MigrationStorageContext } from '../index';
