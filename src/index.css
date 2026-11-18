@@ -1359,3 +1359,12 @@ button,select,input,textarea { touch-action:manipulation; }
   .storage-mode-pill { max-width: 100%; }
   .storage-migration-overlay-card { padding: 18px; }
 }
+
+.storage-migration-backup { display:flex; flex-direction:column; align-items:flex-start; gap:9px; margin:12px 0; }
+.storage-migration-backup-details {
+  display:flex; flex-direction:column; gap:4px; width:100%; padding:10px 12px;
+  border:1px solid rgba(100,201,155,.28); border-radius:8px;
+  color:var(--text); background:rgba(100,201,155,.055); font-size:10px;
+}
+.storage-migration-backup-details span { color:var(--muted); font-size:9px; overflow-wrap:anywhere; }
+.storage-migration-panel .btn-secondary:disabled { opacity:.55; cursor:not-allowed; }
