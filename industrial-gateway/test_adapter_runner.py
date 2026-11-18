@@ -8,11 +8,12 @@ class AdapterRunnerTests(unittest.TestCase):
     def setUp(self):
         self.asset = {
             "id": "SC-01", "manufacturer": "Cassioli", "model": "Exact model",
-            "firmware": "1.0.0", "adapter_id": "cass-ro-01", "allowed_tags": {"battery.soc"}
+            "firmware": "1.0.0", "adapter_id": "cass-ro-01", "transports": ["wifi"],
+            "protocols": ["modbus-tcp"], "allowed_tags": {"battery.soc"}
         }
         self.identity = {
             "adapter_id": "cass-ro-01", "manufacturer": "Cassioli", "model": "Exact model",
-            "firmware": "1.0.0", "version": "0.1.0"
+            "firmware": "1.0.0", "transport": "wifi", "protocol": "modbus-tcp", "version": "0.1.0"
         }
 
     def test_adapter_identity_must_match_asset(self):
@@ -20,6 +21,8 @@ class AdapterRunnerTests(unittest.TestCase):
         self.assertEqual(result["adapterId"], "cass-ro-01")
         with self.assertRaises(ValueError):
             validate_adapter_identity({**self.identity, "firmware": "unknown"}, self.asset)
+        with self.assertRaises(ValueError):
+            validate_adapter_identity({**self.identity, "transport": "unapproved-radio"}, self.asset)
 
     def test_reading_is_mapped_without_synthesizing_values(self):
         payload = build_ingest_payload(self.asset, validate_adapter_identity(self.identity, self.asset), {
@@ -28,6 +31,8 @@ class AdapterRunnerTests(unittest.TestCase):
         self.assertEqual(payload["value"], 0)
         self.assertEqual(payload["tag"], "battery.soc")
         self.assertEqual(payload["adapterVersion"], "0.1.0")
+        self.assertEqual(payload["transport"], "wifi")
+        self.assertEqual(payload["protocol"], "modbus-tcp")
 
     def test_network_ingest_must_use_https_except_loopback(self):
         self.assertEqual(validate_ingest_url("https://gateway.local/v1/telemetry"), "https://gateway.local/v1/telemetry")

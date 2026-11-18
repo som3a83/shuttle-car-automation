@@ -510,7 +510,7 @@ beforeEach(async () => {
     await user.click(screen.getByRole('button', { name: /SC-04 Craftsman/i }));
     await user.click(screen.getByRole('button', { name: /Archive device/i }));
     await user.click(screen.getByRole('button', { name: /Confirm archive/i }));
-    expect(screen.getByText(/Resolve open fault reports and complete active work orders/i)).toBeInTheDocument();
+    await screen.findByText(/Resolve open fault reports and complete active work orders/i);
     expect(screen.getByRole('button', { name: /SC-04 Craftsman/i })).toBeInTheDocument();
   });
 
@@ -829,7 +829,7 @@ beforeEach(async () => {
 
     await waitFor(() => {
       const saved = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:connections') || '[]') as Array<{name:string;protocol:string;mode:string;archivedAt?:string|null}>;
-      expect(saved.find(item => item.name === 'Approved test gateway')).toMatchObject({ protocol:'OPC UA', mode:'UNKNOWN', archivedAt:null });
+      expect(saved.find(item => item.name === 'Approved test gateway')).toMatchObject({ protocol:'opc-ua', mode:'UNKNOWN', archivedAt:null });
     });
   });
 

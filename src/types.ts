@@ -154,7 +154,10 @@ export interface CommunicationEndpoint {
   /** Soft archive retains endpoint configuration history. */
   archivedAt?: string | null;
   name: string;
-  protocol: 'Modbus TCP' | 'OPC UA' | 'MQTT' | 'REST API' | 'WebSocket' | 'BLE';
+  /** Physical/link transport; vendor-specific identifiers are intentionally supported. */
+  transport?: string;
+  /** Protocol identifier; never restrict this to a fixed manufacturer list. */
+  protocol: string;
   mode: ConnectivityStatus;
   notes: string;
 }

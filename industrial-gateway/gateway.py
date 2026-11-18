@@ -21,7 +21,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 ROOT = Path(__file__).resolve().parent
 CONFIG_PATH = Path(os.environ.get("SHUTTLE_GATEWAY_CONFIG", ROOT / "config.json"))
 DB_PATH = Path(os.environ.get("SHUTTLE_GATEWAY_DB", ROOT / "telemetry.sqlite3"))
@@ -31,6 +31,7 @@ MAX_SAMPLES = int(os.environ.get("SHUTTLE_GATEWAY_MAX_SAMPLES", "500000"))
 ALLOWED_QUALITIES = {"GOOD", "UNCERTAIN", "BAD", "STALE"}
 ASSET_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 TAG_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
+CONNECTION_ID_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,63}$")
 DB_LOCK = threading.Lock()
 
 
@@ -74,8 +75,17 @@ def load_config() -> dict[str, Any]:
         if not isinstance(asset_id, str) or not ASSET_ID_RE.fullmatch(asset_id) or asset_id in assets:
             raise RuntimeError(f"Invalid or duplicate asset id: {asset_id!r}")
         manufacturer = asset.get("manufacturer")
-        if manufacturer not in {"Cassioli", "Craftsman", "ACME"}:
-            raise RuntimeError(f"Unsupported manufacturer for {asset_id}.")
+        if (not isinstance(manufacturer, str) or not manufacturer.strip() or len(manufacturer.strip()) > 100
+                or any(ord(char) < 32 for char in manufacturer)):
+            raise RuntimeError(f"Invalid manufacturer for {asset_id}.")
+        manufacturer = manufacturer.strip()
+        transports = asset.get("transports", [])
+        protocols = asset.get("protocols", [])
+        for field, values in (("transports", transports), ("protocols", protocols)):
+            if (not isinstance(values, list) or len(values) > 12
+                    or any(not isinstance(item, str) or not CONNECTION_ID_RE.fullmatch(item) for item in values)
+                    or len(set(values)) != len(values)):
+                raise RuntimeError(f"Invalid {field} for {asset_id}; use unique lowercase connection identifiers.")
         tags = asset.get("allowed_tags", [])
         if not isinstance(tags, list) or any(not isinstance(tag, str) or not TAG_RE.fullmatch(tag) for tag in tags):
             raise RuntimeError(f"Invalid allowed_tags for {asset_id}.")
@@ -85,6 +95,8 @@ def load_config() -> dict[str, Any]:
             "model": str(asset.get("model", "")).strip(),
             "firmware": str(asset.get("firmware", "")).strip(),
             "adapter_id": str(asset.get("adapter_id", "")).strip(),
+            "transports": list(transports),
+            "protocols": list(protocols),
             "allowed_tags": set(tags),
             "enabled": asset.get("enabled") is True,
         }
@@ -93,7 +105,8 @@ def load_config() -> dict[str, Any]:
 
 def commissioned(asset: dict[str, Any]) -> bool:
     return bool(asset["enabled"] and asset["model"] and asset["firmware"]
-                and asset["adapter_id"] and asset["allowed_tags"])
+                and asset["adapter_id"] and asset["transports"] and asset["protocols"]
+                and asset["allowed_tags"])
 
 
 def init_db() -> None:
@@ -113,9 +126,16 @@ def init_db() -> None:
                 quality TEXT NOT NULL,
                 provenance TEXT NOT NULL,
                 adapter_id TEXT NOT NULL,
-                adapter_version TEXT NOT NULL
+                adapter_version TEXT NOT NULL,
+                transport TEXT NOT NULL DEFAULT 'unknown',
+                protocol TEXT NOT NULL DEFAULT 'unknown'
             )
         """)
+        columns = {row[1] for row in db.execute("PRAGMA table_info(telemetry)")}
+        if "transport" not in columns:
+            db.execute("ALTER TABLE telemetry ADD COLUMN transport TEXT NOT NULL DEFAULT 'unknown'")
+        if "protocol" not in columns:
+            db.execute("ALTER TABLE telemetry ADD COLUMN protocol TEXT NOT NULL DEFAULT 'unknown'")
         db.execute("CREATE INDEX IF NOT EXISTS idx_telemetry_asset_time ON telemetry(asset_id, received_at DESC)")
         db.commit()
 
@@ -130,13 +150,17 @@ def validate_ingest(payload: Any, config: dict[str, Any]) -> dict[str, Any]:
     if not asset:
         raise GatewayError(403, "assetId is not present in the approved asset register.")
     if not commissioned(asset):
-        raise GatewayError(409, f"{asset_id} is not commissioned; exact model, firmware, adapter and tag map are required.")
+        raise GatewayError(409, f"{asset_id} is not commissioned; exact model, firmware, adapter, transport, protocol and tag map are required.")
     if payload.get("manufacturer") != asset["manufacturer"]:
         raise GatewayError(403, "Manufacturer does not match the commissioned asset.")
     if payload.get("adapterId") != asset["adapter_id"]:
         raise GatewayError(403, "Adapter identity does not match the commissioned asset.")
     if payload.get("model") != asset["model"] or payload.get("firmware") != asset["firmware"]:
         raise GatewayError(403, "Model or firmware does not match the commissioned adapter.")
+    transport = payload.get("transport")
+    protocol = payload.get("protocol")
+    if transport not in asset["transports"] or protocol not in asset["protocols"]:
+        raise GatewayError(403, "Transport or protocol is not approved for the commissioned asset.")
     tag = payload.get("tag")
     if not isinstance(tag, str) or not TAG_RE.fullmatch(tag) or tag not in asset["allowed_tags"]:
         raise GatewayError(403, "Tag is not included in the approved read-only tag map.")
@@ -176,6 +200,8 @@ def validate_ingest(payload: Any, config: dict[str, Any]) -> dict[str, Any]:
         "provenance": "LIVE_VENDOR",
         "adapterId": asset["adapter_id"],
         "adapterVersion": adapter_version.strip(),
+        "transport": transport,
+        "protocol": protocol,
     }
 
 
@@ -253,7 +279,7 @@ class GatewayHandler(BaseHTTPRequestHandler):
                     raise GatewayError(400, "limit must be an integer.")
                 if asset_id and asset_id not in self.config["assets"]:
                     raise GatewayError(404, "Unknown assetId.")
-                sql = "SELECT asset_id,tag,value_json,unit,source_timestamp,received_at,quality,provenance,adapter_id,adapter_version FROM telemetry"
+                sql = "SELECT asset_id,tag,value_json,unit,source_timestamp,received_at,quality,provenance,adapter_id,adapter_version,transport,protocol FROM telemetry"
                 params: list[Any] = []
                 if asset_id:
                     sql += " WHERE asset_id=?"
@@ -265,7 +291,8 @@ class GatewayHandler(BaseHTTPRequestHandler):
                 samples = [{
                     "assetId": row[0], "tag": row[1], "value": json.loads(row[2]), "unit": row[3],
                     "sourceTimestamp": row[4], "receivedAt": row[5], "quality": row[6],
-                    "provenance": row[7], "adapterId": row[8], "adapterVersion": row[9]
+                    "provenance": row[7], "adapterId": row[8], "adapterVersion": row[9],
+                    "transport": row[10], "protocol": row[11]
                 } for row in rows]
                 self._json(200, {"samples": samples, "readOnly": True})
                 return
@@ -291,11 +318,11 @@ class GatewayHandler(BaseHTTPRequestHandler):
             sample = validate_ingest(payload, self.config)
             with DB_LOCK, sqlite3.connect(DB_PATH, timeout=10) as db:
                 db.execute(
-                    """INSERT INTO telemetry(asset_id,tag,value_json,unit,source_timestamp,received_at,quality,provenance,adapter_id,adapter_version)
-                       VALUES(?,?,?,?,?,?,?,?,?,?)""",
+                    """INSERT INTO telemetry(asset_id,tag,value_json,unit,source_timestamp,received_at,quality,provenance,adapter_id,adapter_version,transport,protocol)
+                       VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""",
                     (sample["assetId"], sample["tag"], json.dumps(sample["value"], allow_nan=False),
                      sample["unit"], sample["sourceTimestamp"], sample["receivedAt"], sample["quality"],
-                     sample["provenance"], sample["adapterId"], sample["adapterVersion"])
+                     sample["provenance"], sample["adapterId"], sample["adapterVersion"], sample["transport"], sample["protocol"])
                 )
                 db.execute(
                     "DELETE FROM telemetry WHERE id NOT IN (SELECT id FROM telemetry ORDER BY id DESC LIMIT ?)",
@@ -315,10 +342,12 @@ class GatewayHandler(BaseHTTPRequestHandler):
             "id": asset["id"], "manufacturer": asset["manufacturer"],
             "model": asset["model"] or None, "firmware": asset["firmware"] or None,
             "adapterId": asset["adapter_id"] or None, "enabled": asset["enabled"],
+            "transports": asset["transports"], "protocols": asset["protocols"],
             "commissioned": commissioned(asset),
             "missing": [name for name, value in (
                 ("exact model", asset["model"]), ("firmware", asset["firmware"]),
-                ("adapter id", asset["adapter_id"]), ("approved tag map", asset["allowed_tags"]), ("enabled flag", asset["enabled"])
+                ("adapter id", asset["adapter_id"]), ("transport", asset["transports"]),
+                ("protocol", asset["protocols"]), ("approved tag map", asset["allowed_tags"]), ("enabled flag", asset["enabled"])
             ) if not value]
         }
 

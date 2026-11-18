@@ -3,11 +3,16 @@ import { getGatewaySampleState, type GatewaySample } from './gatewayClient';
 const live: GatewaySample = {
   assetId: 'SC-01', tag: 'battery.soc', value: 71, unit: '%',
   sourceTimestamp: '2026-11-17T00:00:00.000Z', receivedAt: '2026-11-17T00:00:01.000Z',
-  quality: 'GOOD', provenance: 'LIVE_VENDOR', adapterId: 'vendor-ro-adapter', adapterVersion: '1.0.0'
+  quality: 'GOOD', provenance: 'LIVE_VENDOR', adapterId: 'vendor-ro-adapter', adapterVersion: '1.0.0',
+  transport: 'wifi', protocol: 'modbus-tcp'
 };
 describe('gateway telemetry provenance checks', () => {
   it('accepts only recent, good, identified vendor samples as live', () => {
     expect(getGatewaySampleState(live, Date.parse('2026-11-17T00:00:02.000Z'))).toBe('LIVE');
+  });
+  it('does not mark legacy readings without a known transport or protocol as live', () => {
+    expect(getGatewaySampleState({ ...live, transport: 'unknown' }, Date.parse('2026-11-17T00:00:02.000Z'))).toBe('UNVERIFIED');
+    expect(getGatewaySampleState({ ...live, protocol: 'unknown' }, Date.parse('2026-11-17T00:00:02.000Z'))).toBe('UNVERIFIED');
   });
   it('does not mark manual or simulated values as live', () => {
     expect(getGatewaySampleState({ ...live, provenance: 'MANUAL' }, Date.parse('2026-11-17T00:00:02.000Z'))).toBe('UNVERIFIED');

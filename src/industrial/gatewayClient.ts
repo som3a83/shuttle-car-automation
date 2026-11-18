@@ -1,8 +1,12 @@
+import { isConnectionIdentifier } from './connectionCatalog';
+
 export type GatewayDisplayState = 'LIVE' | 'STALE' | 'UNVERIFIED' | 'UNAVAILABLE';
 
 export interface GatewayAsset {
   id: string;
-  manufacturer: 'Cassioli' | 'Craftsman' | 'ACME';
+  manufacturer: string;
+  transports: string[];
+  protocols: string[];
   model: string | null;
   firmware: string | null;
   adapterId: string | null;
@@ -22,6 +26,7 @@ export interface GatewaySample {
   quality: 'GOOD' | 'UNCERTAIN' | 'BAD' | 'STALE' | 'NOT_CONFIGURED';
   provenance: 'LIVE_VENDOR' | 'MANUAL' | 'SIMULATED' | 'IMPORTED' | 'DERIVED';
   adapterId: string | null; adapterVersion: string | null;
+  transport: string; protocol: string;
 }
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
@@ -72,13 +77,16 @@ export async function fetchGatewayStatus(url: string, token: string): Promise<Ga
   const assets: GatewayAsset[] = [];
   for (const item of data.assets) {
     if (!isRecord(item) || typeof item.id !== 'string' ||
-        !['Cassioli', 'Craftsman', 'ACME'].includes(String(item.manufacturer)) ||
+        typeof item.manufacturer !== 'string' || !item.manufacturer.trim() || item.manufacturer.length > 100 ||
         typeof item.enabled !== 'boolean' || typeof item.commissioned !== 'boolean' ||
+        !Array.isArray(item.transports) || item.transports.some((value) => !isConnectionIdentifier(value)) ||
+        !Array.isArray(item.protocols) || item.protocols.some((value) => !isConnectionIdentifier(value)) ||
         !Array.isArray(item.missing) || item.missing.some((value) => typeof value !== 'string')) {
       throw new Error('بيانات أحد الأصول في البوابة غير سليمة.');
     }
     assets.push({
-      id: item.id, manufacturer: item.manufacturer as GatewayAsset['manufacturer'],
+      id: item.id, manufacturer: item.manufacturer,
+      transports: item.transports as string[], protocols: item.protocols as string[],
       model: typeof item.model === 'string' ? item.model : null,
       firmware: typeof item.firmware === 'string' ? item.firmware : null,
       adapterId: typeof item.adapterId === 'string' ? item.adapterId : null,
@@ -104,7 +112,8 @@ export async function fetchGatewayTelemetry(url: string, token: string, assetId:
         (typeof item.value === 'number' && !Number.isFinite(item.value)) ||
         !['GOOD', 'UNCERTAIN', 'BAD', 'STALE'].includes(String(item.quality)) ||
         !['LIVE_VENDOR', 'MANUAL', 'SIMULATED', 'IMPORTED', 'DERIVED'].includes(String(item.provenance)) ||
-        typeof item.receivedAt !== 'string') {
+        typeof item.receivedAt !== 'string' || !isConnectionIdentifier(item.transport) ||
+        !isConnectionIdentifier(item.protocol)) {
       throw new Error('Malformed telemetry sample for ' + assetId + '.');
     }
     return {
@@ -114,13 +123,15 @@ export async function fetchGatewayTelemetry(url: string, token: string, assetId:
       receivedAt: item.receivedAt, quality: item.quality as GatewaySample['quality'],
       provenance: item.provenance as GatewaySample['provenance'],
       adapterId: typeof item.adapterId === 'string' ? item.adapterId : null,
-      adapterVersion: typeof item.adapterVersion === 'string' ? item.adapterVersion : null
+      adapterVersion: typeof item.adapterVersion === 'string' ? item.adapterVersion : null,
+      transport: item.transport, protocol: item.protocol
     };
   });
 }
 export function getGatewaySampleState(sample: GatewaySample, now = Date.now(), maxAgeMs = 15_000): GatewayDisplayState {
   if (sample.value === null || sample.quality === 'NOT_CONFIGURED') return 'UNAVAILABLE';
-  if (sample.provenance !== 'LIVE_VENDOR' || !sample.adapterId || !sample.adapterVersion) return 'UNVERIFIED';
+  if (sample.provenance !== 'LIVE_VENDOR' || !sample.adapterId || !sample.adapterVersion ||
+      sample.transport === 'unknown' || sample.protocol === 'unknown') return 'UNVERIFIED';
   if (sample.quality !== 'GOOD' || !sample.sourceTimestamp) return sample.quality === 'STALE' ? 'STALE' : 'UNVERIFIED';
   const source = Date.parse(sample.sourceTimestamp);
   const received = Date.parse(sample.receivedAt);

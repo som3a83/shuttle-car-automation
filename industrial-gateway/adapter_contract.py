@@ -14,6 +14,8 @@ class AdapterIdentity:
     manufacturer: str
     model: str
     firmware: str
+    transport: str
+    protocol: str
     version: str
 
 
