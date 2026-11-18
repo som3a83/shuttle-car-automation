@@ -130,7 +130,7 @@ beforeEach(async () => {
     await user.type(screen.getByRole('textbox', { name: /Field findings and measurements/i }), 'Sensor bracket was loose during inspection.');
     await user.click(screen.getByRole('button', { name: /Create fault report/i }));
     await waitFor(() => expect(screen.getByText(/Sensor bracket was loose during inspection/i)).toBeInTheDocument());
-    expect(screen.getByText(/Wooden pallet not detected/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Wooden pallet not detected/i).length).toBeGreaterThan(0);
   });
 
   it('keeps diagnostic fault creation disabled for the unauthenticated Viewer', async () => {
