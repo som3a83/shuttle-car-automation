@@ -49,6 +49,7 @@ export default function StorageMigrationPanel({
         throw new Error(result.error || `Storage migration stopped in state ${result.state}.`);
       }
       setComplete(true);
+      setBusy(false);
       onMigrationComplete?.();
       // Keep the application locked until a reload selects the newly activated backend.
     } catch (reason) {
