@@ -9,9 +9,12 @@ describe('Fleet seed data quality and provenance', () => {
     expect(initialShuttles.filter((item) => item.manufacturer === 'ACME')).toHaveLength(1);
   });
 
-  it('does not invent manufacturer identity or telemetry for shuttle units', () => {
+  it('records the confirmed installed model families without inventing serials or telemetry', () => {
+    expect(initialShuttles.map((shuttle) => shuttle.model)).toEqual([
+      'ISAT Semi-Automatic', 'ISAT Semi-Automatic', 'ISAT Semi-Automatic',
+      'Pallet Shuttle (Standard)', 'Namla Polar Edition'
+    ]);
     for (const shuttle of initialShuttles) {
-      expect(shuttle.model).toBe('Not recorded');
       expect(shuttle.serialNumber).toBe('Not recorded');
       expect(shuttle.hardwareVersion).toBe('Not recorded');
       expect(shuttle.firmwareVersion).toBe('Not recorded');
@@ -25,7 +28,8 @@ describe('Fleet seed data quality and provenance', () => {
   it('preserves the reported ACME HMI zero as unverified, not live telemetry', () => {
     const battery = initialBatteries.find((item) => item.manufacturer === 'ACME');
     expect(battery).toBeDefined();
-    expect(battery?.soc).toBe(0);
+    expect(battery?.soc).toBeNull();
+    expect(battery?.notes).toMatch(/HMI.*0%.*manually reported/i);
     expect(battery?.connectionMode).toBe('UNKNOWN');
     expect(battery?.soh).toBeNull();
     expect(battery?.temperature).toBeNull();
