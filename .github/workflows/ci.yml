@@ -6,6 +6,7 @@ on:
       - main
       - "development/**"
       - "copilot/**"
+      - "feat/mobile-immersive-3d-v6-20261119"
   pull_request:
     branches:
       - main
