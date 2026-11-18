@@ -7,7 +7,6 @@ import {
 import './LiveGatewayPanel.css';
 
 interface Props { language: Language; }
-const ASSET_ORDER = ['SC-01', 'SC-02', 'SC-03', 'SC-04', 'SC-05'];
 
 export default function LiveGatewayPanel({ language }: Props) {
   const ar = language === 'ar';
@@ -47,8 +46,7 @@ export default function LiveGatewayPanel({ language }: Props) {
 
   const allAssets = useMemo(() => {
     const received = status?.assets || [];
-    return ASSET_ORDER.map((id) => received.find((asset) => asset.id === id))
-      .filter((asset): asset is GatewayAsset => Boolean(asset));
+    return [...received].sort((a, b) => a.id.localeCompare(b.id));
   }, [status]);
   const counts = useMemo(() => {
     const values = Object.values(samples).flat();
@@ -116,11 +114,12 @@ export default function LiveGatewayPanel({ language }: Props) {
           const live = readings.filter((sample) => getGatewaySampleState(sample) === 'LIVE');
           return <article className="gateway-asset" key={asset.id}>
             <div className="gateway-asset-head">
-              <div><strong>{asset.id}</strong><span>{asset.manufacturer}</span></div>
+              <div><strong>{asset.id}</strong><span>{asset.manufacturer}{asset.model ? ' · ' + asset.model : ''}</span></div>
               <span className={asset.commissioned ? 'gateway-state gateway-state-ready' : 'gateway-state gateway-state-pending'}>
                 {asset.commissioned ? (ar ? 'مهيأ' : 'COMMISSIONED') : label('notReady')}
               </span>
             </div>
+            {asset.transports.length > 0 || asset.protocols.length > 0 ? <div className="gateway-muted">{ar ? 'وسيلة الاتصال' : 'Transport'}: {asset.transports.join(', ') || '—'} · {ar ? 'البروتوكول' : 'Protocol'}: {asset.protocols.join(', ') || '—'}</div> : null}
             {asset.commissioned
               ? live.length
                 ? <div className="gateway-readings">{live.slice(0, 5).map((sample) => <div key={sample.tag + '-' + sample.receivedAt}><span>{sample.tag}</span><strong>{String(sample.value)}{sample.unit || ''}</strong><small>{stateLabel(sample)}</small></div>)}</div>
