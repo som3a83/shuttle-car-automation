@@ -73,6 +73,23 @@ Configure the gateway environment:
 
 The asset's `transports` list must include the selected transport (for example `ethernet` or `wifi`) and its `protocols` list must include `modbus-tcp`. The adapter declares the selected path for every reading; the gateway rejects readings from undeclared transports or protocols and persists those fields with the sample.
 
+### Generic MQTT telemetry adapter — read only
+
+`industrial-gateway/adapters/mqtt.py` is a generic MQTT subscriber for any manufacturer or shuttle gateway that publishes timestamped JSON telemetry to MQTT. It subscribes only to the concrete topic names in the commissioned asset's exact approved tag map. Wildcard subscriptions are rejected. Every payload must include a value and timezone-aware source timestamp; optional unit and data-quality fields are preserved. TLS certificate validation is required for non-loopback brokers, hostname allowlisting is required for DNS names, and credentials belong in the protected gateway settings / secret store. The adapter has no publish method and cannot send commands to the shuttle.
+
+Payload example (one message per approved topic):
+
+```json
+{
+  "value": 82.4,
+  "unit": "%",
+  "sourceTimestamp": "2026-11-18T16:00:00Z",
+  "quality": "GOOD"
+}
+```
+
+Set `SHUTTLE_ADAPTER_FACTORY=adapters.mqtt:create_adapter`. Configure `transport`, `host`, `port`, `tls`, protected credentials/certificate paths, and a `topics` object whose keys exactly match the asset's `allowed_tags`. Use the vendor/gateway's documented topic schema; the adapter does not guess topic names or convert arbitrary payloads into machine state.
+
 ### Generic Modbus RTU over RS-232 / RS-485 / USB serial — read only
 
 `industrial-gateway/adapters/modbus_rtu.py` adds a Linux edge-gateway serial adapter using Modbus RTU function codes 3 and 4 only. It validates frame CRC, unit ID, function code and response byte count, with bounded serial timeouts and an exact approved register map. It supports 8 data bits, N/E/O parity, 1 or 2 stop bits, and common baud rates from 1200 to 115200.
@@ -116,7 +133,7 @@ Use this explorer to confirm that a machine or vendor gateway actually exposes B
 
 - Bluetooth Classic / RFCOMM is not supported by the BLE GATT plugin and needs a separate Android native Classic serial implementation plus device pairing and protocol specification.
 - Modbus RTU is now implemented as a generic read-only Linux serial adapter; it still requires a real serial/RS-485 interface and exact OEM-approved register map.
-- OPC UA, MQTT, REST, WebSocket, S7, EtherNet/IP, PROFINET and CANopen require separate protocol adapters and tested dependencies.
+- MQTT now has a generic read-only subscriber; OPC UA, REST, WebSocket, S7, EtherNet/IP, PROFINET and CANopen still require separate protocol adapters and tested dependencies.
 - USB serial has a Modbus RTU edge-gateway adapter path when used with a compatible serial/RS-485 converter; native direct USB from the Android phone is not implemented.
 - Industrial RF requires the exact vendor radio receiver/gateway, frequency, modulation, pairing, encryption and application protocol. A phone cannot generically decode proprietary RF traffic.
 - Industrial RF requires the exact vendor radio receiver/gateway, frequency, modulation, pairing, encryption and application protocol. A phone cannot generically decode proprietary RF traffic.
