@@ -29,7 +29,7 @@ describe('Fleet seed data quality and provenance', () => {
     const battery = initialBatteries.find((item) => item.manufacturer === 'ACME');
     expect(battery).toBeDefined();
     expect(battery?.soc).toBeNull();
-    expect(battery?.notes).toMatch(/HMI.*0%.*manually reported/i);
+    expect(battery?.notes).toMatch(/HMI was manually reported to display 0%/i);
     expect(battery?.connectionMode).toBe('UNKNOWN');
     expect(battery?.soh).toBeNull();
     expect(battery?.temperature).toBeNull();
