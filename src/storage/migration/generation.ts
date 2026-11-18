@@ -9,11 +9,14 @@ const STORE_SNAPSHOTS = 'snapshots';
 export const ACTIVE_GENERATION_METADATA_KEY = 'activeGeneration';
 export const MIGRATION_LOCK_METADATA_KEY = 'migrationLock';
 
-export type JournalRecord = MigrationJournal & { previousGeneration?: string };
+export type JournalRecord = MigrationJournal & {
+  previousGeneration?: string;
+  sourceByKey?: Record<string, 'legacy' | 'default'>;
+};
 export interface MigrationLockRecord {
   migrationId: string;
   ownerToken: string;
-  expiresAt: number;
+  expires_at: number;
   acquiredAt: string;
 }
 export interface GenerationSnapshot {
@@ -184,7 +187,7 @@ export async function acquireMigrationLock(
     store.get(MIGRATION_LOCK_METADATA_KEY)
   );
   const lock = existing?.value;
-  if (lock && lock.expiresAt > now && lock.ownerToken !== ownerToken) {
+  if (lock && lock.expires_at > now && lock.ownerToken !== ownerToken) {
     tx.abort();
     throw new Error(`Migration is locked by another owner until ${new Date(lock.expiresAt).toISOString()}.`);
   }
@@ -214,7 +217,7 @@ export async function renewMigrationLock(
     tx.abort();
     throw new Error('Migration lock ownership was lost.');
   }
-  store.put({ key: MIGRATION_LOCK_METADATA_KEY, value: { ...row.value, expiresAt } });
+  store.put({ key: MIGRATION_LOCK_METADATA_KEY, value: { ...row.value, expires_at: expiresAt } });
   await transactionDone(tx);
 }
 
@@ -257,7 +260,7 @@ export async function switchActiveGeneration(options: PointerSwitchOptions): Pro
       metadata.get(MIGRATION_LOCK_METADATA_KEY)
     );
     if (!lockRow || lockRow.value.migrationId !== options.migrationId ||
-        lockRow.value.ownerToken !== options.ownerToken || lockRow.value.expiresAt <= now().getTime()) {
+        lockRow.value.ownerToken !== options.ownerToken || lockRow.value.expires_at <= now().getTime()) {
       tx.abort();
       throw new Error('Migration lock is missing, expired, or owned by another process.');
     }
