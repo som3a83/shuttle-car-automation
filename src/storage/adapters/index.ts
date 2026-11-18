@@ -3,8 +3,10 @@ import { importAuthData } from './authAdapter';
 import { importAuditData } from './auditAdapter';
 import { importCustomizationData } from './customizationAdapter';
 import type { AdapterResult, LegacyReadStorage } from './legacyKeyMap';
+import type { MigrationStorageContext } from '../index';
 
 export type { AdapterResult, AdapterFamily, LegacyReadStorage, LegacyKeyDefinition } from './legacyKeyMap';
+export type { MigrationStorageContext } from '../index';
 export {
   LEGACY_KEY_MAP,
   listImportableLegacyKeys,
@@ -27,12 +29,13 @@ export { importCustomizationData } from './customizationAdapter';
  * Results are returned per logical storage key so a caller can review conflicts.
  */
 export async function importAllLegacyData(
-  legacyStorage: LegacyReadStorage = globalThis.localStorage
+  legacyStorage: LegacyReadStorage = globalThis.localStorage,
+  context?: MigrationStorageContext
 ): Promise<AdapterResult[]> {
   const results: AdapterResult[] = [];
-  results.push(...await importOperationalData(legacyStorage));
-  results.push(await importAuthData(legacyStorage));
-  results.push(...await importAuditData(legacyStorage));
-  results.push(...await importCustomizationData(legacyStorage));
+  results.push(...await importOperationalData(legacyStorage, context));
+  results.push(await importAuthData(legacyStorage, context));
+  results.push(...await importAuditData(legacyStorage, context));
+  results.push(...await importCustomizationData(legacyStorage, context));
   return results;
 }
