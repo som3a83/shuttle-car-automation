@@ -1358,7 +1358,7 @@ function App({ initialData }: { initialData: AppInitialData }) {
         <button type="button" onClick={() => setMobileNav(true)} aria-expanded={mobileNav}><Icon name="grid" size={16}/><span>{language === 'ar' ? 'المزيد' : 'More'}</span></button>
       </nav>
 
-      <div className="demo-banner" role="status"><div className="demo-icon"><Icon name="alert" size={18}/></div><div><strong>{t.demo}</strong><p>{t.demoText}</p></div><span className="demo-tag">{t.unverified}</span></div>
+      {/* Telemetry remains explicitly unverified in its data fields; no global demo banner is shown. */}
 
       {activeTab === 'dashboard' && <section className="page-content">
         <div className="hero-panel">
