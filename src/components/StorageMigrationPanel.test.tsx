@@ -97,6 +97,26 @@ describe('StorageMigrationPanel', () => {
     await waitFor(() => expect(onLockChange).toHaveBeenLastCalledWith(false));
   });
 
+  it('downloads a new backup and blocks migration if local data changed after confirmation', async () => {
+    const onLockChange = vi.fn();
+    mockBackup
+      .mockResolvedValueOnce(backupFixture)
+      .mockResolvedValueOnce({
+        ...backupFixture,
+        recordCount: 18,
+        records: [{ key: 'operational.shuttles', value: '[{"id":"SC-02"}]' }]
+      });
+    render(<StorageMigrationPanel language="en" onLockChange={onLockChange} />);
+    await confirmBackup();
+    fireEvent.click(screen.getByRole('button', { name: /Migrate records to IndexedDB/i }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/Application data changed after the previous backup/);
+    expect(mockBackup).toHaveBeenCalledTimes(2);
+    expect(mockMigration).not.toHaveBeenCalled();
+    expect(screen.getByRole('checkbox', { name: /saved the downloaded backup file/i })).not.toBeChecked();
+    expect(onLockChange).toHaveBeenLastCalledWith(false);
+  });
+
   it('does not offer another migration when IndexedDB is already active', async () => {
     mockGetMode.mockResolvedValue('indexeddb');
     render(<StorageMigrationPanel language="ar" />);
