@@ -31,3 +31,8 @@
 .diagnostic-safety-note p,.diagnostic-disclaimer { margin:7px 0 0; color:var(--muted); font-size:9px; line-height:1.8; }
 .diagnostic-disclaimer { margin-top:-7px; }
 @media(max-width:760px) { .diagnostic-workbench-header { flex-direction:column; padding:16px; } .diagnostic-selectors { grid-template-columns:1fr; } .diagnostic-asset-strip { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+
+.diagnostic-severity { display:grid; gap:7px; max-width:360px; color:var(--muted); font-size:10px; font-weight:700; }
+.diagnostic-severity select { min-height:40px; padding:9px 11px; border:1px solid var(--line-strong); border-radius:9px; color:var(--text); background:var(--surface); }
+.diagnostic-permission-note { color:var(--muted); font-size:9px; }
+.diagnostic-actions button:disabled { cursor:not-allowed; opacity:.45; filter:saturate(.4); }
