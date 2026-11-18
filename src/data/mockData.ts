@@ -46,30 +46,35 @@ const unknownAssetFields = {
 export const initialShuttles: Shuttle[] = [
   {
     id: 'SC-01', manufacturer: 'Cassioli', ...unknownAssetFields,
+    model: 'ISAT Semi-Automatic',
     faultHistory: [], maintenanceHistory: [],
-    notes: 'Local application ID. Manufacturer serial, model and telemetry have not yet been verified.'
+    notes: 'Installed product family and semi-automatic configuration confirmed by the user. Serial number, exact hardware revision, cold-store variant and telemetry remain unverified.'
   },
   {
     id: 'SC-02', manufacturer: 'Cassioli', ...unknownAssetFields,
+    model: 'ISAT Semi-Automatic',
     faultHistory: [], maintenanceHistory: [],
-    notes: 'Local application ID. Manufacturer serial, model and telemetry have not yet been verified.'
+    notes: 'Installed product family and semi-automatic configuration confirmed by the user. Serial number, exact hardware revision, cold-store variant and telemetry remain unverified.'
   },
   {
     id: 'SC-03', manufacturer: 'Cassioli', ...unknownAssetFields,
+    model: 'ISAT Semi-Automatic',
     faultHistory: [], maintenanceHistory: [],
-    notes: 'Local application ID. Manufacturer serial, model and telemetry have not yet been verified.'
+    notes: 'Installed product family and semi-automatic configuration confirmed by the user. Serial number, exact hardware revision, cold-store variant and telemetry remain unverified.'
   },
   {
     id: 'SC-04', manufacturer: 'Craftsman', ...unknownAssetFields,
+    model: 'Pallet Shuttle (Standard)',
     faultHistory: ['Reported pallet recognition, battery drain and stopping anomalies'],
     maintenanceHistory: [],
-    notes: 'Reported observations require technical inspection. No root cause or machine telemetry has been confirmed.'
+    notes: 'Standard Pallet Shuttle model confirmed by the user. Exact model code, serial number, installed options and technical ratings remain unverified. Reported operating observations require inspection.'
   },
   {
     id: 'SC-05', manufacturer: 'ACME', ...unknownAssetFields,
+    model: 'Namla Polar Edition',
     faultHistory: ['Battery HMI reportedly displayed 0% after repair'],
     maintenanceHistory: [],
-    notes: 'ACME battery was reported at 0% on the HMI after repair. Verify the physical display and battery interface.'
+    notes: 'Namla Polar Edition confirmed by the user. Exact serial-specific ratings and telemetry remain unverified. ACME battery was reported at 0% on the HMI after repair; verify the physical display and battery interface.'
   }
 ];
 
@@ -81,7 +86,7 @@ export const initialBatteries: Battery[] = [
     chemistry: 'Not verified',
     nominalVoltage: 'Not recorded',
     capacity: 'Not recorded',
-    soc: 0,
+    soc: null,
     soh: null,
     temperature: null,
     voltage: null,
@@ -90,7 +95,7 @@ export const initialBatteries: Battery[] = [
     installationDate: 'Not recorded',
     lastMaintenance: 'After repair — date not recorded',
     assignment: 'SC-05',
-    notes: 'Reported HMI display was 0% after repair. This is a manually reported observation, not a connected telemetry reading.',
+    notes: 'HMI was manually reported to display 0% after repair. This is an unverified field observation, not a connected state-of-charge reading; soc remains null until measured through a verified source.',
     status: 'Fault',
     connectionMode: 'UNKNOWN'
   }
