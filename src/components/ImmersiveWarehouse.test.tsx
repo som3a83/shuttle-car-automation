@@ -1,5 +1,5 @@
 import React from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import ImmersiveWarehouse from './ImmersiveWarehouse';
 import { initialShuttles } from '../data/mockData';
