@@ -2,7 +2,9 @@ export type GatewayDisplayState = 'LIVE' | 'STALE' | 'UNVERIFIED' | 'UNAVAILABLE
 
 export interface GatewayAsset {
   id: string;
-  manufacturer: 'Cassioli' | 'Craftsman' | 'ACME';
+  manufacturer: string;
+  transports: string[];
+  protocols: string[];
   model: string | null;
   firmware: string | null;
   adapterId: string | null;
@@ -72,13 +74,16 @@ export async function fetchGatewayStatus(url: string, token: string): Promise<Ga
   const assets: GatewayAsset[] = [];
   for (const item of data.assets) {
     if (!isRecord(item) || typeof item.id !== 'string' ||
-        !['Cassioli', 'Craftsman', 'ACME'].includes(String(item.manufacturer)) ||
+        typeof item.manufacturer !== 'string' || !item.manufacturer.trim() || item.manufacturer.length > 100 ||
         typeof item.enabled !== 'boolean' || typeof item.commissioned !== 'boolean' ||
+        !Array.isArray(item.transports) || item.transports.some((value) => typeof value !== 'string') ||
+        !Array.isArray(item.protocols) || item.protocols.some((value) => typeof value !== 'string') ||
         !Array.isArray(item.missing) || item.missing.some((value) => typeof value !== 'string')) {
       throw new Error('بيانات أحد الأصول في البوابة غير سليمة.');
     }
     assets.push({
-      id: item.id, manufacturer: item.manufacturer as GatewayAsset['manufacturer'],
+      id: item.id, manufacturer: item.manufacturer,
+      transports: item.transports as string[], protocols: item.protocols as string[],
       model: typeof item.model === 'string' ? item.model : null,
       firmware: typeof item.firmware === 'string' ? item.firmware : null,
       adapterId: typeof item.adapterId === 'string' ? item.adapterId : null,
