@@ -40,6 +40,7 @@ export default function ImmersiveWarehouse({ shuttles, language }: Props) {
     scene.fog = new THREE.Fog(0x09131d, 24, 75);
     const camera = new THREE.PerspectiveCamera(42, host.clientWidth / host.clientHeight, 0.1, 120);
     camera.position.set(15, 13, 22);
+    camera.lookAt(0, 2, 0);
     const root = new THREE.Group();
     scene.add(root);
     scene.add(new THREE.HemisphereLight(0xd7eaff, 0x26303a, 2.1));
@@ -102,7 +103,7 @@ export default function ImmersiveWarehouse({ shuttles, language }: Props) {
     const down = (e: PointerEvent) => {
       activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (activePointers.size === 1) { previous = { x:e.clientX, y:e.clientY, id:e.pointerId }; moved = false; }
-      else { previous = null; pinchDistance = distance(); }
+      else { previous = null; moved = true; pinchDistance = distance(); }
       renderer.domElement.setPointerCapture(e.pointerId);
     };
     const move = (e: PointerEvent) => {
