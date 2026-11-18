@@ -15,6 +15,8 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urljoin, urlparse
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
+from adapter_contract import AdapterIdentity, AdapterReading
+
 
 class _RejectRedirect(HTTPRedirectHandler):
     def redirect_request(self, request, response, code, message, headers, new_url):
@@ -190,7 +192,6 @@ class RestReadOnlyAdapter:
         return value, unit, timestamp, quality
 
     def read(self, tags: Sequence[str]) -> list[AdapterReading]:
-        from adapter_contract import AdapterReading
         requested = list(tags)
         if not requested or any(tag not in self.endpoints for tag in requested):
             raise ValueError("Requested REST tag is not in the approved endpoint map.")
