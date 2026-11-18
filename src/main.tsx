@@ -13,7 +13,8 @@ let hydrationPromise: Promise<AppInitialData> | null = null;
 function loadBootstrapOnce(): Promise<OperationalBootstrapResult> {
   if (!bootstrapPromise) {
     bootstrapPromise = (async () => {
-      // Read-only preference check. Missing/invalid preference defaults to legacy; do not write it here.
+      // Read-only preference check. A missing preference retains the safe legacy mode until
+      // an administrator exports a backup and explicitly completes verified IndexedDB migration.
       getStorageModePreference();
       return bootstrapOperationalStorage();
     })();
