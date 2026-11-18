@@ -39,8 +39,9 @@ describe('StorageMigrationPanel', () => {
     Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: vi.fn() });
   });
 
-  it('creates a complete SHA-256 backup and requires explicit confirmation before migration', async () => {
-    render(<StorageMigrationPanel language="en" />);
+  it('flushes pending application writes before creating the complete SHA-256 backup', async () => {
+    const beforeBackup = vi.fn().mockResolvedValue(undefined);
+    render(<StorageMigrationPanel language="en" beforeBackup={beforeBackup} />);
     const migrate = await screen.findByRole('button', { name: /Migrate records to IndexedDB/i });
     expect(migrate).toBeDisabled();
 
@@ -48,6 +49,8 @@ describe('StorageMigrationPanel', () => {
     expect(await screen.findByText(/Backup file created/i)).toBeInTheDocument();
     expect(screen.getByText(/17 localStorage keys/i)).toBeInTheDocument();
     expect(mockBackup).toHaveBeenCalledTimes(1);
+    expect(beforeBackup).toHaveBeenCalledTimes(1);
+    expect(beforeBackup.mock.invocationCallOrder[0]).toBeLessThan(mockBackup.mock.invocationCallOrder[0]);
     expect(migrate).toBeDisabled();
 
     fireEvent.click(screen.getByRole('checkbox', { name: /saved the downloaded backup file/i }));
