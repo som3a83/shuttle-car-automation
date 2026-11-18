@@ -11,9 +11,8 @@ from adapters.modbus_rtu import (
 
 class ModbusRtuReadOnlyAdapterTests(unittest.TestCase):
     def setUp(self):
-        self.master, slave = pty.openpty()
-        self.device = os.ttyname(slave)
-        os.close(slave)
+        self.master, self.slave = pty.openpty()
+        self.device = os.ttyname(self.slave)
         self.asset = {
             "id": "SERIAL-01", "manufacturer": "Any Shuttle OEM", "model": "RTU Model",
             "firmware": "2.0", "adapter_id": "generic-rtu-ro",
@@ -22,10 +21,11 @@ class ModbusRtuReadOnlyAdapterTests(unittest.TestCase):
         }
 
     def tearDown(self):
-        try:
-            os.close(self.master)
-        except OSError:
-            pass
+        for descriptor in (self.master, self.slave):
+            try:
+                os.close(descriptor)
+            except OSError:
+                pass
 
     def _respond(self, value=64):
         request = bytearray()
