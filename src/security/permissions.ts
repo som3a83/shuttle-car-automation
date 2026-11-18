@@ -53,7 +53,14 @@ const permissionMatrix: Record<Role, readonly Permission[]> = {
     'dashboard.view', 'fleet.view', 'shifts.view', 'shifts.manage', 'batteries.view',
     'faults.view', 'faults.create', 'notifications.view'
   ],
-  Viewer: ['dashboard.view', 'fleet.view', 'engineering.view', 'reports.view']
+  // Viewer is the safe first-run/read-only role. It may open every operational
+  // destination, but all mutations remain blocked by canPerformAction because
+  // the account is unauthenticated or lacks a write permission.
+  Viewer: [
+    'dashboard.view', 'fleet.view', 'engineering.view', 'shifts.view',
+    'batteries.view', 'faults.view', 'maintenance.view', 'connections.view',
+    'ai.view', 'reports.view', 'notifications.view'
+  ]
 };
 
 const routePermission: Record<ApplicationRoute, Permission> = {
