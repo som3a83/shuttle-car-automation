@@ -5,25 +5,52 @@ import '@testing-library/jest-dom/vitest';
 import StorageMigrationPanel from './StorageMigrationPanel';
 import { getMode } from '../storage';
 import { migrateToIndexedDb } from '../storage/migration';
+import { createLegacyStorageBackup } from '../storage/migration/legacyBackup';
 
 vi.mock('../storage', () => ({ getMode: vi.fn() }));
 vi.mock('../storage/migration', () => ({ migrateToIndexedDb: vi.fn() }));
+vi.mock('../storage/migration/legacyBackup', () => ({ createLegacyStorageBackup: vi.fn() }));
 
 const mockGetMode = vi.mocked(getMode);
 const mockMigration = vi.mocked(migrateToIndexedDb);
+const mockBackup = vi.mocked(createLegacyStorageBackup);
+
+const backupFixture = {
+  format: 'shuttle-legacy-storage-backup' as const,
+  schemaVersion: 1 as const,
+  exportedAt: '2026-11-18T12:00:00.000Z',
+  source: 'window.localStorage' as const,
+  recordCount: 17,
+  records: [],
+  sha256: 'a'.repeat(64)
+};
+
+async function confirmBackup(): Promise<void> {
+  fireEvent.click(await screen.findByRole('button', { name: /Create complete local data backup/i }));
+  fireEvent.click(await screen.findByRole('checkbox', { name: /saved the downloaded backup file/i }));
+}
 
 describe('StorageMigrationPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetMode.mockResolvedValue('legacy-fallback');
+    mockBackup.mockResolvedValue(backupFixture);
+    Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: vi.fn(() => 'blob:verified-backup') });
+    Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: vi.fn() });
   });
 
-  it('requires a backup confirmation before starting the migration', async () => {
-    const onLockChange = vi.fn();
-    render(<StorageMigrationPanel language="en" onLockChange={onLockChange} />);
+  it('creates a complete SHA-256 backup and requires explicit confirmation before migration', async () => {
+    render(<StorageMigrationPanel language="en" />);
     const migrate = await screen.findByRole('button', { name: /Migrate records to IndexedDB/i });
     expect(migrate).toBeDisabled();
-    fireEvent.click(screen.getByRole('checkbox', { name: /created a backup/i }));
+
+    fireEvent.click(screen.getByRole('button', { name: /Create complete local data backup/i }));
+    expect(await screen.findByText(/Backup file created/i)).toBeInTheDocument();
+    expect(screen.getByText(/17 localStorage keys/i)).toBeInTheDocument();
+    expect(mockBackup).toHaveBeenCalledTimes(1);
+    expect(migrate).toBeDisabled();
+
+    fireEvent.click(screen.getByRole('checkbox', { name: /saved the downloaded backup file/i }));
     expect(migrate).toBeEnabled();
   });
 
@@ -39,8 +66,9 @@ describe('StorageMigrationPanel', () => {
       verificationStatus: 'passed'
     });
     render(<StorageMigrationPanel language="en" onLockChange={onLockChange} onMigrationComplete={onMigrationComplete} />);
-    fireEvent.click(await screen.findByRole('checkbox', { name: /created a backup/i }));
+    await confirmBackup();
     fireEvent.click(screen.getByRole('button', { name: /Migrate records to IndexedDB/i }));
+
     expect(onLockChange).toHaveBeenCalledWith(true);
     expect(await screen.findByText(/Migration and verification completed successfully/i)).toBeInTheDocument();
     expect(onMigrationComplete).toHaveBeenCalledTimes(1);
@@ -59,8 +87,9 @@ describe('StorageMigrationPanel', () => {
       error: 'Source fingerprint changed during migration.'
     });
     render(<StorageMigrationPanel language="en" onLockChange={onLockChange} />);
-    fireEvent.click(await screen.findByRole('checkbox', { name: /created a backup/i }));
+    await confirmBackup();
     fireEvent.click(screen.getByRole('button', { name: /Migrate records to IndexedDB/i }));
+
     expect(await screen.findByRole('alert')).toHaveTextContent(/Source fingerprint changed/);
     await waitFor(() => expect(onLockChange).toHaveBeenLastCalledWith(false));
   });
@@ -70,5 +99,13 @@ describe('StorageMigrationPanel', () => {
     render(<StorageMigrationPanel language="ar" />);
     expect(await screen.findByText(/IndexedDB/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Migrate records/i })).not.toBeInTheDocument();
+  });
+
+  it('does not allow migration when a full backup fails', async () => {
+    mockBackup.mockRejectedValue(new Error('Web Crypto SHA-256 is unavailable.'));
+    render(<StorageMigrationPanel language="en" />);
+    fireEvent.click(await screen.findByRole('button', { name: /Create complete local data backup/i }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(/Web Crypto SHA-256 is unavailable/);
+    expect(screen.getByRole('button', { name: /Migrate records to IndexedDB/i })).toBeDisabled();
   });
 });
