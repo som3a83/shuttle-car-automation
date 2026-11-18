@@ -829,7 +829,7 @@ beforeEach(async () => {
 
     await waitFor(() => {
       const saved = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:connections') || '[]') as Array<{name:string;protocol:string;mode:string;archivedAt?:string|null}>;
-      expect(saved.find(item => item.name === 'Approved test gateway')).toMatchObject({ protocol:'OPC UA', mode:'UNKNOWN', archivedAt:null });
+      expect(saved.find(item => item.name === 'Approved test gateway')).toMatchObject({ protocol:'opc-ua', mode:'UNKNOWN', archivedAt:null });
     });
   });
 
