@@ -317,6 +317,15 @@ async function runMigration(options: MigrationOptions): Promise<MigrationResult>
       throw new Error('Migration journal did not enter STAGING before verification.');
     }
 
+    const pendingMarkerBeforeCommit = readAuditArchivePendingMarker(legacyStorage);
+    if (pendingMarkerBeforeCommit !== null) {
+      throw new Error('The audit-archive-pending marker appeared during migration; refusing to commit.');
+    }
+    const finalSourceFingerprint = await sourceFingerprint(legacyStorage);
+    if (finalSourceFingerprint !== journal.sourceFingerprint) {
+      throw new Error('Legacy source changed during migration; refusing to activate the staging generation.');
+    }
+
     const verification = await verifyStagedMigration(context, results, MIGRATION_KEY_ORDER);
     if (!verification.valid) {
       throw new Error('Migration verification failed: ' + verification.errors.join(' | '));
