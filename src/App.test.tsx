@@ -20,7 +20,7 @@ function readTestValue<T>(key: string, fallback: T): T {
       return parsed.map((value) => {
         if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
         const shuttle = value as { model?: string; serialNumber?: string; connectivity?: string; status?: string; operatingHours?: number | null; operatingCycles?: number | null };
-        const placeholder = shuttle.model === 'Not recorded' && shuttle.serialNumber === 'Not recorded' &&
+        const placeholder = shuttle.serialNumber === 'Not recorded' &&
           shuttle.connectivity === 'UNKNOWN' && shuttle.status === 'Unknown';
         return placeholder ? {
           ...shuttle,
@@ -227,8 +227,8 @@ beforeEach(async () => {
     const user = userEvent.setup();
     renderApp();
     await user.click(screen.getAllByRole('button', { name: /Engineering Visualization/i })[0]);
-    expect(screen.getByText(/ISAT pallet shuttle satellite — reference family/i)).toBeInTheDocument();
-    expect(screen.getByText(/exact configuration on SC-01 to SC-03 is not verified/i)).toBeInTheDocument();
+    expect(screen.getByText(/ISAT Semi-Automatic pallet shuttle — user-confirmed fleet model/i)).toBeInTheDocument();
+    expect(screen.getByText(/exact serial-specific hardware configuration still require documentary verification/i)).toBeInTheDocument();
     expect(screen.getByText(/does not specify a cold-room temperature rating/i)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Open Cassioli product reference/i })).toHaveAttribute(
       'href',
