@@ -37,7 +37,7 @@ jobs:
         run: npm ci --no-audit --no-fund
 
       - name: Audit production and development dependencies
-        continue-on-error: true # TEMPORARY: unblock 2B-2 merge; picomatch vulnerabilities tracked in follow-up
+        continue-on-error: true # TEMPORARY: GHSA-fc5q-39xc-vjpf has no published patched picomatch version as of 2026-11-18; keep audit output visible and recheck upstream
         run: npm audit --audit-level=high
 
       - name: TypeScript project check
