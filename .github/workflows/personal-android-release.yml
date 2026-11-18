@@ -10,7 +10,7 @@ permissions:
 
 concurrency:
   group: shuttle-personal-release
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   personal-release:
@@ -88,7 +88,8 @@ jobs:
           mkdir -p ../artifacts/personal-release
           KS_PASS="$(openssl rand -hex 24)"
           echo "::add-mask::$KS_PASS"
-          keytool -genkeypair -v -keystore ../artifacts/personal-release/personal-release-key.jks \
+          SIGNING_KEY="$RUNNER_TEMP/shuttle-personal-release-key.jks"
+          keytool -genkeypair -v -keystore "$SIGNING_KEY" \
             -storepass "$KS_PASS" -keypass "$KS_PASS" -alias shuttle-personal \
             -keyalg RSA -keysize 2048 -validity 10000 \
             -dname "CN=Shuttle Car Automation Personal, OU=Personal, O=Private Use, L=Unknown, ST=Unknown, C=EG"
@@ -97,13 +98,13 @@ jobs:
           test -s "$UNSIGNED"
           "$ANDROID_HOME/build-tools/36.0.0/zipalign" -f -p 4 "$UNSIGNED" ../artifacts/personal-release/Shuttle-Car-Automation-6.0.0-aligned.apk
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" sign \
-            --ks ../artifacts/personal-release/personal-release-key.jks \
+            --ks "$SIGNING_KEY" \
             --ks-key-alias shuttle-personal --ks-pass "pass:$KS_PASS" --key-pass "pass:$KS_PASS" \
             --out ../artifacts/personal-release/Shuttle-Car-Automation-6.0.0.apk \
             ../artifacts/personal-release/Shuttle-Car-Automation-6.0.0-aligned.apk
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs ../artifacts/personal-release/Shuttle-Car-Automation-6.0.0.apk
           rm ../artifacts/personal-release/Shuttle-Car-Automation-6.0.0-aligned.apk
-          printf '%s\n' "$KS_PASS" > ../artifacts/personal-release/KEEP-THIS-KEY-PASSWORD.txt
+          rm -f "$SIGNING_KEY"
           cat > ../artifacts/personal-release/README-INSTALL.txt <<'TXT'
           Shuttle Car Automation — Personal Android Release
           Version: 6.0.0
@@ -112,9 +113,10 @@ jobs:
           Install Shuttle-Car-Automation-6.0.0.apk on your Android phone.
           If Android asks, allow installation from this source.
 
-          IMPORTANT:
-          Keep personal-release-key.jks and KEEP-THIS-KEY-PASSWORD.txt private and backed up.
-          Future updates must be signed with this exact same key or Android will refuse the update.
+          SECURITY:
+          The signing key is temporary and is deliberately NOT included in this public-repository artifact.
+          This APK is suitable for personal installation, but future builds cannot update it in place.
+          Before installing a future build, uninstall this app first. Uninstalling removes its local app data.
           This is a private-use release; it is not published to Google Play.
           TXT
           cd ../artifacts/personal-release
@@ -165,7 +167,7 @@ jobs:
           cd artifacts
           zip -r Shuttle-Car-Automation-6.0.0-PERSONAL-INSTALL.zip personal-release
 
-      - name: Upload signed personal APK and private signing key bundle
+      - name: Upload signed personal APK bundle (no private key)
         if: success()
         uses: actions/upload-artifact@v7
         with:
