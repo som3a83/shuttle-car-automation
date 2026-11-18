@@ -6,7 +6,6 @@ import { initialShuttles } from '../data/mockData';
 
 describe('ImmersiveWarehouse', () => {
   it('renders the Arabic warehouse controls and clearly labels the scene as illustrative when WebGL is unavailable', async () => {
-    vi.stubGlobal('ResizeObserver', undefined);
     Object.defineProperty(window, 'WebGLRenderingContext', { configurable: true, value: undefined });
     render(<ImmersiveWarehouse shuttles={initialShuttles} language="ar" />);
 
