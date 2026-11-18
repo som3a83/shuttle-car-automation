@@ -187,7 +187,7 @@ describe('verified reverse migration to legacy storage', () => {
     const resumed = await rollbackToLegacyStorage(localStorage);
     expect(resumed.writtenKeyCount).toBe(17);
     expect(JSON.parse(localStorage.getItem(OPERATIONAL_LEGACY_KEY_MAP[0].legacyKey) || 'null')).toBe('ar');
-    expect(getStorageModePreference()).toBe('legacy');
+    expect(localStorage.getItem(STORAGE_MODE_KEY)).toBe('legacy');
   });
 
   it('keeps IndexedDB selected when reverse migration cannot write the legacy destination', async () => {
