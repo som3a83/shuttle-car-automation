@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import Shuttle3DViewer from './Shuttle3DViewer';
+import Shuttle3DViewer, { shouldAnimateShuttleMotion } from './Shuttle3DViewer';
 
 describe('Shuttle3DViewer WebGL fallback', () => {
   it('shows a useful accessible schematic fallback when WebGL is unavailable', async () => {
@@ -26,5 +26,17 @@ describe('Shuttle3DViewer WebGL fallback', () => {
     expect(screen.getByText('EQUIPMENT STATE · UNKNOWN')).toBeInTheDocument();
     expect(screen.getByText('ORTHOGRAPHIC / ISO / REF GEOMETRY')).toBeInTheDocument();
     expect(screen.getByText('REF 660 × 310 mm · L × W')).toBeInTheDocument();
+  });
+});
+
+
+describe('Shuttle3DViewer motion provenance', () => {
+  it('animates only when simulation is enabled and recorded state is Running', () => {
+    expect(shouldAnimateShuttleMotion(true, 'Running')).toBe(true);
+    expect(shouldAnimateShuttleMotion(false, 'Running')).toBe(false);
+    expect(shouldAnimateShuttleMotion(true, 'Unknown')).toBe(false);
+    expect(shouldAnimateShuttleMotion(true, 'Idle')).toBe(false);
+    expect(shouldAnimateShuttleMotion(true, 'Maintenance')).toBe(false);
+    expect(shouldAnimateShuttleMotion(true, 'Fault')).toBe(false);
   });
 });
