@@ -101,6 +101,13 @@ export interface BackupEnvelope {
 }
 export interface RevisionedValue<T> { value: T; revision: number }
 export interface SetResult { revision: number }
+export interface MigrationStorageContext {
+  readonly migrationId: string;
+  readonly stagingGeneration: string;
+  get<T = unknown>(key: StorageKey): Promise<T | null>;
+  getWithRevision<T = unknown>(key: StorageKey): Promise<RevisionedValue<T> | null>;
+  set<K extends StorageKey>(key: K, value: StorageSchema[K], expectedRevision?: number): Promise<SetResult>;
+}
 
 /**
  * Engine seam: production selects IndexedDB or localStorage. Tests inject an in-memory
@@ -522,6 +529,65 @@ export async function __closeForTesting(): Promise<void> {
     openConnections.delete(db);
   }
 }
+/** Creates an explicit writer/reader bound to an isolated staging generation. */
+export function createStagingContext(generationId: string, migrationId = generationId): MigrationStorageContext {
+  if (!generationId || !/^[A-Za-z0-9._-]{1,128}$/.test(generationId)) {
+    throw new TypeError('A valid staging generation identifier is required.');
+  }
+  if (!migrationId || !/^[A-Za-z0-9._-]{1,128}$/.test(migrationId)) {
+    throw new TypeError('A valid migration identifier is required.');
+  }
+  const recordId = (key: StorageKey) => generationId + ':' + key;
+  async function readStaged<T>(key: StorageKey): Promise<RevisionedValue<T> | null> {
+    if (typeof indexedDB === 'undefined') fail('STORAGE_UNAVAILABLE', 'IndexedDB is required for staging migration data.', { key });
+    try {
+      const db = await openDatabase();
+      const tx = db.transaction([STORE_RECORDS], 'readonly');
+      const row = await requestResult<{ id: string; value: unknown; revision: number } | undefined>(
+        tx.objectStore(STORE_RECORDS).get(recordId(key)));
+      await transactionDone(tx);
+      if (!row) return null;
+      if (!validateStoredShape(key, row.value) || !Number.isSafeInteger(row.revision) || row.revision < 0) {
+        fail('STORAGE_CORRUPT', 'Staging record failed shape or revision validation.', { key });
+      }
+      return { value: row.value as T, revision: row.revision };
+    } catch (error) { indexedDbFailure(error, key); }
+  }
+  return {
+    migrationId,
+    stagingGeneration: generationId,
+    async get<T = unknown>(key: StorageKey): Promise<T | null> {
+      const row = await readStaged<T>(key);
+      return row ? row.value : null;
+    },
+    getWithRevision: readStaged,
+    async set<K extends StorageKey>(key: K, value: StorageSchema[K], expectedRevision?: number): Promise<SetResult> {
+      if (!validateStoredShape(key, value)) fail('STORAGE_CORRUPT', 'Staging value failed stored-shape validation.', { key });
+      if (typeof indexedDB === 'undefined') fail('STORAGE_UNAVAILABLE', 'IndexedDB is required for staging migration data.', { key });
+      let tx: IDBTransaction | undefined;
+      try {
+        const db = await openDatabase();
+        tx = db.transaction([STORE_RECORDS], 'readwrite');
+        const store = tx.objectStore(STORE_RECORDS);
+        const id = recordId(key);
+        const previous = await requestResult<{ id: string; value: unknown; revision: number } | undefined>(store.get(id));
+        const actual = previous?.revision ?? 0;
+        if (expectedRevision !== undefined && actual !== expectedRevision) {
+          tx.abort();
+          fail('STORAGE_CONFLICT', 'Staging data changed before this update could be committed.', { key, expectedRevision, actualRevision: actual });
+        }
+        const revision = actual + 1;
+        store.put({ id, value, revision });
+        await transactionDone(tx);
+        return { revision };
+      } catch (error) {
+        if (tx) { try { tx.abort(); } catch { /* transaction may be closed */ } }
+        indexedDbFailure(error, key);
+      }
+    }
+  };
+}
+
 export async function getMode(): Promise<StorageMode> {
   try { return await (await engine()).getMode(); }
   catch (error) { if (error instanceof StorageError) throw error; fail('STORAGE_TRANSACTION_FAILED', 'The storage mode could not be determined.'); }
