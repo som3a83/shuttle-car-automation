@@ -80,14 +80,25 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          VERSION="6.0.0-dev.${GITHUB_RUN_NUMBER}"
-          VERSION_CODE=$((6000000 + GITHUB_RUN_NUMBER))
-          GRADLE_FILE=android/app/build.gradle
-          test -f "$GRADLE_FILE"
-          sed -i -E "s/versionCode[[:space:]]+[0-9]+/versionCode ${VERSION_CODE}/; s/versionName[[:space:]]+['\"][^'\"]+['\"]/versionName \"${VERSION}\"/" "$GRADLE_FILE"
-          grep -F "versionCode ${VERSION_CODE}" "$GRADLE_FILE"
-          grep -F "versionName \"${VERSION}\"" "$GRADLE_FILE"
-          echo "Android development build: ${VERSION} (${VERSION_CODE})"
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const run = Number(process.env.GITHUB_RUN_NUMBER);
+          if (!Number.isSafeInteger(run) || run < 1) throw new Error('Invalid GitHub run number');
+          const version = `6.0.0-dev.${run}`;
+          const versionCode = 6000000 + run;
+          const file = 'android/app/build.gradle';
+          let gradle = fs.readFileSync(file, 'utf8');
+          if (!/\\bversionCode\\s+\\d+/.test(gradle) || !/\\bversionName\\s+['"][^'"]+['"]/.test(gradle)) {
+            throw new Error('Android Gradle version fields were not found');
+          }
+          gradle = gradle.replace(/(\\bversionCode\\s+)\\d+/, `$1${versionCode}`);
+          gradle = gradle.replace(/(\\bversionName\\s+)['"][^'"]+['"]/, `$1"${version}"`);
+          fs.writeFileSync(file, gradle);
+          if (!gradle.includes(`versionCode ${versionCode}`) || !gradle.includes(`versionName "${version}"`)) {
+            throw new Error('Android development version stamp did not verify');
+          }
+          console.log(`Android development build: ${version} (${versionCode})`);
+          NODE
 
       - name: Sync web assets to Android
         run: npx cap sync android
