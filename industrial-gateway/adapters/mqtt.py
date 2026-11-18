@@ -60,6 +60,7 @@ class MqttReadOnlyAdapter:
         if "mqtt" not in asset.get("protocols", []):
             raise ValueError("The shuttle is not commissioned for MQTT.")
 
+        self._settings = dict(settings)
         self.host = _validate_broker(
             settings.get("host"), settings.get("allow_loopback") is True, settings.get("allowed_hosts")
         )
@@ -187,11 +188,11 @@ class MqttReadOnlyAdapter:
         client.on_connect = self._on_connect
         client.on_message = self._on_message
         self._client = client
-        client.connect(self.host, self.port, self.keepalive)
-        client.loop_start()
-        self._loop_started = True
-        deadline = time.monotonic() + float(self.timeout)
         try:
+            client.connect(self.host, self.port, self.keepalive)
+            client.loop_start()
+            self._loop_started = True
+            deadline = time.monotonic() + float(self.timeout)
             with self._condition:
                 while len(self._readings) < len(requested) and not self._error:
                     remaining = deadline - time.monotonic()
@@ -205,7 +206,7 @@ class MqttReadOnlyAdapter:
             self.close()
 
     def _get_setting(self, key: str) -> str | None:
-        value = getattr(self, "_settings", {}).get(key) if hasattr(self, "_settings") else None
+        value = self._settings.get(key)
         return value if isinstance(value, str) and value else None
 
     def close(self) -> None:
@@ -221,6 +222,4 @@ class MqttReadOnlyAdapter:
 
 
 def create_adapter(asset: Mapping[str, Any], settings: Mapping[str, Any]) -> MqttReadOnlyAdapter:
-    adapter = MqttReadOnlyAdapter(asset, settings)
-    adapter._settings = settings
-    return adapter
+    return MqttReadOnlyAdapter(asset, settings)
