@@ -1140,3 +1140,222 @@ button,select,input,textarea { touch-action:manipulation; }
     font-size: 9px;
   }
 }
+
+
+/* Interactive battery engineering workspace and migration safety gate */
+.battery-3d-shell {
+  height: auto;
+  min-height: 0;
+  overflow: visible;
+  margin: 10px 0 14px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.battery-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+.battery-view-tabs,.battery-view-actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+.battery-view-tabs {
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg-2);
+}
+.battery-view-tabs button,.battery-view-actions button {
+  min-height: 30px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 6px 9px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 700;
+}
+.battery-view-tabs button.active,.battery-view-actions button.tool-active {
+  color: var(--copper-2);
+  border-color: rgba(213,138,74,.34);
+  background: rgba(213,138,74,.1);
+}
+.battery-view-actions button {
+  border-color: var(--line);
+  background: var(--surface-2);
+}
+.battery-3d-host {
+  position: relative;
+  width: 100%;
+  height: 330px;
+  min-height: 260px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: radial-gradient(ellipse at 50% 54%,rgba(79,142,128,.16),transparent 62%),linear-gradient(180deg,var(--bg-2),rgba(6,12,18,.78));
+}
+.battery-3d-host canvas { display:block; width:100%; height:100%; cursor:grab; touch-action:none; }
+.battery-3d-host canvas:active { cursor:grabbing; }
+.battery-3d-fallback {
+  width: 100%;
+  min-height: 245px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--bg-2);
+}
+.battery-3d-fallback .battery-render { width: min(100%,420px); transform: scale(.82); }
+.battery-viewer-caption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 7px 12px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 9px;
+}
+.battery-viewer-caption strong { color: var(--copper-2); font-size: 9px; }
+.battery-viewer-caption small { width: 100%; color: var(--subtle); font-size: 8px; }
+.battery-inspection-layout {
+  display: grid;
+  grid-template-columns: minmax(0,1.1fr) minmax(190px,.9fr);
+  gap: 9px;
+  align-items: stretch;
+}
+.battery-component-grid {
+  display: grid;
+  grid-template-columns: repeat(2,minmax(0,1fr));
+  gap: 6px;
+}
+.battery-component-grid button {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 8px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--muted);
+  background: var(--surface-2);
+  text-align: start;
+}
+.battery-component-grid button.selected {
+  border-color: rgba(213,138,74,.4);
+  background: rgba(213,138,74,.1);
+  color: var(--text);
+}
+.battery-component-grid button span {
+  flex: none;
+  color: var(--copper-2);
+  font-size: 8px;
+  font-weight: 800;
+}
+.battery-component-grid button strong { font-size: 9px; line-height: 1.35; }
+.battery-part-inspector {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-2);
+}
+.battery-part-inspector h4 { margin: 7px 0; font-size: 12px; }
+.battery-part-inspector p,.battery-viewer-safety-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.65;
+}
+.battery-viewer-safety-note { color: var(--subtle); }
+.battery-zoom-control {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--muted);
+  font-size: 9px;
+}
+.battery-zoom-control input { flex: 1; min-width: 80px; accent-color: var(--copper); }
+.battery-zoom-control output { min-width: 38px; color: var(--text); text-align: end; font-variant-numeric: tabular-nums; }
+.storage-migration-panel { grid-column: 1 / -1; border-color: rgba(210,139,75,.28); }
+.storage-migration-panel .card-head { align-items: flex-start; }
+.storage-mode-pill {
+  max-width: 45%;
+  padding: 5px 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  color: var(--muted);
+  background: var(--surface-2);
+  font-size: 8px;
+  font-weight: 800;
+  text-align: center;
+}
+.storage-mode-pill.storage-mode-ready {
+  border-color: rgba(100,201,155,.34);
+  color: #7edbb0;
+  background: rgba(100,201,155,.08);
+}
+.storage-migration-confirm {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin: 12px 0;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.55;
+}
+.storage-migration-confirm input { flex: none; margin-top: 2px; accent-color: var(--copper); }
+.storage-migration-success {
+  padding: 10px 12px;
+  border: 1px solid rgba(100,201,155,.26);
+  border-radius: 8px;
+  color: var(--text);
+  background: rgba(100,201,155,.06);
+  font-size: 10px;
+}
+.storage-migration-success p { margin: 6px 0 0; color: var(--muted); line-height: 1.6; }
+.storage-migration-overlay {
+  position: fixed;
+  z-index: 10000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(4,8,13,.88);
+  backdrop-filter: blur(10px);
+}
+.storage-migration-overlay-card {
+  width: min(100%,560px);
+  padding: 26px;
+  border-color: rgba(210,139,75,.38);
+  box-shadow: 0 28px 90px rgba(0,0,0,.5);
+}
+.storage-migration-overlay-card h2 { margin: 9px 0; font-size: 20px; }
+.storage-migration-overlay-card p { color: var(--muted); font-size: 11px; line-height: 1.75; }
+@media (max-width: 760px) {
+  .battery-inspection-layout { grid-template-columns: 1fr; }
+  .battery-toolbar { align-items: stretch; }
+  .battery-view-tabs { width: 100%; }
+  .battery-view-tabs button { flex: 1; }
+  .battery-view-actions { width: 100%; }
+  .battery-view-actions button { flex: 1; }
+  .battery-3d-host { height: 275px; min-height: 230px; }
+}
+@media (max-width: 480px) {
+  .battery-component-grid { grid-template-columns: 1fr; }
+  .battery-viewer-caption { align-items: flex-start; flex-direction: column; }
+  .storage-migration-panel .card-head { flex-direction: column; }
+  .storage-mode-pill { max-width: 100%; }
+  .storage-migration-overlay-card { padding: 18px; }
+}
