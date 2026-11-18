@@ -1528,7 +1528,7 @@ function App({ initialData }: { initialData: AppInitialData }) {
             {selectedBattery ? <>
               <div className="card-head"><div><span className="eyebrow">BATTERY MODULE / {selectedBattery.id}</span><h3>{t.batteryIllustration}</h3></div><StatusPill status={selectedBattery.status} language={language}/></div>
               <Suspense fallback={<div className="viewer-loading" role="status">{language==='ar'?'جارٍ تحميل رسم البطارية…':'Loading battery assembly…'}</div>}>
-                <Battery3DViewer battery={selectedBattery} fallback={<BatteryPack battery={selectedBattery}/>} />
+                <Battery3DViewer battery={selectedBattery} language={language} fallback={<BatteryPack battery={selectedBattery}/>} />
               </Suspense>
               <div className="battery-stat-grid">
                 <Detail label={t.charge} value={selectedBattery.soc === null ? t.unknown : selectedBattery.soc + '% (manual / reported)'}/>
