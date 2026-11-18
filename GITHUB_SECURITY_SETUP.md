@@ -38,6 +38,7 @@ Do not make `Dependency Review` a required check until Dependency Graph is enabl
 Do not require a human approval while there is only one active maintainer: the author cannot approve their own pull request. Add one independent approval requirement when a second trusted reviewer is available.
 
 The active ruleset is currently confirmed as active, but the status-check, approval and conversation-resolution gates above are not yet configured.
+
 ## 2. Enable GitHub security features
 
 Open **Settings → Code security and analysis** (sometimes shown as **Settings → Security → Advanced Security**).
