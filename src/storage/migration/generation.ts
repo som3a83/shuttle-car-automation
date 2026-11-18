@@ -361,8 +361,8 @@ export async function isMigrationGenerationActive(generationId: string): Promise
 }
 
 /**
- * Atomically retires an unchanged imported generation and points stale IndexedDB
- * sessions at a fresh empty generation while the app returns to preserved localStorage.
+ * Atomically retires a generation after its current values have been copied and
+ * verified in localStorage, then points stale IndexedDB sessions at a fresh generation.
  * All application writes are serialized through the records+metadata stores and are
  * rejected after the deactivation marker commits.
  */
@@ -400,14 +400,15 @@ export async function deactivateActiveGenerationForRollback(
     const activeRows = allRecords.filter((row) => row.id.startsWith(prefix));
     const actualRevisions: Record<string, number> = {};
     for (const row of activeRows) actualRevisions[row.id.slice(prefix.length)] = row.revision;
-    const expectedKeys = Object.keys(snapshot.recordRevisions).sort();
+    // Compare against the revision manifest captured at reverse-migration preflight,
+    // not the original import revisions. Legitimate operational writes after migration
+    // are copied back to legacy storage; only writes concurrent with this rollback block it.
     const suppliedKeys = Object.keys(expectedRecordRevisions).sort();
     const actualKeys = Object.keys(actualRevisions).sort();
-    if (expectedKeys.length !== snapshot.keyCount ||
-        expectedKeys.length !== suppliedKeys.length || expectedKeys.length !== actualKeys.length ||
-        expectedKeys.some((key, index) => key !== suppliedKeys[index] || key !== actualKeys[index] ||
-          snapshot.recordRevisions![key] !== expectedRecordRevisions[key] || actualRevisions[key] !== expectedRecordRevisions[key])) {
-      throw new Error('IndexedDB records changed after migration. Rollback is refused to prevent data loss.');
+    if (suppliedKeys.length !== actualKeys.length ||
+        suppliedKeys.some((key, index) => key !== actualKeys[index] ||
+          actualRevisions[key] !== expectedRecordRevisions[key])) {
+      throw new Error('IndexedDB records changed during reverse migration. Retry rollback after writes are quiescent.');
     }
 
     const rolledBackAt = now.toISOString();
