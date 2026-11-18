@@ -1,3 +1,5 @@
+import { isConnectionIdentifier } from './connectionCatalog';
+
 export type GatewayDisplayState = 'LIVE' | 'STALE' | 'UNVERIFIED' | 'UNAVAILABLE';
 
 export interface GatewayAsset {
@@ -76,8 +78,8 @@ export async function fetchGatewayStatus(url: string, token: string): Promise<Ga
     if (!isRecord(item) || typeof item.id !== 'string' ||
         typeof item.manufacturer !== 'string' || !item.manufacturer.trim() || item.manufacturer.length > 100 ||
         typeof item.enabled !== 'boolean' || typeof item.commissioned !== 'boolean' ||
-        !Array.isArray(item.transports) || item.transports.some((value) => typeof value !== 'string') ||
-        !Array.isArray(item.protocols) || item.protocols.some((value) => typeof value !== 'string') ||
+        !Array.isArray(item.transports) || item.transports.some((value) => !isConnectionIdentifier(value)) ||
+        !Array.isArray(item.protocols) || item.protocols.some((value) => !isConnectionIdentifier(value)) ||
         !Array.isArray(item.missing) || item.missing.some((value) => typeof value !== 'string')) {
       throw new Error('بيانات أحد الأصول في البوابة غير سليمة.');
     }
