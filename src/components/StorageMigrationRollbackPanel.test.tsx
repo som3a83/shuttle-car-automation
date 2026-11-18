@@ -73,7 +73,7 @@ describe('StorageMigrationRollbackPanel', () => {
     render(<StorageMigrationRollbackPanel language="en" canRollback beforeRollback={beforeRollback} />);
 
     await waitFor(() => expect(screen.getByText(/Preflight passed/i)).toBeInTheDocument());
-    const execute = screen.getByRole('button', { name: /Confirm rollback to legacy storage/i });
+    const execute = screen.getByRole('button', { name: /Start verified reverse migration/i });
     expect(execute).toBeDisabled();
 
     fireEvent.click(screen.getByRole('button', { name: /Download IndexedDB safety backup/i }));
@@ -85,7 +85,7 @@ describe('StorageMigrationRollbackPanel', () => {
 
     await waitFor(() => expect(mocks.rollback).toHaveBeenCalledTimes(1));
     expect(beforeRollback).toHaveBeenCalled();
-    expect(screen.getByText(/Rollback committed successfully/i)).toBeInTheDocument();
+    expect(screen.getByText(/Reverse migration verified and committed/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Reload application now/i })).toBeInTheDocument();
   });
 
