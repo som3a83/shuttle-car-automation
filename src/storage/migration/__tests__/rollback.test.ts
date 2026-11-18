@@ -163,6 +163,18 @@ describe('verified reverse migration to legacy storage', () => {
     expect(await getActiveGeneration()).toBe('generation-migration-rollback-test');
   });
 
+  it('shares one reverse-migration promise across duplicate triggers (StrictMode / double click)', async () => {
+    await createVerifiedMigrationSnapshot();
+
+    const first = rollbackToLegacyStorage(localStorage);
+    const duplicate = rollbackToLegacyStorage(localStorage);
+
+    expect(duplicate).toBe(first);
+    const result = await first;
+    expect(result.writtenKeyCount).toBe(17);
+    expect(localStorage.getItem(STORAGE_MODE_KEY)).toBe('legacy');
+  });
+
   it('retains the migrated generation and blocks stale IndexedDB writes after successful rollback', async () => {
     const snapshot = await createVerifiedMigrationSnapshot();
     const staleTabEngine = await getStorageEngine();
