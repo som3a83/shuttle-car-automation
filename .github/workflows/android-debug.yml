@@ -84,20 +84,20 @@ jobs:
           import fs from 'node:fs';
           const run = Number(process.env.GITHUB_RUN_NUMBER);
           if (!Number.isSafeInteger(run) || run < 1) throw new Error('Invalid GitHub run number');
-          const version = \`6.0.0-dev.\${run}\`;
+          const version = '6.0.0-dev.' + run;
           const versionCode = 6000000 + run;
           const file = 'android/app/build.gradle';
           let gradle = fs.readFileSync(file, 'utf8');
           if (!/\bversionCode\s+\d+/.test(gradle) || !/\bversionName\s+['"][^'"]+['"]/.test(gradle)) {
             throw new Error('Android Gradle version fields were not found');
           }
-          gradle = gradle.replace(/(\bversionCode\s+)\d+/, \`$1\${versionCode}\`);
-          gradle = gradle.replace(/(\bversionName\s+)['"][^'"]+['"]/, \`$1"\${version}"\`);
+          gradle = gradle.replace(/(\bversionCode\s+)\d+/, '$1' + versionCode);
+          gradle = gradle.replace(/(\bversionName\s+)['"][^'"]+['"]/, '$1"' + version + '"');
           fs.writeFileSync(file, gradle);
-          if (!gradle.includes(\`versionCode \${versionCode}\`) || !gradle.includes(\`versionName "\${version}"\`)) {
+          if (!gradle.includes('versionCode ' + versionCode) || !gradle.includes('versionName "' + version + '"')) {
             throw new Error('Android development version stamp did not verify');
           }
-          console.log(\`Android development build: \${version} (\${versionCode})\`);
+          console.log('Android development build: ' + version + ' (' + versionCode + ')');
           NODE
 
       - name: Sync web assets to Android
