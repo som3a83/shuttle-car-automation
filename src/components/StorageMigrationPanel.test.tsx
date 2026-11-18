@@ -75,6 +75,8 @@ describe('StorageMigrationPanel', () => {
 
     expect(onLockChange).toHaveBeenCalledWith(true);
     expect(await screen.findByText(/Migration and verification completed successfully/i)).toBeInTheDocument();
+    expect(mockMigration).toHaveBeenCalledWith({ expectedSourceFingerprint: backupFixture.migrationSourceFingerprint });
+    expect(mockBackup).toHaveBeenCalledTimes(2);
     expect(onMigrationComplete).toHaveBeenCalledTimes(1);
     expect(onLockChange).toHaveBeenCalledTimes(1);
   });
