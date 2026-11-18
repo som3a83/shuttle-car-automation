@@ -79,7 +79,7 @@ describe('complete legacy localStorage migration backup', () => {
       getItem: (key: string) => {
         if (key !== targetKey) return null;
         reads += 1;
-        return reads <= 2 ? 'stable-value' : 'changed-value';
+        return reads <= 2 ? JSON.stringify('stable-value') : JSON.stringify('changed-value');
       }
     } as unknown as Storage;
 
