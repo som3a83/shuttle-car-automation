@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { getMode, type StorageMode } from '../storage';
 import { migrateToIndexedDb } from '../storage/migration';
 import { createLegacyStorageBackup, type LegacyStorageBackup } from '../storage/migration/legacyBackup';
+import './StorageMigrationPanel.css';
 
 interface StorageMigrationPanelProps {
   language: 'ar' | 'en';
