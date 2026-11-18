@@ -26,6 +26,7 @@ export interface GatewaySample {
   quality: 'GOOD' | 'UNCERTAIN' | 'BAD' | 'STALE' | 'NOT_CONFIGURED';
   provenance: 'LIVE_VENDOR' | 'MANUAL' | 'SIMULATED' | 'IMPORTED' | 'DERIVED';
   adapterId: string | null; adapterVersion: string | null;
+  transport: string; protocol: string;
 }
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
@@ -111,7 +112,8 @@ export async function fetchGatewayTelemetry(url: string, token: string, assetId:
         (typeof item.value === 'number' && !Number.isFinite(item.value)) ||
         !['GOOD', 'UNCERTAIN', 'BAD', 'STALE'].includes(String(item.quality)) ||
         !['LIVE_VENDOR', 'MANUAL', 'SIMULATED', 'IMPORTED', 'DERIVED'].includes(String(item.provenance)) ||
-        typeof item.receivedAt !== 'string') {
+        typeof item.receivedAt !== 'string' || !isConnectionIdentifier(item.transport) ||
+        !isConnectionIdentifier(item.protocol)) {
       throw new Error('Malformed telemetry sample for ' + assetId + '.');
     }
     return {
@@ -121,7 +123,8 @@ export async function fetchGatewayTelemetry(url: string, token: string, assetId:
       receivedAt: item.receivedAt, quality: item.quality as GatewaySample['quality'],
       provenance: item.provenance as GatewaySample['provenance'],
       adapterId: typeof item.adapterId === 'string' ? item.adapterId : null,
-      adapterVersion: typeof item.adapterVersion === 'string' ? item.adapterVersion : null
+      adapterVersion: typeof item.adapterVersion === 'string' ? item.adapterVersion : null,
+      transport: item.transport, protocol: item.protocol
     };
   });
 }
