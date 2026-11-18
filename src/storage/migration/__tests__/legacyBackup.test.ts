@@ -70,6 +70,23 @@ describe('complete legacy localStorage migration backup', () => {
       .rejects.toThrow(/Web Crypto SHA-256 is unavailable/);
   });
 
+  it('rejects data changing during the separate migration-fingerprint pass', async () => {
+    const targetKey = listImportableLegacyKeys()[0].legacyKey;
+    let reads = 0;
+    const storage = {
+      get length() { return 1; },
+      key: () => targetKey,
+      getItem: (key: string) => {
+        if (key !== targetKey) return null;
+        reads += 1;
+        return reads <= 2 ? 'stable-value' : 'changed-value';
+      }
+    } as unknown as Storage;
+
+    await expect(createLegacyStorageBackup(storage, webcrypto as unknown as Crypto))
+      .rejects.toThrow(/changed while creating the backup/);
+  });
+
   it('rejects a localStorage snapshot changed during backup creation', async () => {
     let readCount = 0;
     const storage = {
