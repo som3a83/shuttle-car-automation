@@ -13,17 +13,17 @@ const references: Record<string, ManufacturerReference> = {
   Cassioli: {
     manufacturer: 'Cassioli',
     productFamily: {
-      en: 'ISAT pallet shuttle satellite — reference family',
-      ar: 'عائلة ISAT Pallet Shuttle — مرجع هندسي'
+      en: 'ISAT Semi-Automatic pallet shuttle — user-confirmed fleet model',
+      ar: 'ISAT Semi-Automatic — الموديل المؤكد للأسطول'
     },
     description: {
-      en: 'Cassioli describes ISAT satellites for multi-depth pallet storage. The page states that the shuttle independently picks and places unit loads and uses sensors to show its position. Four-way and AWDS configurations are listed as product options; the exact configuration on SC-01 to SC-03 is not verified.',
-      ar: 'تعرض كاسيولي وحدات ISAT للتخزين العميق متعدد الطبالي. وتوضح الصفحة أن الشاتل يلتقط وحدات التحميل ويضعها بصورة مستقلة، مع حساسات لعرض موضع الجهاز. كما تذكر خيارات 4-Way وAWDS، لكن تجهيز الأجهزة SC-01 إلى SC-03 لم يتم التحقق منه.'
+      en: 'The user confirmed that SC-01 to SC-03 are ISAT Semi-Automatic units. They are described for remote operation and forklift transfer between aisles. Cassioli product options and the exact serial-specific hardware configuration still require documentary verification.',
+      ar: 'أكد المستخدم أن الأجهزة SC-01 إلى SC-03 من طراز ISAT Semi-Automatic، وتعمل بالريموت مع نقلها بين الممرات بواسطة الرافعة الشوكية. تظل التجهيزات الدقيقة لكل رقم مسلسل بحاجة إلى مستندات تحقق.'
     },
     facts: [
-      { en: 'Multi-depth pallet storage and independent load handling', ar: 'تخزين متعدد الأعماق ومناولة مستقلة لوحدات التحميل' },
+      { en: 'Semi-automatic operation; remote control and forklift transfer between aisles are user-confirmed for this fleet', ar: 'تشغيل شبه آلي بالريموت مع نقل الشاتل بين الممرات بالرافعة الشوكية — وفق تأكيد المستخدم' },
       { en: 'Position sensors are described on the ISAT product page', ar: 'صفحة ISAT تذكر حساسات لتحديد موضع الشاتل' },
-      { en: 'Four-way shuttle and AWDS are listed options, not confirmed on this fleet', ar: 'الشاتل رباعي الاتجاهات وAWDS خيارات منشورة وليسا مواصفتين مؤكدتين للأسطول' }
+      { en: 'Standard and cold-store variants are referenced in supplied specifications; the installed temperature-rated variant is not yet verified', ar: 'المواصفات المقدمة تشير إلى إصدار عادي وآخر للتخزين البارد؛ لم يتم التحقق بعد من إصدار درجة الحرارة المركب فعليًا' }
     ],
     coldStoreNote: {
       en: 'The linked ISAT page does not specify a cold-room temperature rating. Confirm the exact installed model and its approved operating-temperature range with Cassioli.',
@@ -36,12 +36,12 @@ const references: Record<string, ManufacturerReference> = {
   ACME: {
     manufacturer: 'ACME',
     productFamily: {
-      en: 'Namla Radio Shuttle — official product reference',
-      ar: 'Namla Radio Shuttle — مرجع المنتج الرسمي'
+      en: 'Namla Polar Edition — user-confirmed installed variant',
+      ar: 'Namla Polar Edition — الإصدار المركب وفق تأكيد المستخدم'
     },
     description: {
-      en: 'ACME describes Namla as a semi-automated AS/RS shuttle that moves pallets inside rack channels. The product page states lithium-battery power, integrated controls, a remote for the forklift operator and support for different pallet types.',
-      ar: 'تصف ACME جهاز Namla بأنه شاتل شبه آلي ينقل الطبالي داخل قنوات الأرفف. وتذكر صفحة المنتج بطارية ليثيوم ووحدات تحكم مدمجة وريموت لمشغل الرافعة ودعم أنواع مختلفة من الطبالي.'
+      en: 'The user identified the installed ACME unit as Namla Polar Edition. The linked ACME page describes the Namla family generally; the Polar-specific temperature range and serial-specific configuration must be checked against the unit nameplate or manual.',
+      ar: 'حدد المستخدم أن جهاز ACME المركب هو Namla Polar Edition. الصفحة المرتبطة تعرض عائلة Namla عمومًا؛ ويجب مطابقة مدى الحرارة الخاص بإصدار Polar وتجهيز الرقم المسلسل مع لوحة بيانات الجهاز أو دليله.'
     },
     facts: [
       { en: 'Semi-automated pallet movement inside rack channels', ar: 'نقل شبه آلي للطبالي داخل قنوات الأرفف' },
@@ -54,21 +54,21 @@ const references: Record<string, ManufacturerReference> = {
     },
     sourceUrl: 'https://acme-world.com/product/radio-shuttle',
     sourceLabel: { en: 'Open ACME Namla product reference', ar: 'فتح مرجع منتج ACME Namla' },
-    scopeLabel: { en: 'Official product page · installed variant unverified', ar: 'صفحة منتج رسمية · الإصدار المركب غير مؤكد' }
+    scopeLabel: { en: 'User-confirmed installed variant · Polar-specific ratings pending document verification', ar: 'الإصدار المركب وفق تأكيد المستخدم · تصنيفات Polar تنتظر التحقق بالمستندات' }
   },
   Craftsman: {
     manufacturer: 'Craftsman',
     productFamily: {
-      en: 'Cold Storage Automation — system-level reference',
-      ar: 'Cold Storage Automation — مرجع على مستوى النظام'
+      en: 'Standard Pallet Shuttle — user-confirmed installed model',
+      ar: 'Pallet Shuttle العادي — الموديل المركب وفق تأكيد المستخدم'
     },
     description: {
-      en: 'The supplied Craftsman page describes cold-storage automation rather than a specific shuttle-car model. It discusses low-temperature system capability down to -30°C and below, plus a multi-deep shuttle AS/RS arrangement communicating with Shuttle Fleet Management Software (SFMS). These are system-level statements, not a confirmed rating or feature list for SC-04.',
-      ar: 'صفحة كرافتسمان المرفقة تعرض أتمتة التخزين البارد عمومًا، وليست صفحة مواصفات موديل شاتل بعينه. وتذكر قدرة بعض حلول النظام على العمل حتى ‎-30°C وأقل، كما تعرض نظام Shuttle متعدد الأعماق يتواصل مع برنامج إدارة أسطول الشاتلات SFMS. هذه معلومات على مستوى الحل وليست اعتمادًا مؤكدًا للجهاز SC-04.'
+      en: 'The user confirmed SC-04 is the standard Pallet Shuttle, not a 4-Way Shuttle. The linked Craftsman cold-storage page is a system-level reference, not a datasheet for this exact vehicle. Model code, serial number, installed options and vehicle-specific operating limits remain unverified.',
+      ar: 'أكد المستخدم أن SC-04 هو Pallet Shuttle العادي وليس 4-Way Shuttle. صفحة كرافتسمان المرتبطة مرجع لحلول التخزين البارد وليست ورقة بيانات لهذه الوحدة بعينها. لا يزال كود الموديل والرقم المسلسل والتجهيزات وحدود التشغيل الخاصة بالجهاز بحاجة إلى تحقق.'
     },
     facts: [
       { en: 'Cold-chain automation and low-temperature system design', ar: 'أتمتة سلسلة التبريد وتصميم أنظمة لدرجات الحرارة المنخفضة' },
-      { en: 'The page cites capability down to -30°C and below at solution level', ar: 'الصفحة تذكر قدرة حلول النظام حتى ‎-30°C وأقل' },
+      { en: 'No SC-04-specific temperature rating is established by the linked system page', ar: 'الصفحة الخاصة بالنظام لا تثبت تصنيف درجة حرارة خاصًا بالجهاز SC-04' },
       { en: 'Multi-deep shuttle AS/RS with SFMS communication is described', ar: 'تصف الصفحة نظام Shuttle متعدد الأعماق مع اتصال ببرنامج SFMS' }
     ],
     coldStoreNote: {
@@ -77,7 +77,7 @@ const references: Record<string, ManufacturerReference> = {
     },
     sourceUrl: 'https://www.craftsmanstorage.com/cold-storage-automation',
     sourceLabel: { en: 'Open Craftsman cold-storage reference', ar: 'فتح مرجع كرافتسمان للتخزين البارد' },
-    scopeLabel: { en: 'Cold-storage solution page · not an individual shuttle datasheet', ar: 'صفحة حلول التخزين البارد · ليست ورقة بيانات للشاتل' }
+    scopeLabel: { en: 'User-confirmed model family · exact vehicle datasheet still required', ar: 'عائلة الموديل وفق تأكيد المستخدم · ما زالت ورقة بيانات الوحدة مطلوبة' }
   }
 };
 
