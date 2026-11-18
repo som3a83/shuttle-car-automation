@@ -7,6 +7,7 @@ on:
       - "development/**"
       - "copilot/**"
       - "industrial/**"
+      - "feat/mobile-immersive-3d-v6-20261119"
   pull_request:
     branches:
       - main
@@ -75,6 +76,19 @@ jobs:
           npx cap add android
           npx capacitor-assets generate --android --iconBackgroundColor '#111820' --iconBackgroundColorDark '#111820' --splashBackgroundColor '#111820' --splashBackgroundColorDark '#111820'
 
+      - name: Stamp traceable development version
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="6.0.0-dev.${GITHUB_RUN_NUMBER}"
+          VERSION_CODE=$((6000000 + GITHUB_RUN_NUMBER))
+          GRADLE_FILE=android/app/build.gradle
+          test -f "$GRADLE_FILE"
+          sed -i -E "s/versionCode[[:space:]]+[0-9]+/versionCode ${VERSION_CODE}/; s/versionName[[:space:]]+['\"][^'\"]+['\"]/versionName \"${VERSION}\"/" "$GRADLE_FILE"
+          grep -F "versionCode ${VERSION_CODE}" "$GRADLE_FILE"
+          grep -F "versionName \"${VERSION}\"" "$GRADLE_FILE"
+          echo "Android development build: ${VERSION} (${VERSION_CODE})"
+
       - name: Sync web assets to Android
         run: npx cap sync android
 
@@ -127,7 +141,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: shuttle-car-automation-debug-apk
+          name: shuttle-car-automation-v6-dev-${{ github.run_number }}
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: ignore
           retention-days: 14
