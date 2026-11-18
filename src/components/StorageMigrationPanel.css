@@ -1,0 +1,8 @@
+.storage-migration-panel{display:grid;gap:12px;min-width:0}
+.storage-migration-panel .storage-mode-pill{max-width:100%;overflow-wrap:anywhere}
+.storage-migration-lifecycle{width:100%}
+.storage-migration-backup button,.storage-migration-panel>.btn-primary{min-height:42px}
+.storage-migration-panel button:focus-visible,.storage-migration-panel input:focus-visible{outline:2px solid var(--cyan,#06b6d4);outline-offset:2px}
+.storage-migration-success{display:grid;gap:7px;padding:13px;border:1px solid rgba(16,185,129,.32);border-radius:9px;background:rgba(16,185,129,.06)}
+.storage-migration-success p{margin:0;color:var(--muted);font-size:11px;line-height:1.7}
+@media(max-width:540px){.storage-migration-panel .card-head{align-items:flex-start;flex-direction:column}.storage-migration-panel>.btn-primary,.storage-migration-backup>button{width:100%}}
