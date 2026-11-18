@@ -123,7 +123,8 @@ describe('StorageMigrationPanel', () => {
   it('does not offer another migration when IndexedDB is already active', async () => {
     mockGetMode.mockResolvedValue('indexeddb');
     render(<StorageMigrationPanel language="ar" />);
-    expect(await screen.findByText(/IndexedDB/)).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /تفعيل قاعدة بيانات IndexedDB/ })).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent(/IndexedDB/);
     expect(screen.queryByRole('button', { name: /Migrate records/i })).not.toBeInTheDocument();
   });
 
