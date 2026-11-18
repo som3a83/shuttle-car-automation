@@ -1,3 +1,6 @@
+import { listImportableLegacyKeys } from '../adapters/legacyKeyMap';
+import { sha256Canonical } from './verification';
+
 export interface LegacyStorageBackupRecord {
   key: string;
   value: string;
@@ -10,6 +13,7 @@ export interface LegacyStorageBackup {
   source: 'window.localStorage';
   recordCount: number;
   records: LegacyStorageBackupRecord[];
+  migrationSourceFingerprint: string;
   sha256: string;
 }
 
@@ -64,13 +68,28 @@ export async function createLegacyStorageBackup(
     }
   }
 
+  const migrationSourceValues: Array<{ key: string; raw: string | null }> = [];
+  for (const definition of listImportableLegacyKeys()) {
+    const raw = storage.getItem(definition.legacyKey);
+    if (raw !== null) {
+      try {
+        JSON.parse(raw) as unknown;
+      } catch {
+        throw new Error(`Legacy source contains invalid JSON for ${definition.targetKey}.`);
+      }
+    }
+    migrationSourceValues.push({ key: definition.legacyKey, raw });
+  }
+  const migrationSourceFingerprint = await sha256Canonical(migrationSourceValues, cryptoApi);
+
   const payload = {
     format: 'shuttle-legacy-storage-backup' as const,
     schemaVersion: 1 as const,
     exportedAt: now.toISOString(),
     source: 'window.localStorage' as const,
     recordCount: records.length,
-    records
+    records,
+    migrationSourceFingerprint
   };
   const digest = await cryptoApi.subtle.digest(
     'SHA-256',
