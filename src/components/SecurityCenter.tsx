@@ -434,6 +434,7 @@ export default function SecurityCenter({
     </nav>}
 
     {isAuthenticated ? <>
+      {(!isAdministrator || securityTab === 'settings') && <>
       <div className="surface-card security-session-card">
         <div><span className="eyebrow">SIGNED-IN IDENTITY</span><h3>{currentUser.name}</h3><p>{currentUser.email} · {currentUser.role}</p></div>
         <button className="btn-danger" type="button" onClick={() => void signOut()}>{ar ? 'تسجيل الخروج' : 'Sign out'}</button>
@@ -446,7 +447,8 @@ export default function SecurityCenter({
         <label>{ar ? 'تأكيد كلمة المرور الجديدة' : 'Confirm new password'}<input type="password" value={passwordForm.confirm} onChange={event => setPasswordForm({ ...passwordForm, confirm: event.target.value })} autoComplete="new-password" minLength={12} maxLength={128} required/></label>
         <button className="btn-primary" type="submit" disabled={busy}>{ar ? 'حفظ كلمة المرور الجديدة' : 'Update password'}</button>
       </form>
-      {isSuperAdmin && <form className="surface-card stack-form security-form" onSubmit={submitCreate}>
+      </>}
+      {isSuperAdmin && securityTab === 'users' && <form className="surface-card stack-form security-form" onSubmit={submitCreate}>
         <div className="card-head"><div><span className="eyebrow">LOCAL ACCOUNT PROVISIONING</span><h3>{ar ? 'إنشاء حساب مستخدم' : 'Create a local user account'}</h3></div></div>
         <label>{ar ? 'الاسم الكامل' : 'Full name'}<input value={newAccount.name} onChange={event => setNewAccount({ ...newAccount, name: event.target.value })} autoComplete="name" required/></label>
         <label>{ar ? 'البريد الإلكتروني' : 'Email'}<input type="email" value={newAccount.email} onChange={event => setNewAccount({ ...newAccount, email: event.target.value })} autoComplete="email" required/></label>
@@ -481,8 +483,8 @@ export default function SecurityCenter({
     {registryError && <div className="security-error" role="alert">{ar ? `توقف إنشاء الحسابات لحماية السجلات الحالية: ${registryError}` : `Account provisioning is locked to protect existing identities: ${registryError}`}</div>}
     {error && <div className="security-error" role="alert">{error}</div>}
 
-    <div className="security-integrity-grid">
-      <section className="surface-card security-integrity-card">
+    {(securityTab === 'audit' || securityTab === 'users' || !isAdministrator) && <div className="security-integrity-grid">
+      {(!isAdministrator || securityTab === 'audit') && <section className="surface-card security-integrity-card">
         <span className="eyebrow">AUDIT CHAIN / SHA-256</span>
         <div className="integrity-heading"><h3>{ar ? 'سلامة سجل التدقيق' : 'Audit log integrity'}</h3><span className={'integrity-indicator ' + (auditIntegrity?.valid ? 'valid' : 'invalid')}/></div>
         <strong>{auditIntegrity === null ? (ar ? 'جارٍ الفحص' : 'Checking…') : auditIntegrity.valid ? (ar ? 'سلسلة السجل سليمة' : 'CHAIN VERIFIED') : (ar ? 'تم اكتشاف تغيير' : 'TAMPERING DETECTED')}</strong>
@@ -490,8 +492,8 @@ export default function SecurityCenter({
           ? `${auditIntegrity.archivedChecked + auditIntegrity.activeChecked} ${ar ? 'سجل تم فحصه' : 'records verified'} · ${auditIntegrity.archiveCount} ${ar ? 'أرشيف' : 'archives'}`
           : (ar ? 'يتم فحص السجلات المحفوظة على هذا الجهاز.' : 'Verifying records stored on this device.')}</p>
         {auditIntegrity && !auditIntegrity.valid && <p className="security-error">{auditIntegrity.reason || (ar ? `أرشيف: ${auditIntegrity.brokenArchiveIndex ?? '—'} · سجل: ${auditIntegrity.brokenRecordIndex ?? '—'}` : `Archive: ${auditIntegrity.brokenArchiveIndex ?? '—'} · record: ${auditIntegrity.brokenRecordIndex ?? '—'}`)}</p>}
-      </section>
-      {isAdministrator && <section className="surface-card security-integrity-card">
+      </section>}
+      {isAdministrator && securityTab === 'users' && <section className="surface-card security-integrity-card">
         <span className="eyebrow">LOCAL ACCOUNTS / DEVICE ONLY</span>
         <div className="integrity-heading"><h3>{ar ? 'الحسابات المسجلة' : 'Registered accounts'}</h3><strong>{accounts.length}</strong></div>
         {accounts.length === 0 ? <p>{ar ? 'لم يتم إنشاء حسابات بعد.' : 'No local accounts have been created yet.'}</p> : accounts.map(account => <div className="local-account-row local-account-managed-row" key={account.id}>
@@ -506,9 +508,9 @@ export default function SecurityCenter({
         </div>)}
       </section>}
       {!isAdministrator && isAuthenticated && <section className="surface-card security-integrity-card"><span className="eyebrow">LOCAL IDENTITY</span><h3>{ar ? 'الحساب الحالي' : 'Current account'}</h3><p>{currentUser.name} · {currentUser.role}</p></section>}
-    </div>
+    </div>}
 
-    {isSuperAdmin && editingAccountId && <form className="surface-card stack-form security-account-editor" onSubmit={saveAccountEdit}>
+    {isSuperAdmin && securityTab === 'users' && editingAccountId && <form className="surface-card stack-form security-account-editor" onSubmit={saveAccountEdit}>
       <div className="card-head"><div><span className="eyebrow">ACCOUNT ADMINISTRATION</span><h3>{ar ? 'تعديل بيانات الحساب' : 'Edit local account'}</h3></div></div>
       <label>{ar ? 'الاسم' : 'Name'}<input value={accountDraft.name} onChange={event => setAccountDraft({ ...accountDraft, name: event.target.value })} required/></label>
       <label>{ar ? 'البريد الإلكتروني' : 'Email'}<input type="email" value={accountDraft.email} onChange={event => setAccountDraft({ ...accountDraft, email: event.target.value })} required/></label>
@@ -519,14 +521,14 @@ export default function SecurityCenter({
         <button className="btn-secondary" type="button" disabled={busy} onClick={() => setEditingAccountId(null)}>{ar ? 'إلغاء' : 'Cancel'}</button>
       </div>
     </form>}
-    {isSuperAdmin && temporaryPasswordNotice && <section className="surface-card security-account-editor">
+    {isSuperAdmin && securityTab === 'users' && temporaryPasswordNotice && <section className="surface-card security-account-editor">
       <div className="card-head"><div><span className="eyebrow">ONE-TIME TEMPORARY CREDENTIAL</span><h3>{ar ? 'كلمة المرور المؤقتة' : 'Temporary password'}</h3></div></div>
       <p>{ar ? 'أرسل كلمة المرور للمستخدم عبر وسيلة آمنة. سيُطلب منه تغييرها عند تسجيل الدخول التالي. لن تظهر مرة أخرى بعد إخفائها.' : 'Deliver this password through an approved secure channel. The user must change it at next sign-in. It will not be shown again after dismissal.'}</p>
       <p><strong>{temporaryPasswordNotice.username}</strong></p>
       <code className="temporary-password-value">{temporaryPasswordNotice.password}</code>
       <button className="btn-secondary" type="button" onClick={() => setTemporaryPasswordNotice(null)}>{ar ? 'إخفاء كلمة المرور' : 'Dismiss temporary password'}</button>
     </section>}
-    {isAdministrator && <section className="surface-card security-audit-list">
+    {isAdministrator && securityTab === 'audit' && <section className="surface-card security-audit-list">
       <div className="card-head"><div><span className="eyebrow">AUDIT LEDGER / ARCHIVES / EXPORT</span><h3>{ar ? 'سجل التدقيق والأرشيف' : 'Audit ledger & archives'}</h3></div><span className="counter">{recentAudit.length} / {auditRecords.length}</span></div>
       <div className="audit-toolbar">
         <label>{ar ? 'بحث' : 'Search'}<input value={auditQuery} onChange={event => setAuditQuery(event.target.value)} placeholder={ar ? 'بحث في الحدث أو المستخدم أو السجل' : 'Search action, user or record'}/></label>
