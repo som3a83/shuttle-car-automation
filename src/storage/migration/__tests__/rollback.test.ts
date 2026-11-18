@@ -5,6 +5,8 @@ import {
   __resetStorageForTesting,
   createStagingContext,
   getStorageEngine,
+  getWithRevision,
+  getStorageModePreference,
   setStorageModePreference,
   STORAGE_MODE_KEY
 } from '../../index';
@@ -17,8 +19,11 @@ import {
   releaseMigrationLock,
   switchActiveGeneration
 } from '../generation';
-import { listImportableLegacyKeys, OPERATIONAL_LEGACY_KEY_MAP } from '../../adapters/legacyKeyMap';
-import { assessMigrationRollback, rollbackToLegacyStorage } from '../rollback';
+import {
+  listImportableLegacyKeys,
+  OPERATIONAL_LEGACY_KEY_MAP
+} from '../../adapters/legacyKeyMap';
+import { assessMigrationRollback, rollbackToLegacyStorage, type LegacyStorageRollbackAdapter } from '../rollback';
 import { sha256Canonical } from '../verification';
 import { MigrationState } from '../types';
 
@@ -78,44 +83,90 @@ async function createVerifiedMigrationSnapshot() {
   return snapshot;
 }
 
-describe('verified migration rollback', () => {
-  it('allows rollback only while the legacy fingerprint and imported revisions still match', async () => {
+function failingStorageAdapter(shouldFail: (key: string, value: string) => boolean): LegacyStorageRollbackAdapter {
+  return {
+    getItem: (key) => localStorage.getItem(key),
+    setItem: (key, value) => {
+      if (shouldFail(key, value)) throw new Error('Simulated localStorage quota/write interruption.');
+      localStorage.setItem(key, value);
+    }
+  };
+}
+
+describe('verified reverse migration to legacy storage', () => {
+  it('preflights all 17 approved keys and supplies defaults for missing IndexedDB records', async () => {
     await createVerifiedMigrationSnapshot();
 
     const status = await assessMigrationRollback(localStorage);
 
     expect(status.eligible).toBe(true);
     expect(status.reason).toBeNull();
+    expect(status.keyCount).toBe(17);
+    expect(status.defaultedKeyCount).toBe(16);
     expect(status.snapshot?.recordRevisions).toEqual({ 'operational.language': 1 });
   });
 
-  it('refuses rollback after an application write changes a migrated record', async () => {
+  it('copies operational writes made after migration back to legacy storage before switching mode', async () => {
     await createVerifiedMigrationSnapshot();
     const engine = await getStorageEngine();
     await engine.write('operational.language', 'ar', 1);
 
-    const status = await assessMigrationRollback(localStorage);
+    const result = await rollbackToLegacyStorage(localStorage);
 
-    expect(status.eligible).toBe(false);
-    expect(status.reason).toMatch(/changed since migration/i);
-    await expect(rollbackToLegacyStorage(localStorage)).rejects.toThrow(/changed since migration/i);
-    expect(localStorage.getItem(STORAGE_MODE_KEY)).toBe('indexeddb');
+    expect(result.writtenKeyCount).toBe(17);
+    expect(localStorage.getItem(OPERATIONAL_LEGACY_KEY_MAP[0].legacyKey)).toBe(JSON.stringify('ar'));
+    expect(JSON.parse(localStorage.getItem(OPERATIONAL_LEGACY_KEY_MAP[1].legacyKey) || 'null')).toBe('light');
+    expect(getStorageModePreference()).toBe('legacy');
+    expect(localStorage.getItem(STORAGE_MODE_KEY)).toBe('legacy');
   });
 
-  it('refuses rollback if the preserved legacy source has changed', async () => {
+  it('blocks corrupted legacy JSON during pre-flight without changing the selected backend', async () => {
     await createVerifiedMigrationSnapshot();
-    localStorage.setItem(OPERATIONAL_LEGACY_KEY_MAP[0].legacyKey, JSON.stringify('ar'));
+    const corruptKey = OPERATIONAL_LEGACY_KEY_MAP[1].legacyKey;
+    localStorage.setItem(corruptKey, '{broken-json');
 
     const status = await assessMigrationRollback(localStorage);
 
     expect(status.eligible).toBe(false);
-    expect(status.reason).toMatch(/legacy source no longer matches/i);
-    await expect(rollbackToLegacyStorage(localStorage)).rejects.toThrow(/legacy source no longer matches/i);
+    expect(status.reason).toMatch(/corrupted JSON/i);
+    await expect(rollbackToLegacyStorage(localStorage)).rejects.toThrow(/corrupted JSON/i);
+    expect(getStorageModePreference()).toBe('indexeddb');
+    expect(localStorage.getItem(STORAGE_MODE_KEY)).toBe('indexeddb');
+    expect(localStorage.getItem(corruptKey)).toBe('{broken-json');
   });
 
-  it('atomically deactivates the migrated generation, retains it, and blocks stale-tab writes', async () => {
+  it('resumes safely after an interrupted legacy write and never loses the active IndexedDB copy', async () => {
+    const snapshot = await createVerifiedMigrationSnapshot();
+    const engine = await getStorageEngine();
+    await engine.write('operational.language', 'ar', 1);
+
+    const interrupted = failingStorageAdapter((key) => key === OPERATIONAL_LEGACY_KEY_MAP[3].legacyKey);
+    await expect(rollbackToLegacyStorage(interrupted)).rejects.toThrow(/Simulated localStorage/i);
+
+    expect(getStorageModePreference()).toBe('indexeddb');
+    expect((await getWithRevision('operational.language'))?.value).toBe('ar');
+    expect(await getActiveGeneration()).toBe(snapshot.nextGeneration);
+
+    const resumed = await rollbackToLegacyStorage(localStorage);
+    expect(resumed.writtenKeyCount).toBe(17);
+    expect(JSON.parse(localStorage.getItem(OPERATIONAL_LEGACY_KEY_MAP[0].legacyKey) || 'null')).toBe('ar');
+    expect(getStorageModePreference()).toBe('legacy');
+  });
+
+  it('keeps IndexedDB selected when reverse migration cannot write the legacy destination', async () => {
+    await createVerifiedMigrationSnapshot();
+    const interrupted = failingStorageAdapter((key) => key.startsWith('shuttle.storage.rollback.staging.'));
+    await expect(rollbackToLegacyStorage(interrupted)).rejects.toThrow(/Simulated localStorage/i);
+
+    expect(getStorageModePreference()).toBe('indexeddb');
+    expect((await getWithRevision('operational.language'))?.value).toBe('en');
+    expect(await getActiveGeneration()).toBe('generation-migration-rollback-test');
+  });
+
+  it('retains the migrated generation and blocks stale IndexedDB writes after successful rollback', async () => {
     const snapshot = await createVerifiedMigrationSnapshot();
     const staleTabEngine = await getStorageEngine();
+
     const result = await rollbackToLegacyStorage(localStorage);
 
     expect(result.snapshot.id).toBe(snapshot.id);
