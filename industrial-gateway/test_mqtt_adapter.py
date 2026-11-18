@@ -93,7 +93,7 @@ class MqttReadOnlyAdapterTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             MqttReadOnlyAdapter(self.asset, {**self.settings, "transport": "bluetooth-le"})
         with self.assertRaises(ValueError):
-            MqttReadOnlyAdapter(self.asset, {**self.settings, "protocols": ["modbus-tcp"]})
+            MqttReadOnlyAdapter({**self.asset, "protocols": ["modbus-tcp"]}, self.settings)
         with self.assertRaises(ValueError):
             MqttReadOnlyAdapter(self.asset, {**self.settings, "tls": False})
 
