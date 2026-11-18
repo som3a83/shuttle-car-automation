@@ -339,15 +339,18 @@ export default function Battery3DViewer({ battery, language, fallback }: Battery
   }, [battery.id]);
 
   useEffect(() => {
-    const camera = cameraRef.current;
-    if (!camera) return;
-    const distance = 12.5;
     rootRef.current?.rotation.set(
       view === 'iso' ? 0.12 : 0,
       view === 'iso' ? -0.5 : 0,
       0
     );
-    camera.up.set(0, view === 'top' ? 0 : 1, view === 'top' ? -1 : 0);
+    cameraRef.current?.up.set(0, view === 'top' ? 0 : 1, view === 'top' ? -1 : 0);
+  }, [view]);
+
+  useEffect(() => {
+    const camera = cameraRef.current;
+    if (!camera) return;
+    const distance = 12.5;
     const positions: Record<BatteryView, THREE.Vector3> = {
       iso: new THREE.Vector3(distance * 0.75, distance * 0.58, distance * 0.75),
       front: new THREE.Vector3(0, distance * 0.22, distance),
