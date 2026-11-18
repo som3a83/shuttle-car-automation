@@ -5,7 +5,8 @@ import {
   listImportableLegacyKeys,
   readAuditArchivePendingMarker
 } from '../adapters/legacyKeyMap';
-import { OPERATIONAL_DEFAULTS, OPERATIONAL_LEGACY_KEY_MAP } from '../adapters/operationalAdapter';
+import { OPERATIONAL_LEGACY_KEY_MAP } from '../adapters/legacyKeyMap';
+import { OPERATIONAL_DEFAULTS } from '../adapters/operationalAdapter';
 import { DEFAULT_CUSTOMIZATION } from '../../data/applicationCustomization';
 import {
   getStorageModePreference,
