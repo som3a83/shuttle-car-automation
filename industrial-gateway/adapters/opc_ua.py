@@ -104,14 +104,16 @@ class OpcUaReadOnlyAdapter:
         if not requested or any(tag not in self.nodes for tag in requested):
             raise ValueError("Requested OPC UA tag is not in the approved node map.")
         readings: list[AdapterReading] = []
-        with Client(self.endpoint, timeout=float(self.timeout)) as client:
-            # Force an authenticated, pinned, signed and encrypted channel.
-            security = "Basic256Sha256,SignAndEncrypt," + self.certificate + "," + self.private_key + "," + self.server_certificate
-            client.set_security_string(security)
-            if self.username:
-                client.set_user(self.username)
-                if self.password is not None:
-                    client.set_password(self.password)
+        client = Client(self.endpoint, timeout=float(self.timeout))
+        # Configure security and identity BEFORE opening the channel/session.
+        security = "Basic256Sha256,SignAndEncrypt," + self.certificate + "," + self.private_key + "," + self.server_certificate
+        client.set_security_string(security)
+        if self.username:
+            client.set_user(self.username)
+            if self.password is not None:
+                client.set_password(self.password)
+        client.connect()
+        try:
             for tag in requested:
                 node = client.get_node(self.nodes[tag]["node_id"])
                 data_value = node.read_data_value(raise_on_bad_status=True)
@@ -133,6 +135,8 @@ class OpcUaReadOnlyAdapter:
                     source_timestamp=_timestamp(getattr(data_value, "SourceTimestamp", None)),
                     quality="GOOD",
                 ))
+        finally:
+            client.disconnect()
         return readings
 
     def close(self) -> None:
