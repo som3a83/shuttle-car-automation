@@ -77,7 +77,8 @@ export async function importCustomizationData(
     isCustomizationAudit,
     legacyStorage,
     undefined,
-    'customization'
+    'customization',
+    context
   );
   return [
     await importDefaultForMissing(configResult, DEFAULT_CUSTOMIZATION, context),
