@@ -1,99 +1,208 @@
 import React, { useEffect, useState } from 'react';
-import { getMode, getStorageModePreference, type StorageMode, type StorageModePreference } from '../storage';
-import type { Language } from '../types';
+import { getMode, type StorageMode } from '../storage';
+import { migrateToIndexedDb } from '../storage/migration';
+import { createLegacyStorageBackup, type LegacyStorageBackup } from '../storage/migration/legacyBackup';
 
-type MigrationResult = { success: boolean; state: string; completedKeyCount: number; expectedKeyCount: number; error?: string };
+interface StorageMigrationPanelProps {
+  language: 'ar' | 'en';
+  canMigrate: boolean;
+  beforeBackup?: () => Promise<void>;
+  onLockChange?: (locked: boolean) => void;
+  onMigrationComplete?: () => void;
+}
 
-export default function StorageMigrationPanel({ language, canMigrate }: { language: Language; canMigrate: boolean }) {
-  const ar = language === 'ar';
+function modeLabel(mode: StorageMode | null, language: 'ar' | 'en'): string {
+  if (!mode) return language === 'ar' ? 'جارٍ فحص محرك التخزين…' : 'Checking storage engine…';
+  if (mode === 'indexeddb') return 'IndexedDB';
+  if (mode === 'legacy-fallback') return language === 'ar' ? 'التخزين المحلي القديم' : 'Legacy local storage';
+  return language === 'ar' ? 'وضع استعادة للقراءة فقط' : 'Read-only recovery mode';
+}
+
+export default function StorageMigrationPanel({
+  language,
+  canMigrate,
+  beforeBackup,
+  onLockChange,
+  onMigrationComplete
+}: StorageMigrationPanelProps) {
   const [mode, setMode] = useState<StorageMode | null>(null);
-  const [preference, setPreference] = useState<StorageModePreference>('legacy');
+  const [backupConfirmed, setBackupConfirmed] = useState(false);
+  const [backup, setBackup] = useState<LegacyStorageBackup | null>(null);
+  const [backupBusy, setBackupBusy] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [needsReload, setNeedsReload] = useState(false);
+  const [complete, setComplete] = useState(false);
   const [error, setError] = useState('');
-  const [result, setResult] = useState<MigrationResult | null>(null);
+
+  const ar = language === 'ar';
 
   useEffect(() => {
     let active = true;
-    void Promise.all([getMode(), Promise.resolve(getStorageModePreference())])
-      .then(([nextMode, nextPreference]) => {
-        if (!active) return;
-        setMode(nextMode);
-        setPreference(nextPreference);
-      })
-      .catch((reason: unknown) => {
-        if (active) setError(reason instanceof Error ? reason.message : 'Storage inspection failed.');
-      });
+    void getMode().then((result) => {
+      if (active) setMode(result);
+    }).catch((reason: unknown) => {
+      if (active) setError(reason instanceof Error ? reason.message : 'Storage inspection failed.');
+    });
     return () => { active = false; };
   }, []);
 
-  const startMigration = async () => {
-    if (!canMigrate || busy || mode !== 'legacy-fallback' || preference === 'indexeddb') return;
-    setBusy(true);
-    setError('');
-    setResult(null);
-    try {
-      const { migrateToIndexedDb } = await import('../storage/migration');
-      const next = await migrateToIndexedDb();
-      setResult(next);
-      if (next.success) setNeedsReload(true);
-      else setError(next.error || (ar ? 'تعذر إكمال ترحيل البيانات.' : 'The data migration did not complete.'));
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : (ar ? 'فشل فحص وترحيل التخزين.' : 'Storage migration failed.'));
-    } finally {
-      setBusy(false);
-    }
-  };
+  function downloadBackupFile(created: LegacyStorageBackup): void {
+    const filename = `shuttle-pre-migration-backup-${created.exportedAt.replace(/[:.]/g, '-')}.json`;
+    const blob = new Blob([JSON.stringify(created, null, 2)], { type: 'application/json' });
+    const objectUrl = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = objectUrl;
+    anchor.download = filename;
+    anchor.style.display = 'none';
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+  }
 
-  const modeLabel = mode === 'indexeddb'
-    ? (ar ? 'قاعدة IndexedDB نشطة' : 'IndexedDB active')
-    : mode === 'legacy-fallback'
-      ? (ar ? 'تخزين محلي متوافق (localStorage)' : 'Legacy localStorage backend')
-      : mode === 'readonly-recovery'
-        ? (ar ? 'وضع الاسترداد للقراءة فقط' : 'Read-only recovery mode')
-        : (ar ? 'جارٍ فحص التخزين…' : 'Inspecting storage…');
+  async function createBackup(): Promise<void> {
+    if (!canMigrate || backupBusy || busy || mode !== 'legacy-fallback') return;
+    setError('');
+    setBackupConfirmed(false);
+    setBackupBusy(true);
+    try {
+      await beforeBackup?.();
+      const created = await createLegacyStorageBackup(window.localStorage);
+      downloadBackupFile(created);
+      setBackup(created);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'A complete verified backup could not be created.');
+    } finally {
+      setBackupBusy(false);
+    }
+  }
+
+  async function runMigration(): Promise<void> {
+    if (!canMigrate || !backup || !backupConfirmed || busy || mode !== 'legacy-fallback') return;
+    setError('');
+    setBusy(true);
+    onLockChange?.(true);
+    try {
+      // Freeze the application, flush every queued write, then compare the exact
+      // persisted source with the backup the operator already confirmed.
+      await beforeBackup?.();
+      const latest = await createLegacyStorageBackup(window.localStorage);
+      if (JSON.stringify(latest.records) !== JSON.stringify(backup.records)) {
+        downloadBackupFile(latest);
+        setBackup(latest);
+        setBackupConfirmed(false);
+        setError(ar
+          ? 'تغيّرت البيانات بعد النسخة السابقة. تم تنزيل نسخة أحدث؛ احفظها وأكّدها قبل الترحيل.'
+          : 'Application data changed after the previous backup. A fresh backup was downloaded; save and confirm it before migrating.');
+        setBusy(false);
+        onLockChange?.(false);
+        return;
+      }
+
+      const result = await migrateToIndexedDb({ expectedSourceFingerprint: backup.migrationSourceFingerprint });
+      if (!result.success || result.state !== 'COMPLETE') {
+        throw new Error(result.error || `Storage migration stopped in state ${result.state}.`);
+      }
+      setComplete(true);
+      setBusy(false);
+      onMigrationComplete?.();
+      // Keep the application locked until a reload selects the newly activated backend.
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Storage migration failed. The legacy source remains available.');
+      setBusy(false);
+      onLockChange?.(false);
+    }
+  }
 
   return (
     <section className="surface-card storage-migration-panel" aria-labelledby="storage-migration-title">
       <div className="card-head">
         <div>
-          <span className="eyebrow">DATA LIFECYCLE / VERIFIED BACKEND</span>
-          <h3 id="storage-migration-title">{ar ? 'محرك التخزين وترحيل البيانات' : 'Storage engine & data migration'}</h3>
+          <span className="eyebrow">{ar ? 'سلامة البيانات / ترحيل التخزين' : 'DATA INTEGRITY / STORAGE MIGRATION'}</span>
+          <h3 id="storage-migration-title">{ar ? 'تفعيل قاعدة بيانات IndexedDB' : 'Activate IndexedDB storage'}</h3>
         </div>
-        <span className={mode === 'indexeddb' ? 'status-pill status-ready' : 'status-pill status-unknown'}>{modeLabel}</span>
+        <span className={mode === 'indexeddb' || complete ? 'storage-mode-pill storage-mode-ready' : 'storage-mode-pill'}>
+          {modeLabel(mode, language)}
+        </span>
       </div>
       <p className="muted-text">
         {ar
-          ? 'يتم نقل السجلات الـ17 إلى جيل IndexedDB معزول، والتحقق منها قبل تبديل المؤشر النشط. النسخة المحلية القديمة لا تُحذف. يلزم مسؤول النظام الأعلى لإجراء الترحيل.'
-          : 'The 17 approved records are copied into an isolated IndexedDB generation and verified before the active pointer is switched. Original localStorage values are retained. A Super Admin must start the migration.'}
+          ? 'ينقل هذا الإجراء سجلات التشغيل والحسابات وسجل التدقيق والتخصيص إلى محرك واحد. المصدر القديم لا يُحذف. يلزم إعادة تحميل التطبيق بعد نجاح الترحيل حتى تستخدم كل الوحدات قاعدة البيانات الجديدة.'
+          : 'This operation migrates operational records, accounts, audit history and customization to one shared engine. The legacy source is preserved. Reload the app after success so every subsystem uses the new database.'}
       </p>
-      {!canMigrate && mode !== 'indexeddb' && <p className="notice-inline" role="note">{ar ? 'يتطلب الترحيل تسجيل دخول المسؤول الأعلى.' : 'Sign in as the Super Admin to start migration.'}</p>}
-      {needsReload ? (
-        <div className="notice-inline" role="status">
-          <strong>{ar ? 'اكتمل الترحيل والتحقق من السجلات.' : 'Migration and record verification completed.'}</strong>
-          <span>{ar ? 'تم قفل واجهة التطبيق حتى إعادة التحميل لمنع حفظ تعديلات جديدة في محرك التخزين القديم.' : 'The application is locked until reload so no new edits can be written to the old storage engine.'}</span>
+      {!canMigrate && mode !== 'indexeddb' && (
+        <div className="notice-inline" role="note">
+          {ar ? 'يتطلب إنشاء النسخة الاحتياطية والترحيل تسجيل دخول المسؤول الأعلى.' : 'Sign in as the Super Admin to create a migration backup and start migration.'}
         </div>
-      ) : mode === 'indexeddb' ? (
-        <p className="notice-inline" role="status">{ar ? 'IndexedDB هو محرك التخزين النشط. فحص الإقلاع يتحقق من وجود مجموعات التشغيل الـ12 قبل تحميل التطبيق.' : 'IndexedDB is active. Startup validation checks all 17 migrated records before mounting the application.'}</p>
-      ) : (
-        <button className="btn-primary" type="button" onClick={() => void startMigration()} disabled={!canMigrate || busy || mode !== 'legacy-fallback' || preference === 'indexeddb'}>
-          {busy ? (ar ? 'جارٍ نسخ البيانات والتحقق منها…' : 'Copying and verifying records…') : (ar ? 'فحص وترحيل 17 سجلًا إلى IndexedDB' : 'Verify and migrate 17 records to IndexedDB')}
-        </button>
       )}
-      {result && <p className="muted-text" role="status">{ar ? 'النتيجة: ' : 'Result: '}{result.state} · {result.completedKeyCount}/{result.expectedKeyCount} {ar ? 'سجلًا' : 'records'}</p>}
-      {error && <div className="security-error" role="alert">{error}</div>}
-      <p className="muted-text">{ar ? 'هذا الترحيل محلي على الجهاز ولا ينشئ مزامنة سحابية.' : 'This is a local-device migration. It does not create cloud synchronization.'}</p>
-      {needsReload && (
-        <div className="storage-migration-blocker" role="alertdialog" aria-modal="true" aria-labelledby="storage-migration-blocker-title">
-          <div className="storage-migration-blocker-card">
-            <span className="eyebrow">MIGRATION COMMITTED / RELOAD REQUIRED</span>
-            <h2 id="storage-migration-blocker-title">{ar ? 'تم نقل البيانات بنجاح' : 'Data migration completed'}</h2>
-            <p>{ar ? 'تم التحقق من السجلات وتبديل محرك التخزين النشط. أعد تشغيل التطبيق الآن لتبدأ كل الوحدات باستخدام IndexedDB. تم إيقاف التفاعل مؤقتًا لمنع الكتابة إلى النسخة القديمة.' : 'The records were verified and the active storage preference was switched. Reload now so every module starts on IndexedDB. Interaction is blocked to prevent any further write to the old storage engine.'}</p>
-            <button className="btn-primary" type="button" autoFocus onClick={() => window.location.reload()}>
-              {ar ? 'إعادة تشغيل التطبيق وتفعيل التخزين الجديد' : 'Reload and activate the new storage engine'}
-            </button>
-          </div>
+      {mode === 'readonly-recovery' && (
+        <div className="security-error" role="alert">
+          {ar ? 'التخزين في وضع استعادة للقراءة فقط. أكمل الاستعادة قبل بدء الترحيل.' : 'Storage is in read-only recovery mode. Complete recovery before migrating.'}
         </div>
+      )}
+      {!complete && mode !== 'indexeddb' && (
+        <div className="storage-migration-backup-warning" role="note">
+          {ar
+            ? 'تنبيه خصوصية: ملف النسخة يحتوي على بيانات localStorage كاملة، ومنها بيانات الحسابات وسجلات التدقيق والتشغيل. الملف غير مشفر؛ احتفظ به في مكان آمن ولا ترسله لأي طرف.'
+            : 'Privacy warning: this file contains the full localStorage snapshot, including local account hashes, audit entries and operational records. It is not encrypted. Store it securely and do not share it.'}
+        </div>
+      )}
+      {mode === 'indexeddb' && !complete && (
+        <div className="notice-inline" role="status">
+          {ar ? 'قاعدة بيانات IndexedDB مفعّلة بالفعل على هذا الجهاز.' : 'IndexedDB is already active on this device.'}
+        </div>
+      )}
+      {!complete && mode !== 'indexeddb' && (
+        <div className="storage-migration-backup">
+          <button
+            type="button"
+            className="btn-secondary"
+            disabled={!canMigrate || busy || backupBusy || !mode || mode !== 'legacy-fallback'}
+            onClick={() => void createBackup()}
+          >
+            {backupBusy
+              ? (ar ? 'جارٍ إعداد النسخة الاحتياطية…' : 'Preparing complete backup…')
+              : (ar ? 'إنشاء نسخة احتياطية كاملة من بيانات الجهاز' : 'Create complete local data backup')}
+          </button>
+          {backup && (
+            <>
+              <div className="storage-migration-backup-details" role="status">
+                <strong>{ar ? 'تم إنشاء ملف النسخة الاحتياطية' : 'Backup file created'}</strong>
+                <span>{backup.recordCount} {ar ? 'مفتاح تخزين' : 'localStorage keys'} · SHA-256: {backup.sha256.slice(0, 16)}…</span>
+              </div>
+              <label className="storage-migration-confirm">
+                <input
+                  type="checkbox"
+                  checked={backupConfirmed}
+                  disabled={busy || backupBusy}
+                  onChange={(event) => setBackupConfirmed(event.target.checked)}
+                />
+                <span>
+                  {ar
+                    ? 'حفظت ملف النسخة الاحتياطية في مكان آمن خارج بيانات التطبيق.'
+                    : 'I saved the downloaded backup file to a secure location outside the app.'}
+                </span>
+              </label>
+            </>
+          )}
+        </div>
+      )}
+      {error && <div className="security-error" role="alert">{error}</div>}
+      {complete ? (
+        <div className="storage-migration-success" role="status">
+          <strong>{ar ? 'اكتمل الترحيل والتحقق بنجاح.' : 'Migration and verification completed successfully.'}</strong>
+          <p>{ar ? 'أعد تحميل التطبيق الآن لتفعيل محرك IndexedDB في جميع الوحدات.' : 'Reload the application now to activate IndexedDB across all modules.'}</p>
+        </div>
+      ) : (
+        <button
+          type="button"
+          className="btn-primary"
+          disabled={!canMigrate || !backup || !backupConfirmed || busy || backupBusy || mode !== 'legacy-fallback'}
+          onClick={() => void runMigration()}
+        >
+          {busy
+            ? (ar ? 'جارٍ نقل السجلات والتحقق منها…' : 'Migrating and verifying records…')
+            : (ar ? 'ترحيل السجلات إلى IndexedDB' : 'Migrate records to IndexedDB')}
+        </button>
       )}
     </section>
   );
