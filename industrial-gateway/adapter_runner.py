@@ -158,6 +158,7 @@ def main() -> int:
     adapter = factory({
         "id": asset["id"], "manufacturer": asset["manufacturer"], "model": asset["model"],
         "firmware": asset["firmware"], "adapter_id": asset["adapter_id"],
+        "transports": list(asset["transports"]), "protocols": list(asset["protocols"]),
         "allowed_tags": sorted(asset["allowed_tags"]),
     }, load_settings())
     identity = validate_adapter_identity(getattr(adapter, "identity", None), asset)
