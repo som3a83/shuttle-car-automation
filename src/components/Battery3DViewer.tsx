@@ -31,7 +31,9 @@ export default function Battery3DViewer({ battery, fallback }: Battery3DViewerPr
     renderer.setClearColor(0x0b121a, 0);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.domElement.className = 'battery-webgl-canvas';
-    renderer.domElement.setAttribute('aria-label', 'Interactive conceptual lithium battery assembly');
+    renderer.domElement.setAttribute('aria-label', 'Interactive conceptual lithium battery assembly. Drag or use arrow keys to rotate; press Home to reset the view.');
+    renderer.domElement.tabIndex = 0;
+    renderer.domElement.setAttribute('aria-keyshortcuts', 'ArrowLeft ArrowRight ArrowUp ArrowDown Home');
     host.appendChild(renderer.domElement);
 
     const scene = new THREE.Scene();
@@ -164,11 +166,22 @@ export default function Battery3DViewer({ battery, fallback }: Battery3DViewerPr
       camera.updateProjectionMatrix();
       camera.lookAt(0, 0, 0);
     };
+    const onKeyDown = (event: KeyboardEvent) => {
+      const step = 0.14;
+      if (event.key === 'ArrowLeft') root.rotation.y -= step;
+      else if (event.key === 'ArrowRight') root.rotation.y += step;
+      else if (event.key === 'ArrowUp') root.rotation.x = THREE.MathUtils.clamp(root.rotation.x - step, -0.35, 0.45);
+      else if (event.key === 'ArrowDown') root.rotation.x = THREE.MathUtils.clamp(root.rotation.x + step, -0.35, 0.45);
+      else if (event.key === 'Home') root.rotation.set(0, -0.45, 0);
+      else return;
+      event.preventDefault();
+    };
     renderer.domElement.addEventListener('pointerdown', onDown);
     renderer.domElement.addEventListener('pointermove', onMove);
     renderer.domElement.addEventListener('pointerup', onUp);
     renderer.domElement.addEventListener('pointercancel', onUp);
     renderer.domElement.addEventListener('wheel', onWheel, { passive: false });
+    renderer.domElement.addEventListener('keydown', onKeyDown);
 
     const resize = () => {
       const width = Math.max(1, host.clientWidth);
@@ -201,6 +214,7 @@ export default function Battery3DViewer({ battery, fallback }: Battery3DViewerPr
       renderer.domElement.removeEventListener('pointerup', onUp);
       renderer.domElement.removeEventListener('pointercancel', onUp);
       renderer.domElement.removeEventListener('wheel', onWheel);
+      renderer.domElement.removeEventListener('keydown', onKeyDown);
       scene.traverse((object) => {
         if (object instanceof THREE.Mesh) {
           object.geometry.dispose();
@@ -219,6 +233,7 @@ export default function Battery3DViewer({ battery, fallback }: Battery3DViewerPr
       {available === false && <div className="battery-3d-fallback">{fallback}</div>}
       <div className="battery-3d-caption">LITHIUM PACK · CONCEPTUAL INTERNAL ASSEMBLY</div>
       <div className="battery-3d-id">{battery.id}</div>
+      <div className="battery-3d-help" aria-hidden="true">DRAG / ARROWS TO ROTATE · WHEEL TO ZOOM</div>
       <div className="battery-cad-overlay" aria-hidden="true">
         <span><i/>PRISMATIC CELL BANKS</span><span><i/>BMS / BALANCING</span><span><i/>BUS BAR NETWORK</span><span><i/>SERVICE TERMINALS</span>
       </div>
