@@ -142,7 +142,7 @@ export default function StorageMigrationPanel({
           ? 'ينقل هذا الإجراء سجلات التشغيل والحسابات وسجل التدقيق والتخصيص إلى محرك واحد. المصدر القديم لا يُحذف. يلزم إعادة تحميل التطبيق بعد نجاح الترحيل حتى تستخدم كل الوحدات قاعدة البيانات الجديدة.'
           : 'This operation migrates operational records, accounts, audit history and customization to one shared engine. The legacy source is preserved. Reload the app after success so every subsystem uses the new database.'}
       </p>
-      <div className="storage-migration-lifecycle" role="status" aria-live="polite">
+      <div className="storage-migration-lifecycle" role="group" aria-label={ar ? 'مراحل الترحيل' : 'Migration stages'}>
         <div className={phase === 'preflight' || phase === 'backup' || phase === 'ready' || phase === 'migrating' || phase === 'complete' ? 'is-done' : ''}>
           <strong>{ar ? '1. فحص ما قبل الترحيل' : '1. Pre-flight'}</strong>
           <small>{ar ? 'قراءة المصدر والتحقق من مفاتيح التخزين' : 'Inspect the legacy source and approved key list'}</small>
