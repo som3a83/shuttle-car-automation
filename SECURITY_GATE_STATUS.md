@@ -6,7 +6,7 @@
 - The application keeps legacy storage as its default until a Super Admin explicitly starts the migration.
 - The migration copies the approved 17-key allow-list into an isolated IndexedDB generation, verifies the staged records and checks the original source fingerprint before atomically switching the active generation.
 - The migration does not delete localStorage source values. A successful migration requires an application reload so every lazily loaded module resolves the IndexedDB backend from the persisted preference.
-- On IndexedDB startup, all 12 operational collections are checked before the UI mounts. An incomplete active generation pauses startup; the older localStorage recovery screen is not allowed to overwrite IndexedDB with a stale compatibility copy.
+- On IndexedDB startup, all 17 migrated records are checked before the UI mounts: 12 operational collections plus local accounts, audit records/archives and customization records. An incomplete active generation pauses startup; the older localStorage recovery screen is not allowed to overwrite IndexedDB with a stale compatibility copy.
 - Local sessions remain in sessionStorage and are intentionally excluded from migration. The account registry is re-read from the active storage engine when the session is validated.
 
 ## GitHub ruleset still needs repository-owner action

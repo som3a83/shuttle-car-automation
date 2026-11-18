@@ -15,7 +15,12 @@ const values = [
   ['operational.notifications', []],
   ['operational.settings', { language: 'ar', theme: 'dark', notificationsEnabled: true, maintenanceReminders: true, batteryAlerts: true, communicationAlerts: true }],
   ['operational.dailyReports', []],
-  ['operational.shifts', []]
+  ['operational.shifts', []],
+  ['auth.accounts', []],
+  ['audit.active', []],
+  ['audit.archives', []],
+  ['customization.config', {}],
+  ['customization.audit', []]
 ] as const;
 
 async function clearDatabase(): Promise<void> {
@@ -49,12 +54,23 @@ describe('operational bootstrap with active IndexedDB', () => {
     expect(localStorage.getItem(OPERATIONAL_PREFIX + 'shuttles')).toBe(staleLegacy);
   });
 
-  it('pauses startup when an active IndexedDB generation is incomplete and preserves the legacy source', async () => {
+  it('pauses startup when an operational collection is missing and preserves the legacy source', async () => {
     await set('operational.language', 'ar');
     const legacy = JSON.stringify([{ id: 'SC-LEGACY' }]);
     localStorage.setItem(OPERATIONAL_PREFIX + 'shuttles', legacy);
 
     await expect(bootstrapOperationalStorage()).rejects.toThrow(/IndexedDB is selected.*shuttles/i);
     expect(localStorage.getItem(OPERATIONAL_PREFIX + 'shuttles')).toBe(legacy);
+  });
+
+  it('also pauses startup when an identity, audit or customization record is missing', async () => {
+    for (const [key, value] of values) {
+      if (key !== 'audit.active') await set(key, value as never);
+    }
+    const legacyAccounts = JSON.stringify([{ id: 'LOCAL-ADMIN' }]);
+    localStorage.setItem('shuttle-car-automation-v1:local-accounts', legacyAccounts);
+
+    await expect(bootstrapOperationalStorage()).rejects.toThrow(/audit\.active/i);
+    expect(localStorage.getItem('shuttle-car-automation-v1:local-accounts')).toBe(legacyAccounts);
   });
 });

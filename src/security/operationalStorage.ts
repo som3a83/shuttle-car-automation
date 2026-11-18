@@ -153,10 +153,21 @@ export async function bootstrapOperationalStorage(storage: StorageLike = globalT
       for (const collection of OPERATIONAL_COLLECTIONS) {
         const key = ('operational.' + collection) as import('../storage/index.ts').StorageKey;
         const record = await activeStorage.read(key);
-        if (!record || !isLegacyShape(collection, record.value)) missing.push(collection);
+        if (!record || !isLegacyShape(collection, record.value)) missing.push(key);
+      }
+      const requiredArrayKeys = [
+        'auth.accounts', 'audit.active', 'audit.archives', 'customization.audit'
+      ] as const;
+      for (const key of requiredArrayKeys) {
+        const record = await activeStorage.read(key);
+        if (!record || !Array.isArray(record.value)) missing.push(key);
+      }
+      const customization = await activeStorage.read('customization.config');
+      if (!customization || !customization.value || typeof customization.value !== 'object' || Array.isArray(customization.value)) {
+        missing.push('customization.config');
       }
       if (missing.length > 0) {
-        throw new Error('IndexedDB is selected but required operational collections are missing or invalid: ' +
+        throw new Error('IndexedDB is selected but required migrated records are missing or invalid: ' +
           missing.join(', ') + '. Startup is paused. Original localStorage source copies were not deleted; export and inspect them before recovery.');
       }
       try { storage.setItem(OPERATIONAL_PREFIX + 'storage-issues', '[]'); } catch { /* Read-only health display remains empty. */ }

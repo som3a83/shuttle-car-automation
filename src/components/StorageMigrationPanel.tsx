@@ -74,7 +74,7 @@ export default function StorageMigrationPanel({ language, canMigrate }: { langua
           <span>{ar ? 'تم قفل واجهة التطبيق حتى إعادة التحميل لمنع حفظ تعديلات جديدة في محرك التخزين القديم.' : 'The application is locked until reload so no new edits can be written to the old storage engine.'}</span>
         </div>
       ) : mode === 'indexeddb' ? (
-        <p className="notice-inline" role="status">{ar ? 'IndexedDB هو محرك التخزين النشط. فحص الإقلاع يتحقق من وجود مجموعات التشغيل الـ12 قبل تحميل التطبيق.' : 'IndexedDB is active. Startup validation checks all 12 operational collections before mounting the application.'}</p>
+        <p className="notice-inline" role="status">{ar ? 'IndexedDB هو محرك التخزين النشط. فحص الإقلاع يتحقق من وجود مجموعات التشغيل الـ12 قبل تحميل التطبيق.' : 'IndexedDB is active. Startup validation checks all 17 migrated records before mounting the application.'}</p>
       ) : (
         <button className="btn-primary" type="button" onClick={() => void startMigration()} disabled={!canMigrate || busy || mode !== 'legacy-fallback' || preference === 'indexeddb'}>
           {busy ? (ar ? 'جارٍ نسخ البيانات والتحقق منها…' : 'Copying and verifying records…') : (ar ? 'فحص وترحيل 17 سجلًا إلى IndexedDB' : 'Verify and migrate 17 records to IndexedDB')}
