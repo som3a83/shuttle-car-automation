@@ -38,6 +38,8 @@ def validate_adapter_identity(identity: Any, asset: dict[str, Any]) -> dict[str,
         "manufacturer": raw.get("manufacturer"),
         "model": raw.get("model"),
         "firmware": raw.get("firmware"),
+        "transport": raw.get("transport"),
+        "protocol": raw.get("protocol"),
         "version": raw.get("version", raw.get("adapterVersion")),
     }
     expected = {
@@ -49,8 +51,14 @@ def validate_adapter_identity(identity: Any, asset: dict[str, Any]) -> dict[str,
     for key, value in expected.items():
         if not isinstance(normalized[key], str) or normalized[key] != value:
             raise ValueError("Vendor adapter identity mismatch: " + key)
+    if normalized["transport"] not in asset.get("transports", []):
+        raise ValueError("Vendor adapter transport is not approved for this asset.")
+    if normalized["protocol"] not in asset.get("protocols", []):
+        raise ValueError("Vendor adapter protocol is not approved for this asset.")
     if not isinstance(normalized["version"], str) or not normalized["version"].strip():
         raise ValueError("Vendor adapter version is required.")
+    if not isinstance(normalized["transport"], str) or not isinstance(normalized["protocol"], str):
+        raise ValueError("Vendor adapter must declare its selected transport and protocol.")
     return {key: str(value) for key, value in normalized.items()}
 
 
@@ -68,6 +76,8 @@ def build_ingest_payload(asset: dict[str, Any], identity: dict[str, str], readin
         "model": identity["model"],
         "firmware": identity["firmware"],
         "adapterId": identity["adapterId"],
+        "transport": identity["transport"],
+        "protocol": identity["protocol"],
         "adapterVersion": identity["version"],
         "tag": tag,
         "value": value,
