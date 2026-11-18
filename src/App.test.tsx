@@ -104,7 +104,8 @@ beforeEach(async () => {
     for (const name of [/Fleet Control Center/i, /Battery Management/i, /Maintenance Management/i, /Fault & Diagnostics/i, /Device Connections/i, /AI Technical Assistant/i, /Reports Center/i]) {
       expect(screen.getAllByRole('button', { name })[0]).toBeInTheDocument();
     }
-    expect(screen.queryByRole('button', { name: /Users & Security/i })).not.toBeInTheDocument();
+    // Users & Security remains the first-run sign-in/account bootstrap entry; administrative settings stay restricted.
+    expect(screen.getAllByRole('button', { name: /Users & Security/i })[0]).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /System Settings/i })).not.toBeInTheDocument();
   });
 
