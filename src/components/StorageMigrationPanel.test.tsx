@@ -22,7 +22,8 @@ const backupFixture = {
   source: 'window.localStorage' as const,
   recordCount: 17,
   records: [],
-  sha256: 'a'.repeat(64)
+  sha256: 'a'.repeat(64),
+  migrationSourceFingerprint: 'b'.repeat(64)
 };
 
 async function confirmBackup(): Promise<void> {
