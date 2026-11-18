@@ -10,6 +10,8 @@ export default function ImmersiveWarehouse({ shuttles, language }: Props) {
   const [simulation, setSimulation] = useState(false);
   const [view, setView] = useState<'overview' | 'aisle'>('overview');
   const [webgl, setWebgl] = useState<boolean | null>(null);
+  const viewRef = useRef(view);
+  useEffect(() => { viewRef.current = view; }, [view]);
   const selectedRef = useRef(selectedId);
   const simulationRef = useRef(simulation);
   useEffect(() => { selectedRef.current = selectedId; }, [selectedId]);
@@ -138,10 +140,16 @@ export default function ImmersiveWarehouse({ shuttles, language }: Props) {
     renderer.domElement.addEventListener('pointercancel',up);
     renderer.domElement.addEventListener('wheel',wheel,{passive:false});
     let frame=0;
+    let previousView = viewRef.current;
     const clock=new THREE.Clock();
     const render=()=>{
       frame=requestAnimationFrame(render);
       const t=clock.getElapsedTime();
+      if (viewRef.current !== previousView) {
+        previousView = viewRef.current;
+        camera.position.set(previousView === 'aisle' ? 9 : 15, previousView === 'aisle' ? 7 : 13, previousView === 'aisle' ? 12 : 22);
+        camera.lookAt(0, 2, 0);
+      }
       if(simulationRef.current) shuttleGroups.forEach((car,index)=>{car.position.x=-8+index*4+Math.sin(t*.75+index)*.7;car.rotation.y=Math.sin(t*.75+index)*.025;});
       shuttleGroups.forEach((car)=>{const selected=car.userData.shuttleId===selectedRef.current;(car.children[0] as THREE.Mesh).material=selected?orange:darkSteel;});
       renderer.render(scene,camera);
@@ -171,7 +179,7 @@ export default function ImmersiveWarehouse({ shuttles, language }: Props) {
       <button onClick={()=>{setSelectedId(shuttles[0]?.id??'SC-01');setSimulation(false);}}>{ar?'إعادة ضبط':'Reset'}</button>
     </div>
     <div className="immersive-warehouse-stage">
-      {webgl===false ? <div className="warehouse-fallback">{ar?'تعذر تشغيل الرسوم ثلاثية الأبعاد على هذا الجهاز.':'3D graphics are unavailable on this device.'}</div> : <div ref={hostRef} className="immersive-warehouse-canvas-host"><div className="warehouse-loading">{ar?'جارٍ تجهيز المشهد ثلاثي الأبعاد…':'Preparing 3D scene…'}</div></div>}
+      {webgl===false ? <div className="warehouse-fallback">{ar?'تعذر تشغيل الرسوم ثلاثية الأبعاد على هذا الجهاز.':'3D graphics are unavailable on this device.'}</div> : <div ref={hostRef} className="immersive-warehouse-canvas-host">{webgl===null && <div className="warehouse-loading">{ar?'جارٍ تجهيز المشهد ثلاثي الأبعاد…':'Preparing 3D scene…'}</div>}</div>}
       <div className="warehouse-overlay warehouse-overlay-top"><span>ASRS / RACK SYSTEM</span><span>{ar?'وضع المحاكاة':'SIMULATION MODE'}</span></div>
       <div className="warehouse-overlay warehouse-overlay-bottom"><span>{ar?'المعدة المحددة':'SELECTED SHUTTLE'} · {selectedId}</span><span>{ar?'اسحب للتدوير · إصبعان للتقريب':'DRAG ROTATE · PINCH ZOOM'}</span></div>
     </div>
