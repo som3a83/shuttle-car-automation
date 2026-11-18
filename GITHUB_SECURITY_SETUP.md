@@ -24,20 +24,23 @@ Add or enable:
 - Block branch deletion.
 - Require a CODEOWNERS review when a second independent trusted reviewer is available.
 
-After the checks have appeared on PR #47, select these exact checks as required:
+After the relevant workflows have completed successfully on a pull request, configure these checks as required in the ruleset. Confirm the exact check names from the Actions summary for the current pull request before selecting them:
+
 1. `TypeScript, tests, and production build`
-2. `Android Debug APK & Emulator Smoke Test`
-3. `CodeQL JavaScript/TypeScript`
-4. `Secret Leak Scan`
+2. `CodeQL JavaScript/TypeScript`
+3. `Secret Leak Scan`
+4. `Python gateway security and validation tests`
 5. `Render and validate parametric CAD`
-6. `Python gateway security and validation tests`
-7. `test` (Phase 2B-1 storage tests)
+6. `Android Debug APK & Emulator Smoke Test` (for application/runtime changes)
+7. `Android Debug APK Packaging` (for release-package changes)
+
+Do not select a check named `test` unless that exact check is currently emitted by a required workflow. The storage regression suite is included in the main TypeScript/test/build job.
 
 Do not make `Dependency Review` a required check until Dependency Graph is enabled and its action is no longer configured with `continue-on-error: true`. The npm audit is also temporarily non-blocking while the current picomatch advisory has no published patched version. Keep both warnings visible; do not silently suppress them.
 
 Do not require a human approval while there is only one active maintainer: the author cannot approve their own pull request. Add one independent approval requirement when a second trusted reviewer is available.
 
-The active ruleset is currently confirmed as active, but the status-check, approval and conversation-resolution gates above are not yet configured.
+The active ruleset is currently confirmed as active, but the status-check, approval and conversation-resolution gates above are not yet configured. A CODEOWNERS file is present in the proposed branch, but GitHub will not enforce its review requests until the repository administrator enables the corresponding ruleset requirement. The available GitHub integration exposes read-only ruleset inspection and cannot apply these server-side settings.
 
 ## 2. Enable GitHub security features
 
