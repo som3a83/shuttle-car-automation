@@ -1168,3 +1168,26 @@ button,select,input,textarea { touch-action:manipulation; }
   .storage-migration-blocker-card { padding:18px 14px; }
   .storage-migration-blocker-card button { width:100%; }
 }
+
+/* Dashboard hero uses the same interactive mechanical assembly as the Engineering workspace. */
+.hero-machine .dashboard-shuttle-viewer {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  min-width: 0;
+  min-height: 285px;
+}
+.hero-machine .dashboard-shuttle-viewer .three-viewer-shell {
+  inset: 0;
+}
+.hero-machine .dashboard-shuttle-viewer .three-canvas-host {
+  min-height: 250px;
+}
+@media (max-width: 640px) {
+  .hero-machine .dashboard-shuttle-viewer {
+    min-height: 255px;
+  }
+  .hero-machine .dashboard-shuttle-viewer .three-viewer-shell {
+    inset: 0;
+  }
+}
