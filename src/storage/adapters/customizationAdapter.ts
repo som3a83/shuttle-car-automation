@@ -5,6 +5,7 @@ import {
   type AdapterResult,
   type LegacyReadStorage
 } from './legacyKeyMap';
+import type { MigrationStorageContext } from '../index';
 import {
   DEFAULT_CUSTOMIZATION,
   validateCustomization,
@@ -37,7 +38,8 @@ function isCustomizationAudit(value: unknown): value is AuditEntry[] {
 
 /** Imports validated customization data, normalizing only known supported routes/widgets. */
 export async function importCustomizationData(
-  legacyStorage: LegacyReadStorage = globalThis.localStorage
+  legacyStorage: LegacyReadStorage = globalThis.localStorage,
+  context?: MigrationStorageContext
 ): Promise<AdapterResult[]> {
   /**
    * ATOMICITY CONSTRAINT (2B-4 dependency):
@@ -67,7 +69,8 @@ export async function importCustomizationData(
     isCustomizationConfig,
     legacyStorage,
     (value) => validateCustomization(value),
-    'customization'
+    'customization',
+    context
   );
   const auditResult = await importMappedLegacyKey(
     CUSTOMIZATION_LEGACY_KEY_MAP.audit.legacyKey,
@@ -77,7 +80,7 @@ export async function importCustomizationData(
     'customization'
   );
   return [
-    await importDefaultForMissing(configResult, DEFAULT_CUSTOMIZATION),
-    await importDefaultForMissing(auditResult, [])
+    await importDefaultForMissing(configResult, DEFAULT_CUSTOMIZATION, context),
+    await importDefaultForMissing(auditResult, [], context)
   ];
 }
