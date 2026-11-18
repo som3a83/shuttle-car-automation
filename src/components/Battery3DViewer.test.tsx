@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import '@testing-library/jest-dom/vitest';
@@ -43,8 +43,7 @@ describe('Battery3DViewer engineering interactions', () => {
     const user = userEvent.setup();
     render(<Battery3DViewer battery={initialBatteries[0]} language="en" fallback={<div>Battery schematic fallback</div>} />);
     const zoom = screen.getByRole('slider', { name: /Model zoom/i });
-    await user.clear(zoom);
-    await user.type(zoom, '1.35');
+    fireEvent.change(zoom, { target: { value: '1.35' } });
     expect(zoom).toHaveValue(1.35);
     await user.click(screen.getByRole('button', { name: /Reset view/i }));
     expect(zoom).toHaveValue(1);
