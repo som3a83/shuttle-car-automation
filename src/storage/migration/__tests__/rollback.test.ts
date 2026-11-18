@@ -17,6 +17,7 @@ import {
   getActiveGeneration,
   getGenerationRecordCount,
   releaseMigrationLock,
+  saveMigrationJournal,
   switchActiveGeneration
 } from '../generation';
 import {
@@ -79,6 +80,19 @@ async function createVerifiedMigrationSnapshot() {
     }
   });
   await releaseMigrationLock(migrationId, owner);
+  await saveMigrationJournal({
+    migrationId,
+    state: MigrationState.COMPLETE,
+    sourceFingerprint,
+    expectedKeyCount: 1,
+    completedKeyCount: 1,
+    verificationStatus: 'passed',
+    createdAt,
+    updatedAt: createdAt,
+    stagingGeneration: generation,
+    previousGeneration: 'generation-1',
+    ownerToken: owner
+  });
   setStorageModePreference('indexeddb');
   return snapshot;
 }
@@ -94,6 +108,29 @@ function failingStorageAdapter(shouldFail: (key: string, value: string) => boole
 }
 
 describe('verified reverse migration to legacy storage', () => {
+  it('blocks reverse migration while a previous forward migration journal is incomplete', async () => {
+    await createVerifiedMigrationSnapshot();
+    await saveMigrationJournal({
+      migrationId: 'rollback-test',
+      state: MigrationState.STAGING,
+      sourceFingerprint: 'incomplete-source',
+      expectedKeyCount: 17,
+      completedKeyCount: 4,
+      verificationStatus: 'pending',
+      createdAt: '2026-11-18T10:00:00.000Z',
+      updatedAt: '2026-11-18T10:01:00.000Z',
+      stagingGeneration: 'generation-migration-rollback-test',
+      previousGeneration: 'generation-1',
+      ownerToken: 'rollback-test-owner'
+    });
+
+    const status = await assessMigrationRollback(localStorage);
+
+    expect(status.eligible).toBe(false);
+    expect(status.reason).toMatch(/unfinished storage migration journal/i);
+    expect(getStorageModePreference()).toBe('indexeddb');
+  });
+
   it('preflights all 17 approved keys and supplies defaults for missing IndexedDB records', async () => {
     await createVerifiedMigrationSnapshot();
 
