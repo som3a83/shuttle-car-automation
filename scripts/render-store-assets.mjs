@@ -26,6 +26,10 @@ if (!fs.existsSync(iconSource) || !fs.existsSync(graphicSource)) {
 }
 
 const icon512 = render(iconSource, path.join(output, 'icon-512.png'), 512, 512);
+// Capacitor Assets requires raster source files at assets/icon.png and assets/splash.png.
+// Generate them from the approved industrial shuttle mark before Android packaging.
+const capacitorIcon = render(iconSource, path.join(root, 'assets', 'icon.png'), 1024, 1024);
+const capacitorSplash = render(iconSource, path.join(root, 'assets', 'splash.png'), 2732, 2732);
 const icon192 = render(iconSource, path.join(root, 'public', 'shuttle-icon-192.png'), 192, 192);
 const graphic = render(graphicSource, path.join(output, 'feature-graphic-1024x500.png'), 1024, 1024);
 if (graphic.width !== 1024 || graphic.height !== 500) {
@@ -33,4 +37,4 @@ if (graphic.width !== 1024 || graphic.height !== 500) {
 }
 const icon = render(iconSource, path.join(root, 'public', 'shuttle-icon-512.png'), 512, 512);
 if (icon.width !== 512 || icon.height !== 512) throw new Error('PWA icon must be 512x512.');
-console.log(JSON.stringify({ icon512, icon192, icon512Pwa: icon, featureGraphic: graphic }, null, 2));
+console.log(JSON.stringify({ icon512, icon192, icon512Pwa: icon, capacitorIcon, capacitorSplash, featureGraphic: graphic }, null, 2));
