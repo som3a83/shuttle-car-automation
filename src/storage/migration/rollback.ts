@@ -96,7 +96,7 @@ export async function assessMigrationRollback(
     };
   }
   if (sourceFingerprint !== snapshot.sourceFingerprint) {
-    return { eligible: false, reason: 'The preserved local storage source no longer matches the migration fingerprint.', storageMode, activeGeneration, snapshot };
+    return { eligible: false, reason: 'The preserved legacy source no longer matches the migration fingerprint.', storageMode, activeGeneration, snapshot };
   }
 
   return { eligible: true, reason: null, storageMode, activeGeneration, snapshot };
