@@ -189,12 +189,12 @@ export async function acquireMigrationLock(
   const lock = existing?.value;
   if (lock && lock.expires_at > now && lock.ownerToken !== ownerToken) {
     tx.abort();
-    throw new Error(`Migration is locked by another owner until ${new Date(lock.expiresAt).toISOString()}.`);
+    throw new Error(`Migration is locked by another owner until ${new Date(lock.expires_at).toISOString()}.`);
   }
   const next: MigrationLockRecord = {
     migrationId,
     ownerToken,
-    expiresAt,
+    expires_at: expiresAt,
     acquiredAt: lock?.ownerToken === ownerToken ? lock.acquiredAt : new Date(now).toISOString()
   };
   store.put({ key: MIGRATION_LOCK_METADATA_KEY, value: next });
