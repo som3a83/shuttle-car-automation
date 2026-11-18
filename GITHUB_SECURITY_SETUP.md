@@ -4,40 +4,40 @@
 **Default branch:** `main`  
 **Owner:** `som3a83`
 
-This repository is public. The repository API currently reports that `main` has a ruleset named main, but its enforcement is disabled; main is not protected until the rule is enabled and required status checks are configured. The GitHub integration available to this session can manage source files, pull requests and workflow runs, but it does not expose the repository-settings write operation needed to create branch-protection rules or toggle GitHub Advanced Security features. The files and workflows below are committed as code; the settings in sections 1 and 2 require one-time activation in GitHub Settings.
+This repository is public. As checked on 2026-11-18, GitHub reports an active repository ruleset named `main` (ID `27423825`). Its current rules require pull requests and reject non-fast-forward updates. However, the live ruleset does not currently define required status checks, requires zero approvals, does not require a CODEOWNERS review, and does not require review-thread resolution. The default branch therefore has partial protection, not the full protection described below.
+
+The GitHub integration available to this session can manage source files, pull requests and workflow runs. It can read ruleset metadata, but it does not expose a ruleset/branch-protection write action; the branch-protection endpoint also returned an authorization error. The remaining settings must be completed by a repository administrator in GitHub Settings. Do not create a second duplicate ruleset; edit the active `main` ruleset.
 
 ## 1. Protect the main branch
 
-Open **Settings → Branches → Add branch protection rule**.
+Open **Settings → Rules → main** and edit the existing active ruleset.
 
-Set **Branch name pattern** to:
-
-```text
-main
-```
-
-Enable the following:
-
+Keep these existing protections:
 - Require a pull request before merging.
+- Disallow non-fast-forward updates.
+- Keep the bypass list empty.
+
+Add or enable:
 - Require status checks to pass before merging.
 - Require branches to be up to date before merging.
 - Require conversation resolution before merging.
-- Do not allow force pushes.
-- Do not allow deletions.
-- Do not allow bypassing the above settings, after confirming the checks below are stable.
+- Block branch deletion.
+- Require a CODEOWNERS review when a second independent trusted reviewer is available.
 
-Select these exact status checks after they appear on a pull request:
-
+After the checks have appeared on PR #47, select these exact checks as required:
 1. `TypeScript, tests, and production build`
 2. `Android Debug APK & Emulator Smoke Test`
 3. `CodeQL JavaScript/TypeScript`
 4. `Secret Leak Scan`
-5. `Dependency Review` (currently runs with a fallback audit until Dependency Graph is enabled)
+5. `Render and validate parametric CAD`
+6. `Python gateway security and validation tests`
+7. `test` (Phase 2B-1 storage tests)
 
-Do not configure an approval requirement while the repository has only one active maintainer: a pull request author cannot approve their own pull request. Add one independent approval requirement when a second trusted reviewer is available.
+Do not make `Dependency Review` a required check until Dependency Graph is enabled and its action is no longer configured with `continue-on-error: true`. The npm audit is also temporarily non-blocking while the current picomatch advisory has no published patched version. Keep both warnings visible; do not silently suppress them.
 
-Do not protect the active development branch with the same strict rule until a PR and check workflow for that branch is intentionally established. Keep the original V4 backup branch unchanged.
+Do not require a human approval while there is only one active maintainer: the author cannot approve their own pull request. Add one independent approval requirement when a second trusted reviewer is available.
 
+The active ruleset is currently confirmed as active, but the status-check, approval and conversation-resolution gates above are not yet configured.
 ## 2. Enable GitHub security features
 
 Open **Settings → Code security and analysis** (sometimes shown as **Settings → Security → Advanced Security**).
@@ -53,7 +53,7 @@ For this public repository, enable:
 
 The free public-repository availability of these features is documented by GitHub. If GitHub displays an eligibility or plan message, record the unavailable feature and retain the repository workflows as supplementary controls.
 
-**Dependency Review note:** the official review action currently reports that this repository's Dependency Graph is unavailable. Its step is temporarily configured as non-blocking, but its fallback runs a full `npm audit --audit-level=high`; the primary CI also runs this audit as a blocking check. After enabling Dependency Graph in Settings, remove `continue-on-error: true` from the Dependency Review step so delta review becomes a blocking check too.
+**Dependency Review note:** the official review action currently reports that this repository's Dependency Graph is unavailable. Its step is temporarily configured as non-blocking. The primary CI also runs `npm audit --audit-level=high`, but that step is temporarily non-blocking because the current picomatch advisory has no published patched version. The audit output remains visible. After enabling Dependency Graph, remove `continue-on-error: true` from Dependency Review; after an upstream fix is available and applied, make the npm audit blocking again.
 
 ## 3. Actions security
 

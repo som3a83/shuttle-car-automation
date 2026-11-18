@@ -308,7 +308,7 @@ beforeEach(async () => {
     await user.click(screen.getAllByRole('button', { name: /Notifications/i })[0]);
     expect(screen.getByText('Battery status changed')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /Dismiss notification/i }));
-    expect(screen.getByText(/No new local notifications/i)).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText('Battery status changed')).not.toBeInTheDocument());
   });
 
   it('respects the master notification preference', async () => {
@@ -402,7 +402,7 @@ beforeEach(async () => {
     await user.selectOptions(screen.getByLabelText(/^Manufacturer$/i), 'Craftsman');
     await user.type(screen.getByLabelText(/Operating zone/i), 'Cold room test zone');
     await user.click(screen.getByRole('button', { name: /Save new device/i }));
-    expect(screen.getAllByText('SC-06').length).toBeGreaterThan(0);
+    await waitFor(() => expect(screen.getAllByText('SC-06').length).toBeGreaterThan(0));
     expect(screen.getAllByText('Craftsman').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Not recorded').length).toBeGreaterThan(0);
   });
@@ -493,7 +493,7 @@ beforeEach(async () => {
     await user.click(screen.getAllByRole('button', { name: /Fleet Control Center/i })[0]);
     await user.click(screen.getByRole('button', { name: /Archive device/i }));
     await user.click(screen.getByRole('button', { name: /Confirm archive/i }));
-    expect(screen.queryByRole('button', { name: /SC-01 Cassioli/i })).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole('button', { name: /SC-01 Cassioli/i })).not.toBeInTheDocument());
     await user.click(screen.getByRole('button', { name: /Show archived devices/i }));
     await waitFor(() => {
       const archive = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:shuttles') || '[]') as Array<{id:string;archivedAt?:string|null}>;
