@@ -1460,7 +1460,9 @@ function App({ initialData }: { initialData: AppInitialData }) {
         </div>
       </section>}
 
-      {activeTab === 'warehouse' && <ImmersiveWarehouse shuttles={activeShuttles} language={language}/>}\n\n      {activeTab === 'fleet' && <section className="page-content">
+      {activeTab === 'warehouse' && <ImmersiveWarehouse shuttles={activeShuttles} language={language}/>}
+
+      {activeTab === 'fleet' && <section className="page-content">
         <PageIntro eyebrow="ASSET MANAGEMENT / REGISTER" title={t.fleet} subtitle={t.fleetSub}/>
         <div className="fleet-layout">
           <div className="surface-card fleet-list-card">
