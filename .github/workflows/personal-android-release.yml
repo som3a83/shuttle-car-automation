@@ -70,11 +70,11 @@ jobs:
           const versionCode = 6000000 + Number(process.env.GITHUB_RUN_NUMBER);
           const file = 'android/app/build.gradle';
           let gradle = fs.readFileSync(file, 'utf8');
-          if (!/\bversionCode\\s+\\d+/.test(gradle) || !/\bversionName\\s+['"][^'"]+['"]/.test(gradle)) {
+          if (!/\bversionCode\s+\d+/.test(gradle) || !/\bversionName\s+['"][^'"]+['"]/.test(gradle)) {
             throw new Error('Android Gradle version fields were not found');
           }
-          gradle = gradle.replace(/(\bversionCode\\s+)\\d+/, '$1' + versionCode);
-          gradle = gradle.replace(/(\bversionName\\s+)['"][^'"]+['"]/, '$1"6.0.0"');
+          gradle = gradle.replace(/(\bversionCode\s+)\d+/, '$1' + versionCode);
+          gradle = gradle.replace(/(\bversionName\s+)['"][^'"]+['"]/, '$1"6.0.0"');
           fs.writeFileSync(file, gradle);
           console.log('Personal release version: 6.0.0 (' + versionCode + ')');
           NODE
