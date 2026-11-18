@@ -528,6 +528,26 @@ export default function SecurityCenter({
       <code className="temporary-password-value">{temporaryPasswordNotice.password}</code>
       <button className="btn-secondary" type="button" onClick={() => setTemporaryPasswordNotice(null)}>{ar ? 'إخفاء كلمة المرور' : 'Dismiss temporary password'}</button>
     </section>}
+    {isAdministrator && securityTab === 'storage' && <section className="security-storage-management" aria-label={ar ? 'إدارة التخزين' : 'Storage Management'}>
+      <div className="surface-card security-storage-intro">
+        <span className="eyebrow">LOCAL DATABASE / CONTROLLED OPERATIONS</span>
+        <h3>{ar ? 'إدارة محرك التخزين والترحيل العكسي' : 'Storage engine and reverse migration'}</h3>
+        <p>{ar ? 'لا يبدأ الترحيل تلقائيًا. إنشاء النسخة الاحتياطية وبدء الترحيل والرجوع العكسي إجراءات يدوية موثقة للمسؤول.' : 'Migration is never automatic. Backup creation, migration start and reverse migration are explicit administrator-triggered actions.'}</p>
+      </div>
+      <StorageMigrationPanel
+        language={language}
+        canMigrate={isSuperAdmin && canPerformAction(currentUser, 'settings.manage')}
+        beforeBackup={beforeStorageOperation}
+        onLockChange={onStorageLockChange}
+        onMigrationComplete={onStorageMigrationComplete}
+      />
+      <StorageMigrationRollbackPanel
+        language={language}
+        canRollback={isSuperAdmin && canPerformAction(currentUser, 'storage.rollback')}
+        beforeRollback={beforeStorageOperation}
+      />
+    </section>}
+
     {isAdministrator && securityTab === 'audit' && <section className="surface-card security-audit-list">
       <div className="card-head"><div><span className="eyebrow">AUDIT LEDGER / ARCHIVES / EXPORT</span><h3>{ar ? 'سجل التدقيق والأرشيف' : 'Audit ledger & archives'}</h3></div><span className="counter">{recentAudit.length} / {auditRecords.length}</span></div>
       <div className="audit-toolbar">
@@ -546,8 +566,8 @@ export default function SecurityCenter({
         : 'Archives and active events are stored on this device. JSON export contains archive manifests and hash chains. Local retention remains limited by browser storage quota and is not centralized storage.'}</p>
     </section>}
 
-    <div className="notice-inline"><span>ⓘ</span>{ar
+    {(!isAdministrator || securityTab === 'settings') && <div className="notice-inline"><span>ⓘ</span>{ar
       ? 'تنبيه: هذا نظام هوية محلي على الجهاز نفسه. لا يوفر إدارة مركزية أو استعادة حسابات أو صلاحيات خادمية؛ يجب استخدام خادم هوية وصلاحيات خلفية قبل نشر متعدد المستخدمين أو عبر الشبكة.'
-      : 'Security boundary: this is device-local identity only. It does not provide centralized identity, remote revocation or server-side authorization. A shared or networked deployment requires a trusted identity provider and backend permission enforcement.'}</div>
+      : 'Security boundary: this is device-local identity only. It does not provide centralized identity, remote revocation or server-side authorization. A shared or networked deployment requires a trusted identity provider and backend permission enforcement.'}</div>}
   </div>;
 }
