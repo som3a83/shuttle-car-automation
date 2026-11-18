@@ -31,6 +31,7 @@ describe('complete legacy localStorage migration backup', () => {
       source: 'window.localStorage',
       recordCount: 3
     });
+    expect(backup.migrationSourceFingerprint).toMatch(/^[a-f0-9]{64}$/);
     expect(backup.records).toEqual([
       { key: 'private.audit.marker', value: '{"pending":true}' },
       { key: 'shuttle-car-automation-v1:local-accounts', value: '[{"username":"operator"}]' },
