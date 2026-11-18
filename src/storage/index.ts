@@ -591,6 +591,15 @@ export function createStagingContext(generationId: string, migrationId = generat
   };
 }
 
+/**
+ * Return the single configured backend instance shared by all async application subsystems.
+ * Callers must not construct a separate LegacyFallbackEngine: doing so would bypass
+ * the selected IndexedDB/legacy/recovery mode and split application records across stores.
+ */
+export async function getStorageEngine(): Promise<StorageEngine> {
+  return engine();
+}
+
 export async function getMode(): Promise<StorageMode> {
   try { return await (await engine()).getMode(); }
   catch (error) { if (error instanceof StorageError) throw error; fail('STORAGE_TRANSACTION_FAILED', 'The storage mode could not be determined.'); }
