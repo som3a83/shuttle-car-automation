@@ -1,4 +1,5 @@
 import { importDefaultForMissing, importMappedLegacyKey, OPERATIONAL_LEGACY_KEY_MAP, type AdapterResult, type LegacyReadStorage } from './legacyKeyMap';
+import type { MigrationStorageContext } from '../index';
 import type { AppSettings, Language, Theme } from '../../types';
 
 type OperationalLegacyKey = (typeof OPERATIONAL_LEGACY_KEY_MAP)[number]['legacyKey'];
@@ -84,21 +85,24 @@ function isOperationalValue(legacyKey: OperationalLegacyKey, value: unknown): bo
 
 export async function importOperationalKey(
   legacyKey: OperationalLegacyKey,
-  legacyStorage: LegacyReadStorage = globalThis.localStorage
+  legacyStorage: LegacyReadStorage = globalThis.localStorage,
+  context?: MigrationStorageContext
 ): Promise<AdapterResult> {
   const result = await importMappedLegacyKey(
     legacyKey,
     (value): value is unknown => isOperationalValue(legacyKey, value),
     legacyStorage,
     undefined,
-    'operational'
+    'operational',
+    context
   );
-  return importDefaultForMissing(result, OPERATIONAL_DEFAULTS[legacyKey]);
+  return importDefaultForMissing(result, OPERATIONAL_DEFAULTS[legacyKey], context);
 }
 
 /** Imports the twelve operational compatibility keys in a deterministic order. */
 export async function importOperationalData(
-  legacyStorage: LegacyReadStorage = globalThis.localStorage
+  legacyStorage: LegacyReadStorage = globalThis.localStorage,
+  context?: MigrationStorageContext
 ): Promise<AdapterResult[]> {
   /**
    * ATOMICITY CONSTRAINT (2B-4 dependency):
@@ -125,7 +129,7 @@ export async function importOperationalData(
    */
   const results: AdapterResult[] = [];
   for (const entry of OPERATIONAL_LEGACY_KEY_MAP) {
-    results.push(await importOperationalKey(entry.legacyKey, legacyStorage));
+    results.push(await importOperationalKey(entry.legacyKey, legacyStorage, context));
   }
   return results;
 }
