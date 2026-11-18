@@ -61,17 +61,15 @@ export const AUDIT_ARCHIVE_PENDING_KEY = 'shuttle-car-automation-v1:audit-archiv
 export const AUDIT_GENESIS_HASH = 'GENESIS';
 export const MAX_RECORDS = 5000;
 let appendQueue: Promise<unknown> = Promise.resolve();
-// Keep the async audit layer on legacy storage until the application bootstrap
-// switches the whole application from the compatibility mode. Load the engine
-// only when an async audit operation is invoked; sync node:test consumers stay
-// independent from the browser storage module graph.
+// Use the single configured application backend so audit records migrate together
+// with operational records. Lazy loading keeps synchronous Node test consumers isolated.
 type AsyncAuditEngine = import('../storage/index.ts').StorageEngine;
 let asyncAuditEnginePromise: Promise<AsyncAuditEngine> | null = null;
 
 async function getAsyncAuditEngine(): Promise<AsyncAuditEngine> {
   if (!asyncAuditEnginePromise) {
     asyncAuditEnginePromise = import('../storage/index.ts').then(
-      ({ LegacyFallbackEngine }) => new LegacyFallbackEngine()
+      ({ getStorageEngine }) => getStorageEngine()
     );
   }
   return asyncAuditEnginePromise;
