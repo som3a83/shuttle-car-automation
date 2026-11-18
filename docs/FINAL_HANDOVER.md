@@ -7,7 +7,7 @@ This document is a sign-off record, not a substitute for GitHub evidence. Comple
 - [x] PR #57 merged and verified on `main`.
 - [x] PR #58 merged and verified on `main`.
 - [x] PR #59 merged and verified on `main`.
-- [ ] PR #60 merged and verified on `main` (this final handover is delivered by PR #60).
+- [x] PR #60 merged and verified on `main` (final release closure).
 - [x] Earlier superseded PR #54 closed as superseded by PR #56.
 - [ ] No required implementation commit or release file remains only on an unmerged branch.
 - [ ] Final `main` working tree is the only release source.
