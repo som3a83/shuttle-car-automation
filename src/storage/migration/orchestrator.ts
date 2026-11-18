@@ -305,6 +305,15 @@ async function runMigration(options: MigrationOptions): Promise<MigrationResult>
     ensureResultsSuccessful(customization);
     journal = await updateProgress(journal, results.length, nowProvider(), migrationId, ownerToken);
     completedKeyCount = results.length;
+    const sourceByKey: Record<string, 'legacy' | 'default'> = {};
+    for (const definition of listImportableLegacyKeys()) {
+      if (definition.targetKey) {
+        sourceByKey[definition.targetKey] =
+          legacyStorage.getItem(definition.legacyKey) === null ? 'default' : 'legacy';
+      }
+    }
+    journal = { ...journal, sourceByKey, updatedAt: nowProvider().toISOString() };
+    await saveMigrationJournal(journal);
 
     if (results.length !== MIGRATION_KEY_ORDER.length ||
         results.some((result, index) => result.key !== MIGRATION_KEY_ORDER[index])) {
