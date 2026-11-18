@@ -57,7 +57,7 @@ export function openMigrationDatabase(): Promise<IDBDatabase> {
     return Promise.reject(new Error('IndexedDB is unavailable; migration cannot use a fallback store.'));
   }
   if (!databasePromise) {
-    databasePromise = new Promise((resolve, reject) => {
+    databasePromise = new Promise<IDBDatabase>((resolve, reject) => {
       const request = indexedDB.open(DB_NAME, DB_VERSION);
       request.onupgradeneeded = () => {
         const db = request.result;
@@ -81,7 +81,7 @@ export function openMigrationDatabase(): Promise<IDBDatabase> {
       throw error;
     });
   }
-  return databasePromise;
+  return databasePromise!;
 }
 
 export async function closeMigrationDatabaseForTesting(): Promise<void> {
