@@ -144,10 +144,9 @@ Use this explorer to confirm that a machine or vendor gateway actually exposes B
 ## Not yet implemented as built-in drivers
 
 - Bluetooth Classic / RFCOMM is not supported by the BLE GATT plugin and needs a separate Android native Classic serial implementation plus device pairing and protocol specification.
-- Modbus RTU is now implemented as a generic read-only Linux serial adapter; it still requires a real serial/RS-485 interface and exact OEM-approved register map.
-- OPC UA and MQTT now have generic read-only adapters; MQTT uses a secure subscriber OPC UA, REST, WebSocket, S7, EtherNet/IP, PROFINET and CANopen still require separate protocol adapters and tested dependencies.
-- USB serial has a Modbus RTU edge-gateway adapter path when used with a compatible serial/RS-485 converter; native direct USB from the Android phone is not implemented.
-- Industrial RF requires the exact vendor radio receiver/gateway, frequency, modulation, pairing, encryption and application protocol. A phone cannot generically decode proprietary RF traffic.
+- REST API and WebSocket need dedicated read-only HTTP/WebSocket adapters with per-vendor authentication and payload schemas.
+- Siemens S7, EtherNet/IP, PROFINET and CANopen need separately reviewed and tested drivers for the exact PLC/controller family and firmware.
+- Native direct USB serial from the Android phone is not implemented. USB-to-RS-485/RS-232 is supported through the Linux edge-gateway Modbus RTU adapter.
 - Industrial RF requires the exact vendor radio receiver/gateway, frequency, modulation, pairing, encryption and application protocol. A phone cannot generically decode proprietary RF traffic.
 - Vendor SDK/API and proprietary drivers require the vendor's official documentation, credentials and explicit third-party read-only authorization.
 
