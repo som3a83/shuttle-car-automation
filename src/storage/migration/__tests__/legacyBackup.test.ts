@@ -48,6 +48,10 @@ describe('complete legacy localStorage migration backup', () => {
       { key: 'shuttle-car-automation-v7:shuttles', value: '[{"id":"SC-01"}]' }
     ]);
     expect(backup.sha256).toMatch(/^[a-f0-9]{64}$/);
+    const { sha256, ...payload } = backup;
+    const digest = await webcrypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(payload)));
+    const expectedDigest = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
+    expect(sha256).toBe(expectedDigest);
   });
 
   it('fails closed if a key disappears while the backup is being read', async () => {
