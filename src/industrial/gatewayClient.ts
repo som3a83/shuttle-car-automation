@@ -130,7 +130,8 @@ export async function fetchGatewayTelemetry(url: string, token: string, assetId:
 }
 export function getGatewaySampleState(sample: GatewaySample, now = Date.now(), maxAgeMs = 15_000): GatewayDisplayState {
   if (sample.value === null || sample.quality === 'NOT_CONFIGURED') return 'UNAVAILABLE';
-  if (sample.provenance !== 'LIVE_VENDOR' || !sample.adapterId || !sample.adapterVersion) return 'UNVERIFIED';
+  if (sample.provenance !== 'LIVE_VENDOR' || !sample.adapterId || !sample.adapterVersion ||
+      sample.transport === 'unknown' || sample.protocol === 'unknown') return 'UNVERIFIED';
   if (sample.quality !== 'GOOD' || !sample.sourceTimestamp) return sample.quality === 'STALE' ? 'STALE' : 'UNVERIFIED';
   const source = Date.parse(sample.sourceTimestamp);
   const received = Date.parse(sample.receivedAt);
