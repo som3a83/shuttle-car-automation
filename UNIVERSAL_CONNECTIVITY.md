@@ -79,6 +79,12 @@ The asset's `transports` list must include the selected transport (for example `
 
 Set `SHUTTLE_ADAPTER_FACTORY=adapters.rest_api:create_adapter`. Configure `base_url`, `allowed_hosts` for DNS, `transport`, protected `bearer_token` or Basic credentials, and an `endpoints` map whose keys exactly match `allowed_tags`. Use only vendor-documented GET routes and payload paths.
 
+### Generic WebSocket push client — secure, read only
+
+`industrial-gateway/adapters/websocket_stream.py` connects to a vendor/gateway WSS endpoint that pushes JSON telemetry frames without requiring a client subscription command. It validates the approved origin, TLS certificate and hostname, supports protected bearer or Basic credentials, bounds frame size and timeout, and accepts only registered tags with timezone-aware source timestamps. It never sends application data frames or machine-control commands.
+
+Set `SHUTTLE_ADAPTER_FACTORY=adapters.websocket_stream:create_adapter`. Configure the WSS `url`, `allowed_hosts` for a DNS name, `transport`, protected credentials, and `units` for approved tags. Incoming frames must use the documented shape `{"tag":"battery.soc","value":78.2,"unit":"%","sourceTimestamp":"2026-11-18T16:00:00Z","quality":"GOOD"}`. Gateways requiring a proprietary subscribe message or binary payload decoder need a manufacturer-specific adapter.
+
 ### Generic OPC UA client — secure, read only
 
 `industrial-gateway/adapters/opc_ua.py` adds a generic OPC UA client for any shuttle controller or upstream WCS/gateway that exposes documented OPC UA nodes. It uses `opc.tcp://host:port`, a pinned server certificate, a client certificate/private key and `Basic256Sha256,SignAndEncrypt`. A vendor-approved read-only account can also be configured. The exact node map must match the asset's `allowed_tags`; each returned `DataValue` must have a good status and a timezone-aware `SourceTimestamp`. No writes, method calls or control endpoints are included.
