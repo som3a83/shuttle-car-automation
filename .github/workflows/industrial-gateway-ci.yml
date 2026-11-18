@@ -37,7 +37,7 @@ jobs:
           python-version: "3.12"
       - name: Compile gateway source
         working-directory: industrial-gateway
-        run: python -m py_compile gateway.py adapter_contract.py adapter_runner.py adapters/__init__.py adapters/modbus_tcp.py test_gateway.py test_adapter_runner.py test_modbus_tcp_adapter.py
+        run: python -m py_compile gateway.py adapter_contract.py adapter_runner.py adapters/__init__.py adapters/modbus_tcp.py adapters/modbus_rtu.py test_gateway.py test_adapter_runner.py test_modbus_tcp_adapter.py test_modbus_rtu_adapter.py
       - name: Run gateway validation tests
         working-directory: industrial-gateway
         run: python -m unittest -v
