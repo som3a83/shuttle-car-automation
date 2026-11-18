@@ -195,8 +195,8 @@ export interface AppInitialData {
 /**
  * Runs only after operational bootstrap/recovery has completed. All synchronous
  * compatibility reads are deliberately contained here, before App is mounted.
- * TODO(2B-4): async auth/audit/customization modules still construct LegacyFallbackEngine;
- * route those APIs through storage/index.ts before enabling IndexedDB across the whole application.
+ * Async identity, audit and customization consumers share the configured backend through
+ * getStorageEngine(); explicit IndexedDB migration remains opt-in until the admin confirms backup.
  */
 export async function hydrateApplicationState(): Promise<AppInitialData> {
   const [session, accounts, customization] = await Promise.all([
