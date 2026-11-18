@@ -4,7 +4,7 @@ A small Python-standard-library edge service for the Shuttle Car Automation appl
 
 ## Current commissioning state
 
-The example asset register contains the currently known five fleet identities, but the gateway itself is manufacturer-agnostic: any non-empty manufacturer and exact model/firmware can be registered. Every example asset remains disabled and uncommissioned by default. A live asset must declare approved `transports`, `protocols`, adapter identity and allowed tags. This is intentional.
+The example asset register contains the currently known five fleet identities, but the gateway itself is manufacturer-agnostic: any non-empty manufacturer and exact model/firmware can be registered. Every example asset remains disabled and uncommissioned by default. A live asset must declare approved `transports`, `protocols`, adapter identity and allowed tags. This is intentional. **Every adapter in this repository is a reference adapter, NOT commissioned on real hardware.** Tests use local simulators, mock clients or PTYs only; no installed shuttle has been connected.
 
 The gateway cannot produce real telemetry until a qualified integrator obtains the manufacturer's documentation, configures a compatible adapter, fills in the asset register and commissions the read-only path against the physical HMI. This branch includes generic read-only Modbus TCP and Modbus RTU serial adapters; both require the exact OEM-approved register map. It does not include manufacturer-specific register maps or drivers for proprietary interfaces. See `../UNIVERSAL_CONNECTIVITY.md` for the exact status of each connection family.
 
