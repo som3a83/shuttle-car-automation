@@ -493,7 +493,7 @@ beforeEach(async () => {
     await user.click(screen.getAllByRole('button', { name: /Fleet Control Center/i })[0]);
     await user.click(screen.getByRole('button', { name: /Archive device/i }));
     await user.click(screen.getByRole('button', { name: /Confirm archive/i }));
-    expect(screen.queryByRole('button', { name: /SC-01 Cassioli/i })).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole('button', { name: /SC-01 Cassioli/i })).not.toBeInTheDocument());
     await user.click(screen.getByRole('button', { name: /Show archived devices/i }));
     await waitFor(() => {
       const archive = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:shuttles') || '[]') as Array<{id:string;archivedAt?:string|null}>;
