@@ -73,6 +73,39 @@ Configure the gateway environment:
 
 The asset's `transports` list must include the selected transport (for example `ethernet` or `wifi`) and its `protocols` list must include `modbus-tcp`. The adapter declares the selected path for every reading; the gateway rejects readings from undeclared transports or protocols and persists those fields with the sample.
 
+### Generic Modbus RTU over RS-232 / RS-485 / USB serial — read only
+
+`industrial-gateway/adapters/modbus_rtu.py` adds a Linux edge-gateway serial adapter using Modbus RTU function codes 3 and 4 only. It validates frame CRC, unit ID, function code and response byte count, with bounded serial timeouts and an exact approved register map. It supports 8 data bits, N/E/O parity, 1 or 2 stop bits, and common baud rates from 1200 to 115200.
+
+Configure `SHUTTLE_ADAPTER_FACTORY=adapters.modbus_rtu:create_adapter` and store the serial settings in the protected gateway settings file. A production path must be a stable `/dev/serial/by-id/`, `/dev/ttyUSB*` or `/dev/ttyACM*` device. Pseudo-terminals are accepted only by isolated tests. For RS-485, use an isolated, correctly rated USB-RS485 adapter with automatic direction control or a vendor-approved interface; confirm biasing, termination, grounding and cable topology with the site electrical engineer.
+
+Example protected serial settings:
+
+```json
+{
+  "device": "/dev/serial/by-id/usb-Approved_Isolated_RS485_Adapter",
+  "transport": "rs485",
+  "baudrate": 9600,
+  "parity": "N",
+  "stopbits": 1,
+  "unit_id": 1,
+  "timeout_seconds": 1.5,
+  "register_map": {
+    "battery.soc": {
+      "address": 100,
+      "register_type": "holding",
+      "data_type": "uint16",
+      "byte_order": "AB",
+      "scale": 0.1,
+      "offset": 0,
+      "unit": "%"
+    }
+  }
+}
+```
+
+The selected asset must explicitly allow `rs485` or `usb-serial` as its transport and `modbus-rtu` as its protocol. The map must come from the exact manufacturer's approved documentation. Never guess Modbus addresses.
+
 ## Generic Bluetooth LE GATT explorer
 
 The Android/iOS application now includes a native BLE central-role explorer using the Capacitor 8-compatible `@capacitor-community/bluetooth-le` plugin. It can scan nearby BLE advertisements, connect to a selected peripheral, discover exposed GATT services/characteristics, read characteristics that advertise the read property, and subscribe to notify/indicate characteristics. Raw bytes are shown as HEX. The explorer contains no characteristic-write functions and does not decode unknown payloads into shuttle state or battery measurements.
@@ -82,9 +115,9 @@ Use this explorer to confirm that a machine or vendor gateway actually exposes B
 ## Not yet implemented as built-in drivers
 
 - Bluetooth Classic / RFCOMM is not supported by the BLE GATT plugin and needs a separate Android native Classic serial implementation plus device pairing and protocol specification.
-- Modbus RTU / RS-485 requires a serial-interface adapter and an approved serial device configuration.
+- Modbus RTU is now implemented as a generic read-only Linux serial adapter; it still requires a real serial/RS-485 interface and exact OEM-approved register map.
 - OPC UA, MQTT, REST, WebSocket, S7, EtherNet/IP, PROFINET and CANopen require separate protocol adapters and tested dependencies.
-- USB serial needs a native USB host/serial implementation and exact device/baud/framing configuration.
+- USB serial has a Modbus RTU edge-gateway adapter path when used with a compatible serial/RS-485 converter; native direct USB from the Android phone is not implemented.
 - Industrial RF requires the exact vendor radio receiver/gateway, frequency, modulation, pairing, encryption and application protocol. A phone cannot generically decode proprietary RF traffic.
 - Industrial RF requires the exact vendor radio receiver/gateway, frequency, modulation, pairing, encryption and application protocol. A phone cannot generically decode proprietary RF traffic.
 - Vendor SDK/API and proprietary drivers require the vendor's official documentation, credentials and explicit third-party read-only authorization.
