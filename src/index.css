@@ -1281,3 +1281,29 @@ button,select,input,textarea { touch-action:manipulation; }
   .storage-migration-blocker-card { padding: 18px 14px; }
   .storage-migration-blocker-card button { width: 100%; }
 }
+
+/* Storage Management in Security Center — administrator-only controls. */
+.security-management-tabs{display:flex;flex-wrap:wrap;gap:7px;padding:6px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2)}
+.security-management-tabs button{flex:1 1 120px;min-height:40px;padding:8px 12px;border:1px solid transparent;border-radius:7px;background:transparent;color:var(--muted);font-size:10px;font-weight:750;transition:background 160ms ease,border-color 160ms ease,color 160ms ease}
+.security-management-tabs button.selected{border-color:rgba(6,182,212,.42);background:rgba(6,182,212,.11);color:var(--cyan,#06b6d4)}
+.security-management-tabs button:focus-visible{outline:2px solid var(--cyan,#06b6d4);outline-offset:2px}
+.security-storage-management{display:grid;gap:14px;min-width:0}
+.security-storage-intro{display:grid;gap:7px}
+.security-storage-intro h3,.security-storage-intro p{margin:0}
+.security-storage-intro p{color:var(--muted);font-size:11px;line-height:1.75}
+.storage-migration-lifecycle{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:12px 0}
+.storage-migration-lifecycle>div{display:grid;gap:5px;min-width:0;padding:11px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2);transition:border-color 160ms ease,background 160ms ease}
+.storage-migration-lifecycle>div.is-done{border-color:rgba(16,185,129,.38);background:rgba(16,185,129,.06)}
+.storage-migration-lifecycle>div.is-active{border-color:rgba(6,182,212,.45);background:rgba(6,182,212,.08)}
+.storage-migration-lifecycle strong{font-size:10px}
+.storage-migration-lifecycle small{color:var(--muted);font-size:9px;line-height:1.55}
+.storage-migration-progress{display:flex;align-items:flex-start;gap:11px;margin:10px 0;padding:12px;border:1px solid rgba(6,182,212,.3);border-radius:9px;background:rgba(6,182,212,.06)}
+.storage-migration-progress p{margin:4px 0 0;color:var(--muted);font-size:10px;line-height:1.6}
+.storage-migration-progress-spinner{width:17px;height:17px;flex:none;border:2px solid rgba(6,182,212,.22);border-top-color:var(--cyan,#06b6d4);border-radius:50%;animation:storage-spin 900ms linear infinite}
+@keyframes storage-spin{to{transform:rotate(360deg)}}
+.storage-migration-retention,.storage-migration-recovery{display:grid;gap:5px;margin:10px 0;padding:11px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2);font-size:10px;line-height:1.7}
+.storage-migration-retention p,.storage-migration-recovery p{margin:0;color:var(--muted)}
+.storage-migration-recovery{border-color:rgba(245,158,11,.32);background:rgba(245,158,11,.06)}
+.security-storage-management .storage-migration-panel,.security-storage-management .storage-rollback-panel{min-width:0}
+@media(max-width:760px){.security-management-tabs button{flex:1 1 calc(50% - 7px);min-height:42px}.storage-migration-lifecycle{grid-template-columns:1fr;gap:7px}.storage-migration-lifecycle>div{grid-template-columns:1fr;}}
+@media(prefers-reduced-motion:reduce){.security-management-tabs button,.storage-migration-lifecycle>div,.storage-rollback-progress-track span{transition:none}.storage-migration-progress-spinner{animation:none}}
