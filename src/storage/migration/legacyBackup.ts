@@ -47,6 +47,23 @@ export async function createLegacyStorageBackup(
     records.push({ key, value });
   }
 
+  // Recheck key membership and values so a concurrent tab cannot silently produce
+  // a backup assembled from two different points in time.
+  const keysAfter: string[] = [];
+  for (let index = 0; index < storage.length; index += 1) {
+    const key = storage.key(index);
+    if (key !== null) keysAfter.push(key);
+  }
+  keysAfter.sort((left, right) => left.localeCompare(right));
+  if (keysAfter.length !== keys.length || keysAfter.some((key, index) => key !== keys[index])) {
+    throw new Error('Local storage changed while creating the backup. Retry before migrating.');
+  }
+  for (const record of records) {
+    if (storage.getItem(record.key) !== record.value) {
+      throw new Error(`Local storage changed while creating the backup (key: ${record.key}). Retry before migrating.`);
+    }
+  }
+
   const payload = {
     format: 'shuttle-legacy-storage-backup' as const,
     schemaVersion: 1 as const,
