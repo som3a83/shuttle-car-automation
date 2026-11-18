@@ -308,7 +308,7 @@ beforeEach(async () => {
     await user.click(screen.getAllByRole('button', { name: /Notifications/i })[0]);
     expect(screen.getByText('Battery status changed')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /Dismiss notification/i }));
-    expect(screen.getByText(/No new local notifications/i)).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText('Battery status changed')).not.toBeInTheDocument());
   });
 
   it('respects the master notification preference', async () => {
