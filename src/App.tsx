@@ -393,7 +393,7 @@ function App({ initialData }: { initialData: AppInitialData }) {
   const [viewResetKey, setViewResetKey] = useState(0);
   const [selectedPart, setSelectedPart] = useState<EngineeringPart>('chassis');
   const [exploded, setExploded] = useState(false);
-  const [animated, setAnimated] = useState(true);
+  const [animated, setAnimated] = useState(false);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [mobileNav, setMobileNav] = useState(false);
@@ -1459,12 +1459,12 @@ function App({ initialData }: { initialData: AppInitialData }) {
         <PageIntro eyebrow="MECHANICAL INTELLIGENCE / DIGITAL SCHEMATIC" title={t.engineering} subtitle={t.engineeringSub}/>
         <div className="engineering-workspace">
           <div className="surface-card model-stage">
-            <div className="model-toolbar"><div className="asset-select"><label>{t.selectAsset}</label><select value={selectedId} onChange={e=>setSelectedId(e.target.value)}>{activeShuttles.map(s=><option key={s.id} value={s.id}>{s.id} — {s.manufacturer}</option>)}</select></div><div className="model-tools"><button className={exploded?'tool-active':''} onClick={()=>setExploded(!exploded)}><Icon name="settings" size={15}/>{t.exploded}</button><button className={animated?'tool-active':''} onClick={()=>setAnimated(!animated)}><Icon name="grid" size={15}/>{animated?t.stop:t.animate}</button><button onClick={()=>{setModelView('iso');setModelZoom(1);setViewResetKey(value=>value+1);}}>{language==='ar'?'إعادة ضبط المنظور':'Reset view'}</button></div></div>
+            <div className="model-toolbar"><div className="asset-select"><label>{t.selectAsset}</label><select value={selectedId} onChange={e=>setSelectedId(e.target.value)}>{activeShuttles.map(s=><option key={s.id} value={s.id}>{s.id} — {s.manufacturer}</option>)}</select></div><div className="model-tools"><button className={exploded?'tool-active':''} onClick={()=>setExploded(!exploded)}><Icon name="settings" size={15}/>{t.exploded}</button><button className={selected.status === 'Running' && animated ? 'tool-active' : ''} disabled={selected.status !== 'Running'} title={selected.status !== 'Running' ? (language === 'ar' ? 'المحاكاة متاحة فقط عندما تكون الحالة المسجلة قيد التشغيل' : 'Motion simulation is available only when the recorded state is Running') : (language === 'ar' ? 'محاكاة بصرية فقط — لا تتحكم في المعدة' : 'Visual simulation only — does not control the equipment')} onClick={()=>setAnimated(!animated)}><Icon name="grid" size={15}/>{selected.status !== 'Running' ? (language === 'ar' ? 'الحركة متوقفة للحالة الحالية' : 'Motion locked · not Running') : animated?t.stop:t.animate}</button><button onClick={()=>{setModelView('iso');setModelZoom(1);setViewResetKey(value=>value+1);}}>{language==='ar'?'إعادة ضبط المنظور':'Reset view'}</button></div></div>
             <div className="view-tabs">{(['iso','side','front','top'] as ModelView[]).map(v=><button key={v} className={modelView===v?'active':''} onClick={()=>setModelView(v)}>{t[v]}</button>)}</div>
             <div className="model-canvas three-model-canvas">
                <div className="canvas-topline"><span>ORTHOGRAPHIC 3D REFERENCE: {selected.manufacturer.toUpperCase()} / {selected.id}</span><span>REFERENCE GEOMETRY · NOT OEM CAD</span></div>
                <Suspense fallback={<div className="viewer-loading" role="status">{language==='ar'?'جارٍ تحميل النموذج الهندسي ثلاثي الأبعاد…':'Loading 3D engineering model…'}</div>}>
-                 <Shuttle3DViewer manufacturer={selected.manufacturer} shuttleId={selected.id} status={selected.status} view={modelView} exploded={exploded} animated={animated} selectedPart={selectedPart} zoom={modelZoom} resetKey={viewResetKey} onSelectPart={setSelectedPart} fallback={<ShuttleModel shuttle={selected} view={modelView} exploded={exploded} animated={animated}/>}/>
+                 <Shuttle3DViewer manufacturer={selected.manufacturer} shuttleId={selected.id} status={selected.status} view={modelView} exploded={exploded} animated={animated} selectedPart={selectedPart} zoom={modelZoom} resetKey={viewResetKey} onSelectPart={setSelectedPart} fallback={<ShuttleModel shuttle={selected} view={modelView} exploded={exploded} animated={animated && selected.status === 'Running'}/>}/>
                </Suspense>
                <div className="canvas-bottomline"><span><i className="legend-dot" style={{background:selected.manufacturer==='Cassioli'?'#d28b4b':selected.manufacturer==='Craftsman'?'#45b8d2':'#a58af5'}}/>{selected.manufacturer}</span><span><i className="legend-dot" style={{background:'#75d6ff'}}/>Sensors</span><span><i className="legend-dot" style={{background:'#7bd9a9'}}/>Battery module</span></div>
              </div>
