@@ -452,7 +452,7 @@ function App({ initialData }: { initialData: AppInitialData }) {
   const dashboardWidgets = customization.dashboard
     .filter((widget) => widget.visible)
     .sort((a, b) => a.order - b.order);
-  const activeShuttles = shuttles.filter(s => !s.archivedAt);
+  const activeShuttles = useMemo(() => shuttles.filter(s => !s.archivedAt), [shuttles]);
   const archivedShuttles = shuttles.filter(s => Boolean(s.archivedAt));
   const activeBatteries = batteries.filter(b => !b.archivedAt);
   const archivedBatteries = batteries.filter(b => Boolean(b.archivedAt));
