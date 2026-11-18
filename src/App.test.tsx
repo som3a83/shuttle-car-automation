@@ -602,18 +602,26 @@ beforeEach(async () => {
       expect(persisted).toHaveLength(1);
     });
     const cancelSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
-    await user.click(screen.getAllByRole('button', { name: /^Delete$/i })[0]);
-    cancelSpy.mockRestore();
+    try {
+      await user.click(screen.getAllByRole('button', { name: /^Delete$/i })[0]);
+      await waitFor(() => expect(cancelSpy).toHaveBeenCalledTimes(1));
+    } finally {
+      cancelSpy.mockRestore();
+    }
     let saved = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:dailyReports') || '[]') as Array<{id:string}>;
     expect(saved).toHaveLength(1);
 
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
-    await user.click(screen.getByRole('button', { name: /^Delete$/i }));
-    confirmSpy.mockRestore();
-    await waitFor(() => {
-      saved = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:dailyReports') || '[]') as Array<{id:string}>;
-      expect(saved).toHaveLength(0);
-    });
+    try {
+      await user.click(screen.getByRole('button', { name: /^Delete$/i }));
+      await waitFor(() => expect(confirmSpy).toHaveBeenCalledTimes(1));
+      await waitFor(() => {
+        saved = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:dailyReports') || '[]') as Array<{id:string}>;
+        expect(saved).toHaveLength(0);
+      });
+    } finally {
+      confirmSpy.mockRestore();
+    }
     await waitFor(() => expect(screen.queryByText(/LATEST SAVED DAILY REPORT/i)).not.toBeInTheDocument());
   });
 
