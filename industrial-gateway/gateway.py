@@ -150,7 +150,7 @@ def validate_ingest(payload: Any, config: dict[str, Any]) -> dict[str, Any]:
     if not asset:
         raise GatewayError(403, "assetId is not present in the approved asset register.")
     if not commissioned(asset):
-        raise GatewayError(409, f"{asset_id} is not commissioned; exact model, firmware, adapter and tag map are required.")
+        raise GatewayError(409, f"{asset_id} is not commissioned; exact model, firmware, adapter, transport, protocol and tag map are required.")
     if payload.get("manufacturer") != asset["manufacturer"]:
         raise GatewayError(403, "Manufacturer does not match the commissioned asset.")
     if payload.get("adapterId") != asset["adapter_id"]:
