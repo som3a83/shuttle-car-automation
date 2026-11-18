@@ -263,7 +263,8 @@ async function runMigration(options: MigrationOptions): Promise<MigrationResult>
       return resultFrom(migrationId, journal.state, journal.completedKeyCount);
     }
 
-    if (journal.previousGeneration !== activeGeneration) {
+    const previousGeneration = journal.previousGeneration ?? activeGeneration;
+    if (previousGeneration !== activeGeneration) {
       throw new Error('The active generation no longer matches the migration pre-flight snapshot.');
     }
     if (journal.state === MigrationState.COMMITTED_PENDING_MODE_SWITCH) {
@@ -342,7 +343,7 @@ async function runMigration(options: MigrationOptions): Promise<MigrationResult>
     await switchActiveGeneration({
       migrationId,
       ownerToken,
-      previousGeneration: journal.previousGeneration,
+      previousGeneration,
       nextGeneration: journal.stagingGeneration,
       expectedKeys: MIGRATION_KEY_ORDER,
       journal,
