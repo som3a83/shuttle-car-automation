@@ -89,12 +89,9 @@ export const CUSTOMIZATION_AUDIT_KEY = 'shuttle-car-automation-v7:customization-
 // legacy synchronous functions remain usable from the native Node test runner.
 type AsyncCustomizationEngine = import('../storage/index.ts').StorageEngine;
 let asyncCustomizationEnginePromise: Promise<AsyncCustomizationEngine> | null = null;
-
 async function getAsyncCustomizationEngine(): Promise<AsyncCustomizationEngine> {
   if (!asyncCustomizationEnginePromise) {
-    asyncCustomizationEnginePromise = import('../storage/index.ts').then(
-      ({ LegacyFallbackEngine }) => new LegacyFallbackEngine()
-    );
+    asyncCustomizationEnginePromise = import('../storage/index.ts').then(({ getStorageEngine }) => getStorageEngine());
   }
   return asyncCustomizationEnginePromise;
 }
