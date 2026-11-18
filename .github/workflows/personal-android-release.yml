@@ -147,29 +147,7 @@ jobs:
           emulator-options: -no-snapshot -no-window -noaudio -no-boot-anim
           disable-animations: true
           script: |
-            set -euo pipefail
-            set -x
-            APK="$GITHUB_WORKSPACE/android/app/build/outputs/apk/release/Shuttle-Car-Automation-6.0.0.apk"
-            echo "Workspace: $GITHUB_WORKSPACE"
-            echo "APK candidate: $APK"
-            ls -lah "$GITHUB_WORKSPACE/android/app/build/outputs/apk/release/"
-            test -s "$APK"
-            file "$APK"
-            file "$APK"
-            adb wait-for-device
-            adb install -r "$APK"
-            adb logcat -c
-            adb shell am force-stop com.shuttlecar.automation
-            adb shell am start -W -n com.shuttlecar.automation/.MainActivity | tee "$GITHUB_WORKSPACE/artifacts/personal-release/emulator-launch.txt"
-            grep -F "Status: ok" "$GITHUB_WORKSPACE/artifacts/personal-release/emulator-launch.txt"
-            sleep 45
-            test -n "$(adb shell pidof com.shuttlecar.automation | tr -d '\r')"
-            adb exec-out screencap -p > "$GITHUB_WORKSPACE/artifacts/personal-release/emulator-screen.png"
-            adb logcat -d -t 5000 > "$GITHUB_WORKSPACE/artifacts/personal-release/emulator-logcat.txt"
-            if grep -E "FATAL EXCEPTION|Process: com\\.shuttlecar\\.automation" "$GITHUB_WORKSPACE/artifacts/personal-release/emulator-logcat.txt"; then
-              echo "Android application crash detected"
-              exit 1
-            fi
+            bash -euo pipefail -c 'APK="$GITHUB_WORKSPACE/android/app/build/outputs/apk/release/Shuttle-Car-Automation-6.0.0.apk"; echo "Workspace: $GITHUB_WORKSPACE"; echo "APK candidate: $APK"; ls -lah "$GITHUB_WORKSPACE/android/app/build/outputs/apk/release/"; test -s "$APK"; file "$APK"; adb wait-for-device; adb install -r "$APK"; adb logcat -c; adb shell am force-stop com.shuttlecar.automation; adb shell am start -W -n com.shuttlecar.automation/.MainActivity | tee "$GITHUB_WORKSPACE/artifacts/personal-release/emulator-launch.txt"; grep -F "Status: ok" "$GITHUB_WORKSPACE/artifacts/personal-release/emulator-launch.txt"; sleep 45; test -n "$(adb shell pidof com.shuttlecar.automation | tr -d "\r")"; adb exec-out screencap -p > "$GITHUB_WORKSPACE/artifacts/personal-release/emulator-screen.png"; adb logcat -d -t 5000 > "$GITHUB_WORKSPACE/artifacts/personal-release/emulator-logcat.txt"; if grep -E "FATAL EXCEPTION|Process: com\\.shuttlecar\\.automation" "$GITHUB_WORKSPACE/artifacts/personal-release/emulator-logcat.txt"; then echo "Android application crash detected"; exit 1; fi'
 
       - name: Package personal install bundle
         if: success()
