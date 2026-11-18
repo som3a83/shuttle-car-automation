@@ -72,7 +72,7 @@ for node in root.iter("node"):
     text = node.attrib.get("text", "")
     description = node.attrib.get("content-desc", "")
     if any(label in text or label in description for label in labels):
-        match = re.search(r"\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]", node.attrib.get("bounds", ""))
+        match = re.search(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", node.attrib.get("bounds", ""))
         if match:
             x1, y1, x2, y2 = map(int, match.groups())
             print((x1 + x2) // 2, (y1 + y2) // 2)
@@ -107,7 +107,7 @@ for node in root.iter("node"):
     text = node.attrib.get("text", "")
     description = node.attrib.get("content-desc", "")
     if "Explode battery assembly" in text or "Explode battery assembly" in description:
-        match = re.search(r"\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]", node.attrib.get("bounds", ""))
+        match = re.search(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", node.attrib.get("bounds", ""))
         if match:
             x1, y1, x2, y2 = map(int, match.groups())
             print((x1 + x2) // 2, (y1 + y2) // 2)
