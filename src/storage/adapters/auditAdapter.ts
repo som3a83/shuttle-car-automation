@@ -172,7 +172,8 @@ export async function importAuditData(legacyStorage: LegacyReadStorage = globalT
     (value): value is AuditArchiveEntry[] => isAuditArchiveArray(value) && canonical(value) === archivesCanonical,
     legacyStorage,
     undefined,
-    'audit'
+    'audit',
+    context
   );
   return [
     await importDefaultForMissing(activeResult, [], context),
