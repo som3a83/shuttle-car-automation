@@ -35,9 +35,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Install gateway dependencies
+        working-directory: industrial-gateway
+        run: python -m pip install --disable-pip-version-check --requirement requirements.txt
       - name: Compile gateway source
         working-directory: industrial-gateway
-        run: python -m py_compile gateway.py adapter_contract.py adapter_runner.py adapters/__init__.py adapters/modbus_tcp.py adapters/modbus_rtu.py test_gateway.py test_adapter_runner.py test_modbus_tcp_adapter.py test_modbus_rtu_adapter.py
+        run: python -m py_compile gateway.py adapter_contract.py adapter_runner.py adapters/__init__.py adapters/modbus_tcp.py adapters/modbus_rtu.py adapters/mqtt.py test_gateway.py test_adapter_runner.py test_modbus_tcp_adapter.py test_modbus_rtu_adapter.py test_mqtt_adapter.py
       - name: Run gateway validation tests
         working-directory: industrial-gateway
         run: python -m unittest -v
