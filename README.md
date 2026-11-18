@@ -101,6 +101,9 @@ The release workflow enforces compile/target SDK 36, runs TypeScript/tests/build
 - [Privacy policy](PRIVACY_POLICY.md)
 - [Terms of use](TERMS_OF_USE.md)
 - [Signed AAB release instructions](PLAY_STORE_RELEASE.md)
+- [Release acceptance and plant commissioning gates](docs/RELEASE_ACCEPTANCE.md)
+- [Final handover checklist](docs/FINAL_HANDOVER.md)
+- [Changelog](CHANGELOG.md)
 
 Vector source assets are stored in `assets/`. CI renders the 512 × 512 Play icon and 1024 × 500 feature graphic into the `shuttle-car-automation-store-artwork` artifact. Capture genuine screenshots from the tested release app; do not use mockups or generated screenshots as evidence of actual application behavior.
 

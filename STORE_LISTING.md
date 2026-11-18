@@ -26,10 +26,12 @@ Manage equipment registers, battery assignments and movement history, reported f
 - Review an operational dashboard and export reports to XLSX, CSV and JSON.
 - Inspect interactive conceptual 3D shuttle and lithium-battery assemblies.
 - Use Arabic RTL or English LTR with dark and light themes.
-- Work with locally stored records without requiring an application account.
+- Use local account sign-in and role-based application permissions on the current device.
+- Use the interactive rule-based diagnostic workbench to prepare inspection checklists and register fault reports.
+- Optionally read verified telemetry through a separately deployed, authorized HTTPS OT gateway when a site has commissioned one; the app does not connect directly to PLCs or issue machine commands.
 
 **Important limitations**
-This release does not connect to physical shuttle cars, PLCs, manufacturer gateways or battery management systems. It does not issue machine-control commands. Device readings and operating states are manual or unverified unless clearly marked otherwise. 3D models are conceptual illustrations, not manufacturer CAD. Records are stored locally on the current device; there is no cloud backup, shared database or secure multi-user authentication.
+This release does not connect directly to physical shuttle cars, PLCs or battery management systems, and it does not issue machine-control commands. An optional HTTPS client can read from a separately deployed, authorized OT gateway after the plant commissions the exact read-only tags and security settings; no gateway is configured by default. Device readings and operating states remain manual, unknown or unverified unless a verified source is explicitly identified. The technical workbench is rule-based guidance, not a connected AI service. 3D models are conceptual reference assemblies, not manufacturer CAD. Records and local accounts are stored on the current device; there is no publisher-operated cloud database or cross-device synchronization. Local roles are application-level controls, not server-enforced multi-user security.
 
 Use the application as an operational recordkeeping aid, not as a safety system or replacement for manufacturer-approved procedures.
 
@@ -50,10 +52,12 @@ Use the application as an operational recordkeeping aid, not as a safety system 
 - لوحة متابعة وتقارير تشغيلية وتصدير XLSX وCSV ونسخ JSON احتياطية.
 - عرض هندسي ثلاثي الأبعاد تصوري للشاتل والبطاريات.
 - واجهة عربية RTL وإنجليزية LTR مع الوضع الداكن والفاتح.
-- حفظ السجلات محليًا على الجهاز دون الحاجة إلى إنشاء حساب داخل التطبيق.
+- تسجيل دخول محلي وصلاحيات تطبيقية على الجهاز الحالي.
+- مساحة فحص فني تفاعلية بقوائم فحص إرشادية، مع إمكانية إنشاء بلاغ عطل رسمي.
+- إمكانية قراءة بيانات موثقة اختياريًا عبر بوابة OT مستقلة ومصرح بها بعد إعدادها واعتمادها من المصنع؛ لا يتصل التطبيق مباشرة بوحدات PLC ولا يرسل أوامر تحكم.
 
 **تنبيه مهم**
-هذا الإصدار لا يتصل فعليًا بعربات الشاتل أو وحدات PLC أو بوابات الشركات المصنعة أو أنظمة إدارة البطارية، ولا يرسل أوامر تحكم للمعدات. الحالات والقراءات يدوية أو غير مؤكدة ما لم يذكر خلاف ذلك بوضوح. الرسومات ثلاثية الأبعاد تصورية وليست ملفات CAD معتمدة من المصنع. البيانات محفوظة محليًا على الجهاز ولا توجد مزامنة سحابية أو قاعدة بيانات مشتركة أو صلاحيات دخول مؤمنة متعددة المستخدمين.
+هذا الإصدار لا يتصل مباشرة بعربات الشاتل أو وحدات PLC أو أنظمة إدارة البطارية، ولا يرسل أوامر تحكم للمعدات. يمكنه اختياريًا قراءة بيانات من بوابة OT مستقلة عبر HTTPS بعد توفيرها واعتمادها وضبط نقاط القراءة الآمنة من المصنع؛ لا توجد بوابة مهيأة افتراضيًا. الحالات والقراءات تظل يدوية أو غير معروفة أو غير مؤكدة ما لم يثبت مصدرها بوضوح. مساحة المساعد الفني قائمة فحص إرشادية محلية وليست خدمة ذكاء اصطناعي متصلة. الرسومات ثلاثية الأبعاد تصورية وليست ملفات CAD معتمدة من المصنع. البيانات والحسابات محفوظة محليًا على الجهاز ولا توجد قاعدة بيانات سحابية أو مزامنة بين الأجهزة. صلاحيات الأدوار محلية داخل التطبيق وليست حماية خادمية متعددة المستخدمين.
 
 التطبيق أداة لتوثيق ومتابعة السجلات التشغيلية، وليس نظام أمان أو بديلًا عن تعليمات المصنع والإجراءات الفنية المعتمدة.
 
