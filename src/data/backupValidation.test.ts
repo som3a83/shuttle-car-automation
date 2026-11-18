@@ -15,8 +15,10 @@ const validBackup = () => ({
 });
 
 describe('operational backup validation', () => {
-  it('accepts valid local registers and preserves a manually reported zero SOC', () => {
-    const result = validateOperationalBackup(validBackup());
+  it('accepts valid local registers and preserves an explicitly entered zero SOC', () => {
+    const backup = validBackup();
+    backup.batteries[0].soc = 0;
+    const result = validateOperationalBackup(backup);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.data.batteries[0].soc).toBe(0);
