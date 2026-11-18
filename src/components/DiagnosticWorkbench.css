@@ -1,0 +1,33 @@
+.diagnostic-workbench { display: grid; gap: 17px; }
+.diagnostic-workbench-header { display:flex; align-items:flex-start; justify-content:space-between; gap:18px; padding:22px; border:1px solid rgba(229,161,95,.2); border-radius:15px; background:linear-gradient(135deg,rgba(200,121,58,.10),rgba(18,31,45,.94) 48%,rgba(13,24,36,.98)); }
+.diagnostic-workbench-header h2 { margin:8px 0; color:var(--text); font-size:22px; }
+.diagnostic-workbench-header p { max-width:760px; margin:0; color:var(--muted); font-size:11px; line-height:1.8; }
+.diagnostic-mode { flex:none; padding:8px 10px; border:1px solid rgba(229,161,95,.26); border-radius:8px; color:var(--copper-2); background:rgba(200,121,58,.08); font-size:8px; font-weight:800; letter-spacing:.08em; }
+.diagnostic-selectors { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:13px; }
+.diagnostic-selectors label,.diagnostic-findings { display:grid; gap:7px; color:var(--muted); font-size:10px; font-weight:700; }
+.diagnostic-selectors select,.diagnostic-findings textarea { width:100%; min-height:42px; padding:10px 12px; border:1px solid var(--line-strong); border-radius:9px; color:var(--text); background:var(--surface); }
+.diagnostic-findings textarea { min-height:110px; resize:vertical; line-height:1.7; }
+.diagnostic-asset-strip { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:9px; }
+.diagnostic-asset-strip > div { display:grid; gap:6px; min-width:0; padding:12px; border:1px solid var(--line); border-radius:10px; background:rgba(148,174,198,.035); }
+.diagnostic-asset-strip small { color:var(--subtle); font-size:7px; letter-spacing:.1em; }
+.diagnostic-asset-strip strong { overflow-wrap:anywhere; color:var(--text); font-size:10px; }
+.diagnostic-hypothesis { padding:15px 17px; border-inline-start:3px solid var(--amber); border-radius:9px; background:rgba(231,182,106,.065); }
+.diagnostic-hypothesis > span { color:var(--amber); font-size:8px; font-weight:850; letter-spacing:.08em; }
+.diagnostic-hypothesis p { margin:8px 0 0; color:var(--text); font-size:11px; line-height:1.8; }
+.diagnostic-checklist { padding:17px; border:1px solid var(--line); border-radius:13px; background:var(--surface); }
+.diagnostic-checklist-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.diagnostic-checklist-heading h3 { margin:6px 0 0; color:var(--text); font-size:14px; }
+.diagnostic-checklist-heading > strong { color:var(--copper-2); font-size:13px; font-variant-numeric:tabular-nums; }
+.diagnostic-progress { height:5px; margin:14px 0 7px; overflow:hidden; border-radius:9px; background:var(--surface-3); }
+.diagnostic-progress span { display:block; height:100%; border-radius:inherit; background:linear-gradient(90deg,var(--copper),var(--copper-2)); transition:width .18s ease; }
+.diagnostic-check { display:grid; grid-template-columns:18px 28px minmax(0,1fr); align-items:start; gap:10px; padding:13px 2px; border-top:1px solid var(--line); color:var(--text); font-size:10px; line-height:1.7; cursor:pointer; }
+.diagnostic-check input { width:16px; height:16px; margin:2px 0 0; accent-color:var(--copper); }
+.diagnostic-check-number { color:var(--copper-2); font-size:9px; font-weight:800; }
+.diagnostic-check:has(input:checked) > span:last-child { color:var(--muted); text-decoration:line-through; }
+.diagnostic-actions { display:flex; align-items:center; flex-wrap:wrap; gap:9px; }
+.diagnostic-actions [role=status] { color:var(--green); font-size:9px; }
+.diagnostic-safety-note { padding:15px 17px; border:1px solid rgba(230,120,120,.2); border-radius:11px; background:rgba(230,120,120,.055); }
+.diagnostic-safety-note strong { color:#f0a0a0; font-size:9px; letter-spacing:.08em; }
+.diagnostic-safety-note p,.diagnostic-disclaimer { margin:7px 0 0; color:var(--muted); font-size:9px; line-height:1.8; }
+.diagnostic-disclaimer { margin-top:-7px; }
+@media(max-width:760px) { .diagnostic-workbench-header { flex-direction:column; padding:16px; } .diagnostic-selectors { grid-template-columns:1fr; } .diagnostic-asset-strip { grid-template-columns:repeat(2,minmax(0,1fr)); } }
