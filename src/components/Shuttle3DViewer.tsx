@@ -61,13 +61,14 @@ export default function Shuttle3DViewer({
     }
 
     setWebglAvailable(true);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.25));
     renderer.setClearColor(0x0b121a, 0);
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.12;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     host.appendChild(renderer.domElement);
     renderer.domElement.className = 'shuttle-webgl-canvas';
+    renderer.domElement.style.touchAction = 'none';
     renderer.domElement.setAttribute('aria-label', `Interactive conceptual 3D shuttle model ${shuttleId}. Drag or use arrow keys to rotate; press Home to reset the view.`);
     renderer.domElement.tabIndex = 0;
     renderer.domElement.setAttribute('aria-keyshortcuts', 'ArrowLeft ArrowRight ArrowUp ArrowDown Home');
@@ -283,14 +284,39 @@ export default function Shuttle3DViewer({
 
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
+    const activePointers = new Map<number, { x: number; y: number }>();
     let down: { x: number; y: number; id: number } | null = null;
     let dragging = false;
+    let pinchDistance = 0;
+    const distanceBetweenPointers = () => {
+      const points = Array.from(activePointers.values());
+      if (points.length < 2) return 0;
+      return Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y);
+    };
     const onPointerDown = (event: PointerEvent) => {
-      down = { x: event.clientX, y: event.clientY, id: event.pointerId };
-      dragging = false;
+      activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      if (activePointers.size === 1) {
+        down = { x: event.clientX, y: event.clientY, id: event.pointerId };
+        dragging = false;
+      } else {
+        down = null;
+        dragging = true;
+        pinchDistance = distanceBetweenPointers();
+      }
       renderer.domElement.setPointerCapture(event.pointerId);
     };
     const onPointerMove = (event: PointerEvent) => {
+      if (!activePointers.has(event.pointerId)) return;
+      activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      if (activePointers.size >= 2) {
+        const nextDistance = distanceBetweenPointers();
+        if (pinchDistance > 0 && nextDistance > 0) {
+          camera.zoom = THREE.MathUtils.clamp(camera.zoom * (nextDistance / pinchDistance), 0.65, 1.8);
+          camera.updateProjectionMatrix();
+        }
+        pinchDistance = nextDistance;
+        return;
+      }
       if (!down || down.id !== event.pointerId) return;
       const dx = event.clientX - down.x;
       const dy = event.clientY - down.y;
@@ -302,18 +328,28 @@ export default function Shuttle3DViewer({
       }
     };
     const onPointerUp = (event: PointerEvent) => {
-      if (!down || down.id !== event.pointerId) return;
-      if (!dragging) {
+      const wasTap = down?.id === event.pointerId && !dragging && activePointers.size === 1;
+      if (wasTap) {
         const rect = renderer.domElement.getBoundingClientRect();
-        pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-        pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+        pointer.x = ((event.clientX - rect.left) / Math.max(1, rect.width)) * 2 - 1;
+        pointer.y = -((event.clientY - rect.top) / Math.max(1, rect.height)) * 2 + 1;
         raycaster.setFromCamera(pointer, camera);
         const hit = raycaster.intersectObjects(root.children, true)[0]?.object;
         let node: THREE.Object3D | null = hit || null;
         while (node && !isPart(node.userData.part)) node = node.parent;
         if (node && isPart(node.userData.part)) callbackRef.current(node.userData.part);
       }
-      down = null;
+      activePointers.delete(event.pointerId);
+      if (activePointers.size === 0) {
+        down = null;
+        dragging = false;
+        pinchDistance = 0;
+      } else if (activePointers.size === 1) {
+        const remaining = Array.from(activePointers.entries())[0];
+        down = { x: remaining[1].x, y: remaining[1].y, id: remaining[0] };
+        dragging = true;
+        pinchDistance = 0;
+      }
     };
     const onWheel = (event: WheelEvent) => {
       event.preventDefault();
@@ -461,7 +497,7 @@ export default function Shuttle3DViewer({
       {webglAvailable === false && <div className="three-fallback">{fallback}</div>}
       <div className="three-viewer-badge"><span className="three-live-dot" />{shouldAnimateShuttleMotion(animated, status) ? 'SIMULATED MOTION · NOT LIVE' : 'STATIC ENGINEERING VIEW'}</div>
       <div className="three-viewer-id">{manufacturer.toUpperCase()} / {shuttleId}</div>
-      <div className="three-viewer-help" aria-hidden="true">DRAG / ARROWS TO ROTATE · WHEEL TO ZOOM</div>
+      <div className="three-viewer-help" aria-hidden="true">DRAG TO ROTATE · PINCH / WHEEL TO ZOOM</div>
       <div className="shuttle-cad-overlay" aria-hidden="true">
         <span><i/>LOAD DECK / FRAME</span><span><i/>DRIVE TRAIN</span><span><i/>TRACTION SET</span><span><i/>ENERGY TRAY</span><span><i/>SAFETY SENSORS</span>
       </div>
