@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { getMode, type StorageMode } from '../storage';
 import { migrateToIndexedDb } from '../storage/migration';
+import { createLegacyStorageBackup, type LegacyStorageBackup } from '../storage/migration/legacyBackup';
 
 interface StorageMigrationPanelProps {
   language: 'ar' | 'en';
@@ -22,6 +23,8 @@ export default function StorageMigrationPanel({
 }: StorageMigrationPanelProps) {
   const [mode, setMode] = useState<StorageMode | null>(null);
   const [backupConfirmed, setBackupConfirmed] = useState(false);
+  const [backup, setBackup] = useState<LegacyStorageBackup | null>(null);
+  const [backupBusy, setBackupBusy] = useState(false);
   const [busy, setBusy] = useState(false);
   const [complete, setComplete] = useState(false);
   const [error, setError] = useState('');
@@ -37,6 +40,32 @@ export default function StorageMigrationPanel({
     });
     return () => { active = false; };
   }, []);
+
+  async function createBackup(): Promise<void> {
+    if (backupBusy || busy) return;
+    setError('');
+    setBackupConfirmed(false);
+    setBackupBusy(true);
+    try {
+      const created = await createLegacyStorageBackup(window.localStorage);
+      const filename = `shuttle-pre-migration-backup-${created.exportedAt.replace(/[:.]/g, '-')}.json`;
+      const blob = new Blob([JSON.stringify(created, null, 2)], { type: 'application/json' });
+      const objectUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = objectUrl;
+      anchor.download = filename;
+      anchor.style.display = 'none';
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+      setBackup(created);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'A complete verified backup could not be created.');
+    } finally {
+      setBackupBusy(false);
+    }
+  }
 
   async function runMigration(): Promise<void> {
     if (!backupConfirmed || busy || mode === 'indexeddb' || mode === 'readonly-recovery') return;
@@ -86,19 +115,39 @@ export default function StorageMigrationPanel({
         </div>
       )}
       {!complete && mode !== 'indexeddb' && (
-        <label className="storage-migration-confirm">
-          <input
-            type="checkbox"
-            checked={backupConfirmed}
-            disabled={busy || mode === 'readonly-recovery'}
-            onChange={(event) => setBackupConfirmed(event.target.checked)}
-          />
-          <span>
-            {ar
-              ? 'أنشأت نسخة احتياطية من قسم «النسخ الاحتياطي واستعادة البيانات» أعلاه.'
-              : 'I created a backup using the Backup and restore section above.'}
-          </span>
-        </label>
+        <div className="storage-migration-backup">
+          <button
+            type="button"
+            className="btn-secondary"
+            disabled={busy || backupBusy || mode === 'readonly-recovery'}
+            onClick={() => void createBackup()}
+          >
+            {backupBusy
+              ? (ar ? 'جارٍ إعداد النسخة الاحتياطية…' : 'Preparing complete backup…')
+              : (ar ? 'إنشاء نسخة احتياطية كاملة من بيانات الجهاز' : 'Create complete local data backup')}
+          </button>
+          {backup && (
+            <>
+              <div className="storage-migration-backup-details" role="status">
+                <strong>{ar ? 'تم إنشاء ملف النسخة الاحتياطية' : 'Backup file created'}</strong>
+                <span>{backup.recordCount} {ar ? 'مفتاح تخزين' : 'localStorage keys'} · SHA-256: {backup.sha256.slice(0, 16)}…</span>
+              </div>
+              <label className="storage-migration-confirm">
+                <input
+                  type="checkbox"
+                  checked={backupConfirmed}
+                  disabled={busy || backupBusy}
+                  onChange={(event) => setBackupConfirmed(event.target.checked)}
+                />
+                <span>
+                  {ar
+                    ? 'حفظت ملف النسخة الاحتياطية في مكان آمن خارج بيانات التطبيق.'
+                    : 'I saved the downloaded backup file to a secure location outside the app.'}
+                </span>
+              </label>
+            </>
+          )}
+        </div>
       )}
       {error && <div className="security-error" role="alert">{error}</div>}
       {complete ? (
@@ -110,7 +159,7 @@ export default function StorageMigrationPanel({
         <button
           type="button"
           className="btn-primary"
-          disabled={!backupConfirmed || busy || !mode || mode === 'indexeddb' || mode === 'readonly-recovery'}
+          disabled={!backup || !backupConfirmed || busy || backupBusy || !mode || mode === 'indexeddb' || mode === 'readonly-recovery'}
           onClick={() => void runMigration()}
         >
           {busy
