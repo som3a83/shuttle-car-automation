@@ -122,6 +122,25 @@ beforeEach(async () => {
     expect(screen.queryByText(/No live equipment connection|لا يوجد اتصال حي/i)).not.toBeInTheDocument();
   });
 
+  it('creates a formal fault record from the diagnostic workbench for an authorized user', async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await user.click(screen.getAllByRole('button', { name: /AI Technical Assistant/i })[0]);
+    await user.selectOptions(screen.getByRole('combobox', { name: /Initial report severity/i }), 'Major');
+    await user.type(screen.getByRole('textbox', { name: /Field findings and measurements/i }), 'Sensor bracket was loose during inspection.');
+    await user.click(screen.getByRole('button', { name: /Create fault report/i }));
+    await waitFor(() => expect(screen.getByText(/Sensor bracket was loose during inspection/i)).toBeInTheDocument());
+    expect(screen.getByText(/Wooden pallet not detected/i)).toBeInTheDocument();
+  });
+
+  it('keeps diagnostic fault creation disabled for the unauthenticated Viewer', async () => {
+    const user = userEvent.setup();
+    window.sessionStorage.clear();
+    renderApp();
+    await user.click(screen.getAllByRole('button', { name: /AI Technical Assistant/i })[0]);
+    expect(screen.getByRole('button', { name: /Create fault report/i })).toBeDisabled();
+  });
+
   it('persists the selected appearance across a reload', async () => {
     const user = userEvent.setup();
     const firstRender = renderApp();
