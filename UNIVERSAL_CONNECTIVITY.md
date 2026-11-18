@@ -73,11 +73,19 @@ Configure the gateway environment:
 
 The asset's `transports` list must include the selected transport (for example `ethernet` or `wifi`) and its `protocols` list must include `modbus-tcp`. The adapter declares the selected path for every reading; the gateway rejects readings from undeclared transports or protocols and persists those fields with the sample.
 
+## Generic Bluetooth LE GATT explorer
+
+The Android/iOS application now includes a native BLE central-role explorer using the Capacitor 8-compatible `@capacitor-community/bluetooth-le` plugin. It can scan nearby BLE advertisements, connect to a selected peripheral, discover exposed GATT services/characteristics, read characteristics that advertise the read property, and subscribe to notify/indicate characteristics. Raw bytes are shown as HEX. The explorer contains no characteristic-write functions and does not decode unknown payloads into shuttle state or battery measurements.
+
+Use this explorer to confirm that a machine or vendor gateway actually exposes BLE and to collect its documented GATT service/characteristic UUIDs. A manufacturer-specific decoder and approved read-only tag mapping are still needed before raw values become trusted LIVE_VENDOR telemetry. Test the installed APK against the actual equipment on a physical Android device.
+
 ## Not yet implemented as built-in drivers
 
+- Bluetooth Classic / RFCOMM is not supported by the BLE GATT plugin and needs a separate Android native Classic serial implementation plus device pairing and protocol specification.
 - Modbus RTU / RS-485 requires a serial-interface adapter and an approved serial device configuration.
 - OPC UA, MQTT, REST, WebSocket, S7, EtherNet/IP, PROFINET and CANopen require separate protocol adapters and tested dependencies.
-- Bluetooth LE, Bluetooth Classic and USB serial require Android native Capacitor plugins / permissions plus physical-device tests. They are catalogued, not yet active in the APK.
+- USB serial needs a native USB host/serial implementation and exact device/baud/framing configuration.
+- Industrial RF requires the exact vendor radio receiver/gateway, frequency, modulation, pairing, encryption and application protocol. A phone cannot generically decode proprietary RF traffic.
 - Industrial RF requires the exact vendor radio receiver/gateway, frequency, modulation, pairing, encryption and application protocol. A phone cannot generically decode proprietary RF traffic.
 - Vendor SDK/API and proprietary drivers require the vendor's official documentation, credentials and explicit third-party read-only authorization.
 
