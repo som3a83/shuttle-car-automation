@@ -1,4 +1,4 @@
-import { StorageError, getWithRevision, set, type StorageKey } from '../index';
+import { StorageError, getWithRevision, set, type StorageKey, type MigrationStorageContext } from '../index';
 
 export type AdapterFamily = 'operational' | 'auth' | 'audit' | 'customization';
 export interface LegacyKeyDefinition { legacyKey: string; adapter: AdapterFamily | 'audit-marker'; targetKey: StorageKey | null; importable: boolean; }
@@ -88,7 +88,8 @@ export async function importMappedLegacyKey<T>(
   validator: (value: unknown) => value is T,
   legacyStorage: LegacyReadStorage = globalThis.localStorage,
   normalize?: (value: T) => T,
-  expectedAdapter?: AdapterFamily
+  expectedAdapter?: AdapterFamily,
+  context?: MigrationStorageContext
 ): Promise<AdapterResult<T>> {
   const definition = assertLegacyImportKey(legacyKey, expectedAdapter);
   if (typeof validator !== 'function') throw new TypeError('A legacy value validator is required.');
@@ -113,8 +114,10 @@ export async function importMappedLegacyKey<T>(
   }
   const recordsCount = countRecords(value);
 
+  const read = context?.getWithRevision ?? getWithRevision;
+  const write = context?.set ?? set;
   let current;
-  try { current = await getWithRevision(key); }
+  try { current = await read(key); }
   catch (error) {
     return { status: 'failed', key, message: safeErrorMessage(error, 'Current storage value could not be read.'), ...(error instanceof StorageError ? { errorCode: error.code } : {}) };
   }
@@ -124,12 +127,12 @@ export async function importMappedLegacyKey<T>(
   }
 
   try {
-    await set(key, value as never, 0);
+    await write(key, value as never, 0);
     return { status: 'imported', key, value, recordsCount };
   } catch (error) {
     if (error instanceof StorageError && error.code === 'STORAGE_CONFLICT') {
       let latest;
-      try { latest = await getWithRevision(key); }
+      try { latest = await read(key); }
       catch (readError) {
         return { status: 'failed', key, message: safeErrorMessage(readError, 'Storage changed during import and could not be re-read.'), errorCode: 'STORAGE_TRANSACTION_FAILED' };
       }
@@ -146,14 +149,17 @@ export async function importMappedLegacyKey<T>(
  */
 export async function importDefaultForMissing<T>(
   result: AdapterResult<T>,
-  defaultValue: T
+  defaultValue: T,
+  context?: MigrationStorageContext
 ): Promise<AdapterResult<T>> {
   if (result.status !== 'missing-source') return result;
   const key = result.key as StorageKey;
   const recordsCount = countRecords(defaultValue);
 
+  const read = context?.getWithRevision ?? getWithRevision;
+  const write = context?.set ?? set;
   try {
-    const current = await getWithRevision(key);
+    const current = await read(key);
     if (current) {
       if (valuesEqual(current.value, defaultValue)) {
         return { status: 'already-synced', key, recordsCount };
@@ -166,7 +172,7 @@ export async function importDefaultForMissing<T>(
         message: 'The legacy source is missing and a different destination value already exists. No value was overwritten.'
       };
     }
-    await set(key, defaultValue as never, 0);
+    await write(key, defaultValue as never, 0);
     return { status: 'imported', key, value: defaultValue, recordsCount, note: 'default value used' };
   } catch (error) {
     return {

@@ -7,6 +7,7 @@ import {
   type AdapterResult,
   type LegacyReadStorage
 } from './legacyKeyMap';
+import type { MigrationStorageContext } from '../index';
 import type { AuditArchiveEntry, AuditRecord } from '../../security/auditLog';
 import { verifyAuditChain, AUDIT_GENESIS_HASH } from '../../security/auditLog';
 
@@ -86,7 +87,7 @@ function parseArray(raw: string | null): unknown[] | null {
  * Imports active records and archive envelopes separately after validating the
  * complete hash chain. A pending marker blocks automatic import and remains untouched.
  */
-export async function importAuditData(legacyStorage: LegacyReadStorage = globalThis.localStorage): Promise<AdapterResult[]> {
+export async function importAuditData(legacyStorage: LegacyReadStorage = globalThis.localStorage, context?: MigrationStorageContext): Promise<AdapterResult[]> {
   /**
    * ATOMICITY CONSTRAINT (2B-4 dependency):
    *
@@ -163,18 +164,20 @@ export async function importAuditData(legacyStorage: LegacyReadStorage = globalT
     (value): value is AuditRecord[] => isAuditRecordArray(value) && canonical(value) === activeCanonical,
     legacyStorage,
     undefined,
-    'audit'
+    'audit',
+    context
   );
   const archivesResult = await importMappedLegacyKey(
     AUDIT_LEGACY_KEY_MAP.archives.legacyKey,
     (value): value is AuditArchiveEntry[] => isAuditArchiveArray(value) && canonical(value) === archivesCanonical,
     legacyStorage,
     undefined,
-    'audit'
+    'audit',
+    context
   );
   return [
-    await importDefaultForMissing(activeResult, []),
-    await importDefaultForMissing(archivesResult, [])
+    await importDefaultForMissing(activeResult, [], context),
+    await importDefaultForMissing(archivesResult, [], context)
   ];
 }
 
