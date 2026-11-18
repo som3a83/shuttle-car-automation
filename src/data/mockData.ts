@@ -163,7 +163,7 @@ export const initialReports: ReportSummary[] = [
 ];
 
 export const defaultSettings = {
-  language: 'en' as const,
+  language: 'ar' as const,
   theme: 'dark' as const,
   notificationsEnabled: true,
   maintenanceReminders: true,

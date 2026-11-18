@@ -100,7 +100,18 @@ export default function Shuttle3DViewer({
     (floor.material as THREE.Material).opacity = 0.42;
     scene.add(floor);
 
+    const statusColor: Record<string, number> = {
+      Ready: 0x64c99b,
+      Running: 0xf0ad47,
+      Idle: 0x8fa1b1,
+      Charging: 0x68b7e3,
+      Maintenance: 0xf0ad47,
+      Fault: 0xe67878,
+      Disconnected: 0x5e7183,
+      Unknown: 0x5e7183
+    };
     const accent = manufacturer === 'Cassioli' ? 0xd28b4b : manufacturer === 'Craftsman' ? 0x45b8d2 : 0xa58af5;
+    const statusAccent = statusColor[status] ?? statusColor.Unknown;
     const metal = new THREE.MeshStandardMaterial({ color: 0x526575, metalness: 0.82, roughness: 0.3 });
     const darkMetal = new THREE.MeshStandardMaterial({ color: 0x1c2934, metalness: 0.72, roughness: 0.4 });
     const deckMaterial = new THREE.MeshStandardMaterial({ color: 0x82919c, metalness: 0.78, roughness: 0.32 });
@@ -266,7 +277,7 @@ export default function Shuttle3DViewer({
       addCylinder(sensors, 0.18, 0.18, 0.32, [p[0], p[1], p[2]], rubberDetail, 'z');
     });
     addCylinder(sensors, 0.12, 0.12, 0.3, [0, 0.48, 0], safetyMaterial);
-    const beacon = new THREE.Mesh(new THREE.SphereGeometry(0.14, 18, 12), safetyMaterial.clone());
+    const beacon = new THREE.Mesh(new THREE.SphereGeometry(0.14, 18, 12), new THREE.MeshStandardMaterial({ color: statusAccent, emissive: statusAccent, emissiveIntensity: 0.8, metalness: 0.4 }));
     beacon.position.set(0, 0.66, 0);
     sensors.add(beacon);
 
