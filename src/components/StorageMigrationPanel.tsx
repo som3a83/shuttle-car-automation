@@ -112,6 +112,13 @@ export default function StorageMigrationPanel({
           {ar ? 'التخزين في وضع استعادة للقراءة فقط. أكمل الاستعادة قبل بدء الترحيل.' : 'Storage is in read-only recovery mode. Complete recovery before migrating.'}
         </div>
       )}
+      {!complete && mode !== 'indexeddb' && (
+        <div className="storage-migration-backup-warning" role="note">
+          {ar
+            ? 'تنبيه خصوصية: ملف النسخة يحتوي على بيانات localStorage كاملة، ومنها بيانات الحسابات وسجلات التدقيق والتشغيل. الملف غير مشفر؛ احتفظ به في مكان آمن ولا ترسله لأي طرف.'
+            : 'Privacy warning: this file contains the full localStorage snapshot, including local account hashes, audit entries and operational records. It is not encrypted. Store it securely and do not share it.'}
+        </div>
+      )}
       {mode === 'indexeddb' && !complete && (
         <div className="notice-inline" role="status">
           {ar ? 'قاعدة بيانات IndexedDB مفعّلة بالفعل على هذا الجهاز.' : 'IndexedDB is already active on this device.'}
