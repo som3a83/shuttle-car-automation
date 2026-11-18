@@ -10,6 +10,10 @@ describe('gateway telemetry provenance checks', () => {
   it('accepts only recent, good, identified vendor samples as live', () => {
     expect(getGatewaySampleState(live, Date.parse('2026-11-17T00:00:02.000Z'))).toBe('LIVE');
   });
+  it('does not mark legacy readings without a known transport or protocol as live', () => {
+    expect(getGatewaySampleState({ ...live, transport: 'unknown' }, Date.parse('2026-11-17T00:00:02.000Z'))).toBe('UNVERIFIED');
+    expect(getGatewaySampleState({ ...live, protocol: 'unknown' }, Date.parse('2026-11-17T00:00:02.000Z'))).toBe('UNVERIFIED');
+  });
   it('does not mark manual or simulated values as live', () => {
     expect(getGatewaySampleState({ ...live, provenance: 'MANUAL' }, Date.parse('2026-11-17T00:00:02.000Z'))).toBe('UNVERIFIED');
     expect(getGatewaySampleState({ ...live, provenance: 'SIMULATED' }, Date.parse('2026-11-17T00:00:02.000Z'))).toBe('UNVERIFIED');
