@@ -14,6 +14,7 @@ const Battery3DViewer = lazy(() => import('./components/Battery3DViewer'));
 import { getManufacturerReference } from './data/manufacturerReferences';
 import ShiftOperations from './components/ShiftOperations';
 import LiveGatewayPanel from './components/LiveGatewayPanel';
+import { CONNECTION_OPTIONS, getConnectionOption } from './industrial/connectionCatalog';
 import SecurityCenter from './components/SecurityCenter';
 import StorageMigrationPanel from './components/StorageMigrationPanel';
 import { loadCustomizationAsync, validateCustomization, type CustomizationConfig } from './data/applicationCustomization';
@@ -1159,7 +1160,8 @@ function App({ initialData }: { initialData: AppInitialData }) {
     }
     const endpoint: CommunicationEndpoint = {
       name,
-      protocol: String(form.get('protocol') || 'REST API') as CommunicationEndpoint['protocol'],
+      transport: String(form.get('transport') || 'ethernet'),
+      protocol: String(form.get('protocol') || 'modbus-tcp'),
       mode: 'UNKNOWN',
       notes: String(form.get('notes') || '').trim() || 'Not configured. Approved vendor interface and read-only gateway details are required.'
     };
@@ -1190,7 +1192,8 @@ function App({ initialData }: { initialData: AppInitialData }) {
     setConnections(prev => prev.map(item => item.name === previousName ? {
       ...item,
       name,
-      protocol: String(form.get('protocol') || item.protocol) as CommunicationEndpoint['protocol'],
+      transport: String(form.get('transport') || item.transport || 'ethernet'),
+      protocol: String(form.get('protocol') || item.protocol),
       notes: String(form.get('notes') || '').trim(),
       mode: 'UNKNOWN'
     } : item));
@@ -1748,13 +1751,15 @@ function App({ initialData }: { initialData: AppInitialData }) {
             {editingConnectionName===endpoint.name
               ? <form className="stack-form record-edit-form" onSubmit={event=>saveConnectionEdit(event,endpoint.name)}>
                   <label>{language==='ar'?'اسم نقطة الاتصال':'Connection name'}<input name="name" defaultValue={endpoint.name} required/></label>
-                  <label>Protocol<select name="protocol" defaultValue={endpoint.protocol}><option>Modbus TCP</option><option>OPC UA</option><option>MQTT</option><option>REST API</option><option>WebSocket</option><option>BLE</option></select></label>
+                  <label>{language==='ar'?'وسيلة الاتصال':'Transport'}<select name="transport" defaultValue={CONNECTION_OPTIONS.find(option=>option.family==='transport'&&(option.id===endpoint.transport||option.name===endpoint.transport))?.id || 'ethernet'}>{CONNECTION_OPTIONS.filter(option=>option.family==='transport').map(option=><option key={option.id} value={option.id}>{language==='ar'?option.nameAr:option.name}</option>)}</select></label>
+                  <label>{language==='ar'?'البروتوكول':'Protocol'}<select name="protocol" defaultValue={CONNECTION_OPTIONS.find(option=>option.family==='protocol'&&(option.id===endpoint.protocol||option.name===endpoint.protocol))?.id || 'custom'}>{CONNECTION_OPTIONS.filter(option=>option.family==='protocol').map(option=><option key={option.id} value={option.id}>{language==='ar'?option.nameAr:option.name}</option>)}</select></label>
                   <label>{t.notes}<textarea name="notes" defaultValue={endpoint.notes}/></label>
                   <div className="record-actions"><button className="btn-primary" type="submit">{language==='ar'?'حفظ':'Save'}</button><button className="btn-secondary" type="button" onClick={()=>setEditingConnectionName(null)}>{t.cancel}</button></div>
                 </form>
               : <>
-                  <h3>{endpoint.protocol}</h3>
+                  <h3>{getConnectionOption(endpoint.protocol)?.[language==='ar'?'nameAr':'name'] || endpoint.protocol}</h3>
                   <strong>{endpoint.name}</strong>
+                  <p>{language==='ar'?'وسيلة الاتصال':'Transport'}: {getConnectionOption(endpoint.transport || 'ethernet')?.[language==='ar'?'nameAr':'name'] || endpoint.transport || 'Ethernet'}</p>
                   <p>{endpoint.notes}</p>
                   <div className="protocol-footer"><StatusPill status="UNKNOWN" language={language}/><span>{language==='ar'?'غير مهيأ — للقراءة فقط بعد التكليف':'Not configured · read-only after commissioning'}</span></div>
                   <div className="record-actions"><button className="btn-secondary" onClick={()=>setEditingConnectionName(endpoint.name)}>{language==='ar'?'تعديل السجل':'Edit record'}</button><button className="btn-danger" onClick={()=>{if(window.confirm(language==='ar'?'أرشفة سجل الاتصال؟':'Archive this connection register entry?')) archiveConnection(endpoint.name);}}>{language==='ar'?'أرشفة':'Archive'}</button></div>
@@ -1766,7 +1771,8 @@ function App({ initialData }: { initialData: AppInitialData }) {
           <div className="card-head"><div><span className="eyebrow">REGISTER INTERFACE / NEW</span><h3>{language==='ar'?'إضافة سجل اتصال':'Add connection record'}</h3></div><Icon name="plus" size={20}/></div>
           <form className="form-grid" onSubmit={addConnection}>
             <label>{language==='ar'?'اسم نقطة الاتصال':'Connection name'}<input name="name" required placeholder="Approved vendor gateway / PLC interface"/></label>
-            <label>Protocol<select name="protocol"><option>Modbus TCP</option><option>OPC UA</option><option>MQTT</option><option>REST API</option><option>WebSocket</option><option>BLE</option></select></label>
+            <label>{language==='ar'?'وسيلة الاتصال':'Transport'}<select name="transport" defaultValue="ethernet">{CONNECTION_OPTIONS.filter(option=>option.family==='transport').map(option=><option key={option.id} value={option.id}>{language==='ar'?option.nameAr:option.name}</option>)}</select></label>
+            <label>{language==='ar'?'البروتوكول':'Protocol'}<select name="protocol" defaultValue="modbus-tcp">{CONNECTION_OPTIONS.filter(option=>option.family==='protocol').map(option=><option key={option.id} value={option.id}>{language==='ar'?option.nameAr:option.name}</option>)}</select></label>
             <label>{t.notes}<input name="notes" placeholder={language==='ar'?'الموديل، الواجهة المعتمدة، مرجع المستند':'Exact model, approved interface and document reference'}/></label>
             <button className="btn-primary" type="submit">{language==='ar'?'حفظ سجل الاتصال':'Save connection record'}</button>
           </form>
