@@ -1,5 +1,7 @@
 # Universal Shuttle Connectivity
 
+> **Hardware commissioning status — reference adapters, NOT commissioned on real hardware.** The adapters and explorers below are reference implementations validated with software tests/simulators only. No Cassioli, Craftsman, ACME or other physical shuttle has been connected or commissioned by this repository. Do not interpret successful CI, a discovered BLE peripheral, or accepted mock telemetry as proof of compatibility with installed equipment.
+
 ## Purpose and compatibility model
 
 The application is not limited to Cassioli, Craftsman or ACME. The gateway accepts any non-empty manufacturer name and exact model/firmware identity. A new manufacturer can be registered without changing the application source.
@@ -29,17 +31,30 @@ Compatibility is determined by the physical machine's actual interfaces, not by 
 
 The catalog describes integration families and extension points. It does not claim that a particular shuttle exposes every listed option.
 
-## Implemented driver in this branch
+## Hardware commissioning status
 
-### Generic Modbus TCP — read only
+Every implemented driver in this section is a **reference adapter, NOT commissioned on real hardware**:
+1. **Modbus TCP:** reference adapter, NOT commissioned on real hardware. Local protocol simulator tests only; exact OEM register map and supervised site acceptance required.
+2. **Modbus RTU / RS-485 / serial:** reference adapter, NOT commissioned on real hardware. Local PTY simulator tests only; exact OEM register map, isolated serial interface and supervised site acceptance required.
+3. **Bluetooth LE GATT explorer:** reference adapter, NOT commissioned on real hardware. Native scan/connect/GATT tests use mocks; no installed shuttle has been identified or paired.
+4. **MQTT:** reference adapter, NOT commissioned on real hardware. Broker/topic tests use a fake client; real broker, TLS trust, topic contract and vendor approval required.
+5. **OPC UA:** reference adapter, NOT commissioned on real hardware. Client tests use a mocked server; real certificates, server trust, node map and vendor approval required.
+6. **REST API:** reference adapter, NOT commissioned on real hardware. Tests use a local test HTTP server; real HTTPS endpoint, credentials and vendor schema required.
+7. **WebSocket:** reference adapter, NOT commissioned on real hardware. Tests use a mocked push stream; real WSS endpoint and vendor payload contract required.
+
+These reference implementations are not a statement that the named protocols exist on the company's five shuttles. Each connection is disabled/uncommissioned until the actual machine interface is documented, approved, configured, bench-tested and accepted on site.
+
+## Implemented reference adapters — read only
+
+### Modbus TCP reference adapter
 
 `industrial-gateway/adapters/modbus_tcp.py` contains a generic Modbus TCP reader for a shuttle/controller that explicitly supports Modbus TCP. It uses function code 3 (Read Holding Registers) and function code 4 (Read Input Registers) only. It has no write-register, write-coil, reset, movement or charging commands.
 
-Supported register data types: `uint16`, `int16`, `uint32`, `int32`, and `float32`. Scaling, offset, unit and byte order are configurable from the approved register map. The driver enforces private OT IP addresses, bounded timeouts and register counts, and validates response transaction IDs, unit IDs, function codes and byte counts.
+Supported register data types: `uint16`, `int16`, `uint32`, `int32`, and `float32`. Scaling, offset, unit and byte order are configurable from the approved register map. It enforces private OT IP addresses, bounded timeouts and validates response transaction IDs, unit IDs, function codes and byte counts. This is a reference adapter, NOT commissioned on real hardware.
 
-This driver still requires the exact model's manufacturer-approved register map. A register address must never be guessed from another machine or from a generic Modbus example.
+Never guess register addresses. Use only the exact model's manufacturer-approved register map.
 
-Example protected settings file (replace every placeholder only with values approved for the exact machine):
+Example protected settings (replace placeholders only with OEM-approved values):
 
 ```json
 {
@@ -62,107 +77,57 @@ Example protected settings file (replace every placeholder only with values appr
 }
 ```
 
-The configured `register_map` must exactly match `allowed_tags` in the asset configuration. The settings file belongs on the secured gateway host and must not be committed to GitHub.
+Set `SHUTTLE_ADAPTER_FACTORY=adapters.modbus_tcp:create_adapter`, `SHUTTLE_ADAPTER_ASSET_ID`, `SHUTTLE_ADAPTER_SETTINGS`, `SHUTTLE_ADAPTER_POLL_SECONDS`, `SHUTTLE_GATEWAY_INGEST_TOKEN` and `SHUTTLE_GATEWAY_INGEST_URL`. The protected settings must contain the exact approved tag map.
 
-Configure the gateway environment:
-- `SHUTTLE_ADAPTER_ASSET_ID`: commissioned asset ID.
-- `SHUTTLE_ADAPTER_FACTORY=adapters.modbus_tcp:create_adapter`.
-- `SHUTTLE_ADAPTER_SETTINGS`: protected path to the settings JSON.
-- `SHUTTLE_ADAPTER_POLL_SECONDS`: approved polling interval.
-- `SHUTTLE_GATEWAY_INGEST_TOKEN` and `SHUTTLE_GATEWAY_INGEST_URL`.
+### Modbus RTU reference adapter over serial
 
-The asset's `transports` list must include the selected transport (for example `ethernet` or `wifi`) and its `protocols` list must include `modbus-tcp`. The adapter declares the selected path for every reading; the gateway rejects readings from undeclared transports or protocols and persists those fields with the sample.
+`industrial-gateway/adapters/modbus_rtu.py` is a Linux edge-gateway reference adapter using function codes 3 and 4 only. It validates frame CRC, unit ID, function code and response byte count with bounded serial timeouts. It supports 8 data bits, N/E/O parity, 1/2 stop bits and common baud rates from 1200 to 115200. This is a reference adapter, NOT commissioned on real hardware.
 
-### Generic REST API client — read only
+Production paths must use a stable `/dev/serial/by-id/`, `/dev/ttyUSB*` or `/dev/ttyACM*` device. PTYs are test-only. For RS-485 use an isolated, correctly rated USB-RS485 adapter and have the site electrical engineer confirm termination, grounding, biasing and topology. Never guess register addresses.
 
-`industrial-gateway/adapters/rest_api.py` reads a vendor's documented JSON REST endpoints using GET only. It enforces HTTPS for non-loopback endpoints, validates private OT IPs or an exact DNS hostname allowlist, refuses redirects to other origins, bounds response size and timeout, and supports bearer or Basic credentials from protected gateway settings. Each tag must have an exact approved relative path and JSON Pointer. The selected payload must contain a value and timezone-aware source timestamp; arbitrary JSON or missing timestamps are not converted into live readings.
+Set `SHUTTLE_ADAPTER_FACTORY=adapters.modbus_rtu:create_adapter`; use exact OEM-approved serial settings and register map.
 
-Set `SHUTTLE_ADAPTER_FACTORY=adapters.rest_api:create_adapter`. Configure `base_url`, `allowed_hosts` for DNS, `transport`, protected `bearer_token` or Basic credentials, and an `endpoints` map whose keys exactly match `allowed_tags`. Use only vendor-documented GET routes and payload paths.
+### Bluetooth LE GATT explorer — nearby device discovery
 
-### Generic WebSocket push client — secure, read only
+The Android/iOS app includes a native BLE central-role reference explorer using the Capacitor 8-compatible `@capacitor-community/bluetooth-le` plugin. The user opens Connections and selects **Scan for BLE devices / ابحث عن أجهزة BLE**. The explorer scans nearby BLE advertisements, lists discovered peripherals by name/address and RSSI, and lets the user select one to connect, discover GATT services/characteristics, read readable characteristics and subscribe to notify/indicate updates. Raw values are displayed as HEX.
 
-`industrial-gateway/adapters/websocket_stream.py` connects to a vendor/gateway WSS endpoint that pushes JSON telemetry frames without requiring a client subscription command. It validates the approved origin, TLS certificate and hostname, supports protected bearer or Basic credentials, bounds frame size and timeout, and accepts only registered tags with timezone-aware source timestamps. It never sends application data frames or machine-control commands.
+**This is BLE peripheral discovery, not automatic identification of a shuttle.** It can list any nearby BLE peripheral. A device name, RSSI or successful GATT connection does not prove that the peripheral is a Cassioli, Craftsman, ACME or shuttle controller. The BLE explorer is a reference adapter, NOT commissioned on real hardware. No installed shuttle is paired or identified by this repository. Vendor UUID mapping and a validated payload decoder are required before a raw value can become trusted telemetry.
 
-Set `SHUTTLE_ADAPTER_FACTORY=adapters.websocket_stream:create_adapter`. Configure the WSS `url`, `allowed_hosts` for a DNS name, `transport`, protected credentials, and `units` for approved tags. Incoming frames must use the documented shape `{"tag":"battery.soc","value":78.2,"unit":"%","sourceTimestamp":"2026-11-18T16:00:00Z","quality":"GOOD"}`. Gateways requiring a proprietary subscribe message or binary payload decoder need a manufacturer-specific adapter.
+The explorer exposes no characteristic-write controls and does not decode unknown payloads into shuttle state or battery measurements. It is not Bluetooth Classic/RFCOMM.
 
-### Generic OPC UA client — secure, read only
+### MQTT reference adapter
 
-`industrial-gateway/adapters/opc_ua.py` adds a generic OPC UA client for any shuttle controller or upstream WCS/gateway that exposes documented OPC UA nodes. It uses `opc.tcp://host:port`, a pinned server certificate, a client certificate/private key and `Basic256Sha256,SignAndEncrypt`. A vendor-approved read-only account can also be configured. The exact node map must match the asset's `allowed_tags`; each returned `DataValue` must have a good status and a timezone-aware `SourceTimestamp`. No writes, method calls or control endpoints are included.
+`industrial-gateway/adapters/mqtt.py` is a generic reference subscriber for timestamped JSON telemetry. It subscribes only to concrete topics in the exact approved tag map, rejects wildcard topics and requires TLS certificate validation for non-loopback brokers. It has no publish method. This is a reference adapter, NOT commissioned on real hardware.
 
-Set `SHUTTLE_ADAPTER_FACTORY=adapters.opc_ua:create_adapter`. In the protected settings file provide:
-- `endpoint_url`, plus `allowed_hosts` if a DNS name is used;
-- `client_certificate`, `client_private_key`, and pinned `server_certificate` paths;
-- a separate vendor-provisioned read-only `username` / `password` if required;
-- a `nodes` map whose exact keys are the commissioned `allowed_tags` and whose values contain the documented `node_id` and engineering `unit`.
+Set `SHUTTLE_ADAPTER_FACTORY=adapters.mqtt:create_adapter`; configure a real vendor-approved broker, TLS trust, credentials, transport and topic/payload map in protected settings.
 
-The OPC UA client configures security before opening the session. A missing certificate or untrusted server is a connection failure, not a reason to fall back to an unencrypted channel.
+### OPC UA reference adapter
 
-### Generic MQTT telemetry adapter — read only
+`industrial-gateway/adapters/opc_ua.py` is a reference OPC UA client using `Basic256Sha256,SignAndEncrypt`, client certificate/private key, pinned server certificate and exact NodeId allow-list. It performs DataValue reads only; no writes or method calls. This is a reference adapter, NOT commissioned on real hardware.
 
-`industrial-gateway/adapters/mqtt.py` is a generic MQTT subscriber for any manufacturer or shuttle gateway that publishes timestamped JSON telemetry to MQTT. It subscribes only to the concrete topic names in the commissioned asset's exact approved tag map. Wildcard subscriptions are rejected. Every payload must include a value and timezone-aware source timestamp; optional unit and data-quality fields are preserved. TLS certificate validation is required for non-loopback brokers, hostname allowlisting is required for DNS names, and credentials belong in the protected gateway settings / secret store. The adapter has no publish method and cannot send commands to the shuttle.
+Set `SHUTTLE_ADAPTER_FACTORY=adapters.opc_ua:create_adapter`; actual client/server certificates, a read-only account and OEM-approved NodeIds are required.
 
-Payload example (one message per approved topic):
+### REST API reference adapter
 
-```json
-{
-  "value": 82.4,
-  "unit": "%",
-  "sourceTimestamp": "2026-11-18T16:00:00Z",
-  "quality": "GOOD"
-}
-```
+`industrial-gateway/adapters/rest_api.py` is a reference reader for documented JSON endpoints using GET only. It enforces HTTPS except explicit loopback tests, exact hostname allow-listing, rejects redirects, bounds response size/time and requires timestamped values at approved JSON Pointers. This is a reference adapter, NOT commissioned on real hardware.
 
-Set `SHUTTLE_ADAPTER_FACTORY=adapters.mqtt:create_adapter`. Configure `transport`, `host`, `port`, `tls`, protected credentials/certificate paths, and a `topics` object whose keys exactly match the asset's `allowed_tags`. Use the vendor/gateway's documented topic schema; the adapter does not guess topic names or convert arbitrary payloads into machine state.
+Set `SHUTTLE_ADAPTER_FACTORY=adapters.rest_api:create_adapter`; use the manufacturer's approved endpoint, auth method and payload schema.
 
-### Generic Modbus RTU over RS-232 / RS-485 / USB serial — read only
+### WebSocket reference adapter
 
-`industrial-gateway/adapters/modbus_rtu.py` adds a Linux edge-gateway serial adapter using Modbus RTU function codes 3 and 4 only. It validates frame CRC, unit ID, function code and response byte count, with bounded serial timeouts and an exact approved register map. It supports 8 data bits, N/E/O parity, 1 or 2 stop bits, and common baud rates from 1200 to 115200.
+`industrial-gateway/adapters/websocket_stream.py` is a reference WSS reader for pre-authorized JSON push feeds. It validates TLS/origin, uses approved credentials and reads only documented tags; it never sends app frames or control commands. This is a reference adapter, NOT commissioned on real hardware.
 
-Configure `SHUTTLE_ADAPTER_FACTORY=adapters.modbus_rtu:create_adapter` and store the serial settings in the protected gateway settings file. A production path must be a stable `/dev/serial/by-id/`, `/dev/ttyUSB*` or `/dev/ttyACM*` device. Pseudo-terminals are accepted only by isolated tests. For RS-485, use an isolated, correctly rated USB-RS485 adapter with automatic direction control or a vendor-approved interface; confirm biasing, termination, grounding and cable topology with the site electrical engineer.
+Set `SHUTTLE_ADAPTER_FACTORY=adapters.websocket_stream:create_adapter`. A gateway requiring a subscription frame, vendor binary decoder or custom handshake needs a separate vendor-specific implementation.
 
-Example protected serial settings:
+## Not implemented as built-in drivers
 
-```json
-{
-  "device": "/dev/serial/by-id/usb-Approved_Isolated_RS485_Adapter",
-  "transport": "rs485",
-  "baudrate": 9600,
-  "parity": "N",
-  "stopbits": 1,
-  "unit_id": 1,
-  "timeout_seconds": 1.5,
-  "register_map": {
-    "battery.soc": {
-      "address": 100,
-      "register_type": "holding",
-      "data_type": "uint16",
-      "byte_order": "AB",
-      "scale": 0.1,
-      "offset": 0,
-      "unit": "%"
-    }
-  }
-}
-```
+- Bluetooth Classic / RFCOMM requires a separate native Android implementation, pairing and protocol specification.
+- Siemens S7, EtherNet/IP, PROFINET and CANopen require separate drivers for the exact controller family and firmware.
+- Native direct USB serial from the Android phone is not implemented. USB serial conversion is handled only by the Linux edge-gateway Modbus RTU reference adapter.
+- Industrial proprietary RF requires the exact vendor receiver/gateway, frequency, modulation, pairing, encryption and application protocol. A phone cannot generically decode proprietary RF traffic.
+- Vendor SDK/API and proprietary drivers require official documentation, credentials and explicit read-only authorization.
 
-The selected asset must explicitly allow `rs485` or `usb-serial` as its transport and `modbus-rtu` as its protocol. The map must come from the exact manufacturer's approved documentation. Never guess Modbus addresses.
-
-## Generic Bluetooth LE GATT explorer
-
-The Android/iOS application now includes a native BLE central-role explorer using the Capacitor 8-compatible `@capacitor-community/bluetooth-le` plugin. It can scan nearby BLE advertisements, connect to a selected peripheral, discover exposed GATT services/characteristics, read characteristics that advertise the read property, and subscribe to notify/indicate characteristics. Raw bytes are shown as HEX. The explorer contains no characteristic-write functions and does not decode unknown payloads into shuttle state or battery measurements.
-
-Use this explorer to confirm that a machine or vendor gateway actually exposes BLE and to collect its documented GATT service/characteristic UUIDs. A manufacturer-specific decoder and approved read-only tag mapping are still needed before raw values become trusted LIVE_VENDOR telemetry. Test the installed APK against the actual equipment on a physical Android device.
-
-## Not yet implemented as built-in drivers
-
-- Bluetooth Classic / RFCOMM is not supported by the BLE GATT plugin and needs a separate Android native Classic serial implementation plus device pairing and protocol specification.
-- REST API and WebSocket need dedicated read-only HTTP/WebSocket adapters with per-vendor authentication and payload schemas.
-- Siemens S7, EtherNet/IP, PROFINET and CANopen need separately reviewed and tested drivers for the exact PLC/controller family and firmware.
-- Native direct USB serial from the Android phone is not implemented. USB-to-RS-485/RS-232 is supported through the Linux edge-gateway Modbus RTU adapter.
-- Industrial RF requires the exact vendor radio receiver/gateway, frequency, modulation, pairing, encryption and application protocol. A phone cannot generically decode proprietary RF traffic.
-- Vendor SDK/API and proprietary drivers require the vendor's official documentation, credentials and explicit third-party read-only authorization.
-
-Do not show any connection as LIVE until a built adapter has passed an isolated bench test and a supervised site read-only commissioning. See `HARDWARE_COMMISSIONING_REGISTER.md`, `VENDOR_INTEGRATION_QUESTIONNAIRE.md` and `INDUSTRIAL_SYSTEM_REQUIREMENTS.md`.
+Do not show any connection as LIVE until a driver has passed isolated bench tests and supervised site read-only commissioning. See `HARDWARE_COMMISSIONING_REGISTER.md`, `VENDOR_INTEGRATION_QUESTIONNAIRE.md` and `INDUSTRIAL_SYSTEM_REQUIREMENTS.md`.
 
 ## Safety boundary
 
