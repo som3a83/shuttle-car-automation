@@ -63,6 +63,8 @@ describe('explicit IndexedDB migration orchestrator', () => {
     const journal = await getMigrationJournal('successful-migration');
     expect(journal?.verificationStatus).toBe('passed');
     expect(journal?.state).toBe(MigrationState.COMPLETE);
+    expect(journal?.sourceByKey?.['operational.shuttles']).toBe('legacy');
+    expect(journal?.sourceByKey?.['operational.theme']).toBe('default');
   });
 
   it('Test 12: blocks migration while audit-archive-pending exists and preserves the marker', async () => {
