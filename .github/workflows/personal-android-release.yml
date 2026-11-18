@@ -104,6 +104,9 @@ jobs:
             ../artifacts/personal-release/Shuttle-Car-Automation-6.0.0-aligned.apk
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs ../artifacts/personal-release/Shuttle-Car-Automation-6.0.0.apk
           rm ../artifacts/personal-release/Shuttle-Car-Automation-6.0.0-aligned.apk
+          cp ../artifacts/personal-release/Shuttle-Car-Automation-6.0.0.apk "$GITHUB_WORKSPACE/android/app/build/outputs/apk/release/Shuttle-Car-Automation-6.0.0.apk"
+          test -s "$GITHUB_WORKSPACE/android/app/build/outputs/apk/release/Shuttle-Car-Automation-6.0.0.apk"
+          ls -lh "$GITHUB_WORKSPACE/android/app/build/outputs/apk/release/Shuttle-Car-Automation-6.0.0.apk"
           rm -f "$SIGNING_KEY"
           cat > ../artifacts/personal-release/README-INSTALL.txt <<'TXT'
           Shuttle Car Automation — Personal Android Release
@@ -146,11 +149,12 @@ jobs:
           script: |
             set -euo pipefail
             set -x
-            APK="$(find "$GITHUB_WORKSPACE" -type f -name 'Shuttle-Car-Automation-6.0.0.apk' -print -quit)"
+            APK="$GITHUB_WORKSPACE/android/app/build/outputs/apk/release/Shuttle-Car-Automation-6.0.0.apk"
             echo "Workspace: $GITHUB_WORKSPACE"
             echo "APK candidate: $APK"
-            test -n "$APK"
+            ls -lah "$GITHUB_WORKSPACE/android/app/build/outputs/apk/release/"
             test -s "$APK"
+            file "$APK"
             file "$APK"
             adb wait-for-device
             adb install -r "$APK"
