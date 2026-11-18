@@ -1,5 +1,8 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import type { Language, Role, User } from '../types';
+import { canPerformAction } from '../security/permissions';
+import StorageMigrationPanel from './StorageMigrationPanel';
+import StorageMigrationRollbackPanel from './StorageMigrationRollbackPanel';
 import { appendAuditRecordAsync, archiveAuditRecordsAsync, auditRecordsToCsv, filterAuditRecords, readAllAuditRecordsAsync, readAuditArchivesAsync, verifyAuditLedgerAsync, type AuditRecord } from '../security/auditLog';
 import {
   authenticateLocalAccountAsync,
@@ -19,11 +22,17 @@ const roles: Role[] = ['Admin', 'Supervisor', 'Maintenance Engineer', 'Technicia
 export default function SecurityCenter({
   language,
   currentUser,
-  onSessionChange
+  onSessionChange,
+  beforeStorageOperation,
+  onStorageLockChange,
+  onStorageMigrationComplete
 }: {
   language: Language;
   currentUser: User;
   onSessionChange: (user: User | null) => void;
+  beforeStorageOperation?: () => Promise<void>;
+  onStorageLockChange?: (locked: boolean) => void;
+  onStorageMigrationComplete?: () => void;
 }) {
   const ar = language === 'ar';
   const [accounts, setAccounts] = useState<LocalAccountSummary[]>([]);
@@ -51,6 +60,7 @@ export default function SecurityCenter({
   const [passwordForm, setPasswordForm] = useState({ current: '', next: '', confirm: '' });
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [securityTab, setSecurityTab] = useState<'users' | 'audit' | 'storage' | 'settings'>('users');
   const isAuthenticated = currentUser.isAuthenticated;
   const isAdministrator = isAuthenticated && !currentUser.mustChangePassword && (currentUser.role === 'Super Admin' || currentUser.role === 'Admin');
   const isSuperAdmin = isAuthenticated && !currentUser.mustChangePassword && currentUser.role === 'Super Admin';
@@ -415,6 +425,13 @@ export default function SecurityCenter({
         {isAuthenticated ? (ar ? 'جلسة موثقة محليًا' : 'LOCAL SESSION ACTIVE') : (ar ? 'وضع زائر' : 'GUEST / PREVIEW')}
       </span>
     </div>
+
+    {isAdministrator && <nav className="security-management-tabs" role="tablist" aria-label={ar ? 'تبويبات مركز الأمان' : 'Security center tabs'}>
+      <button type="button" role="tab" aria-selected={securityTab === 'users'} className={securityTab === 'users' ? 'selected' : ''} onClick={() => setSecurityTab('users')}>{ar ? 'المستخدمون' : 'Users'}</button>
+      <button type="button" role="tab" aria-selected={securityTab === 'audit'} className={securityTab === 'audit' ? 'selected' : ''} onClick={() => setSecurityTab('audit')}>{ar ? 'سجل التدقيق' : 'Audit'}</button>
+      <button type="button" role="tab" aria-selected={securityTab === 'storage'} className={securityTab === 'storage' ? 'selected' : ''} onClick={() => setSecurityTab('storage')}>{ar ? 'إدارة التخزين' : 'Storage Management'}</button>
+      <button type="button" role="tab" aria-selected={securityTab === 'settings'} className={securityTab === 'settings' ? 'selected' : ''} onClick={() => setSecurityTab('settings')}>{ar ? 'الإعدادات' : 'Settings'}</button>
+    </nav>}
 
     {isAuthenticated ? <>
       <div className="surface-card security-session-card">
