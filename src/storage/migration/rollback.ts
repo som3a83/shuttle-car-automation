@@ -208,7 +208,7 @@ export async function assessMigrationRollback(
   }
   const pending = await listPendingMigrationJournals();
   if (pending.length > 0) {
-    return blocked('An incomplete storage migration journal exists. Resolve or recover it before starting reverse migration.');
+    return blocked('An unfinished storage migration journal exists. Resolve or recover it before starting reverse migration.');
   }
   const snapshot = (await listGenerationSnapshots()).find((item) =>
     item.nextGeneration === activeGeneration && !item.rolledBackAt
