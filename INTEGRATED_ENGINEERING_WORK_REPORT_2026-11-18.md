@@ -23,6 +23,11 @@ Updated: 2026-11-18
 - The dependency audit reported six high-severity findings in the Vite/Vitest toolchain through picomatch. This integration does not claim the advisory is fixed; the audit remains visible and non-blocking while no patched upstream version is available.
 - The integrated branch still requires fresh CI before merge. No APK/AAB or Play Store submission is claimed by this report.
 
+## Repository protection state observed
+- Active ruleset `main` (ID `27423825`) currently requires pull requests and rejects non-fast-forward updates.
+- The live ruleset does not yet require status checks, an independent approval, CODEOWNERS approval, or resolved review threads. The updated `GITHUB_SECURITY_SETUP.md` records the missing gates and the exact checks to require.
+- The GitHub integration did not expose a ruleset write operation, so those repository settings were not changed by this integration.
+
 ## Industrial and deployment boundaries
 - The 3D models are conceptual references, not manufacturer-certified CAD.
 - No physical shuttle is connected by this integration. Live telemetry or control requires verified vendor documentation, approved read-only adapters, and commissioning.
