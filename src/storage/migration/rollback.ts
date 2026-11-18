@@ -237,7 +237,9 @@ export async function assessMigrationRollback(
  * Deterministic staging keys are retained so a retry can safely overwrite and
  * re-verify them. The active IndexedDB generation is retained for recovery.
  */
-export async function rollbackToLegacyStorage(
+let reverseMigrationSingleFlight: Promise<MigrationRollbackResult> | null = null;
+
+async function runReverseMigration(
   legacyStorage: LegacyStorageRollbackAdapter = globalThis.localStorage,
   onProgress?: (progress: RollbackProgress) => void
 ): Promise<MigrationRollbackResult> {
@@ -336,4 +338,17 @@ export async function rollbackToLegacyStorage(
     defaultedKeyCount: captured.defaultedKeyCount,
     legacyFingerprint
   };
+}
+
+
+/** Share a single reverse-migration operation across StrictMode and duplicate UI events in this tab. */
+export function rollbackToLegacyStorage(
+  legacyStorage: LegacyStorageRollbackAdapter = globalThis.localStorage,
+  onProgress?: (progress: RollbackProgress) => void
+): Promise<MigrationRollbackResult> {
+  if (reverseMigrationSingleFlight) return reverseMigrationSingleFlight;
+  reverseMigrationSingleFlight = runReverseMigration(legacyStorage, onProgress).finally(() => {
+    reverseMigrationSingleFlight = null;
+  });
+  return reverseMigrationSingleFlight;
 }
