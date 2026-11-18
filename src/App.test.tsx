@@ -526,7 +526,7 @@ beforeEach(async () => {
     await user.click(screen.getAllByRole('button', { name: /Fleet Control Center/i })[0]);
     await user.click(screen.getByRole('button', { name: /Show archived devices/i }));
     await user.click(screen.getAllByRole('button', { name: /Restore/i })[0]);
-    expect(screen.getByText(/Cannot restore: this manufacturer serial number belongs to another active shuttle/i)).toBeInTheDocument();
+    await screen.findByText(/Cannot restore: this manufacturer serial number belongs to another active shuttle/i);
     const saved = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:shuttles') || '[]') as Array<{id:string;archivedAt?:string|null}>;
     expect(saved.find(item => item.id === 'SC-01')?.archivedAt).toBeTruthy();
   });

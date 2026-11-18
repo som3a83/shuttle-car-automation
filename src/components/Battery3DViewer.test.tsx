@@ -37,11 +37,11 @@ describe('Battery3DViewer interactive engineering controls', () => {
     fireEvent.click(topView);
     expect(topView).toHaveAttribute('aria-pressed', 'true');
 
-    const explode = screen.getByRole('button', { name: 'Explode battery assembly' });
+    const explode = screen.getByRole('button', { name: 'Exploded assembly' });
     fireEvent.click(explode);
     expect(explode).toHaveAttribute('aria-pressed', 'true');
 
-    const cells = screen.getByRole('button', { name: 'Battery cells' });
+    const cells = screen.getByRole('button', { name: 'Cell bank' });
     fireEvent.click(cells);
     expect(cells).toHaveAttribute('aria-pressed', 'true');
   });
@@ -56,11 +56,14 @@ describe('Battery3DViewer interactive engineering controls', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Top view' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Explode battery assembly' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Exploded assembly' }));
+
+    expect(screen.getByRole('button', { name: 'Reassemble' })).toHaveAttribute('aria-pressed', 'true');
+
     fireEvent.click(screen.getByRole('button', { name: 'Reset battery view' }));
 
     expect(screen.getByRole('button', { name: 'Isometric view' })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByRole('button', { name: 'Explode battery assembly' })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByRole('button', { name: 'Exploded assembly' })).toHaveAttribute('aria-pressed', 'false');
     expect(screen.getByRole('button', { name: 'Battery enclosure' })).toHaveAttribute('aria-pressed', 'true');
   });
 });

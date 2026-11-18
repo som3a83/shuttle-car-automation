@@ -3,17 +3,58 @@ import * as THREE from 'three';
 import type { Battery, Language } from '../types';
 
 type BatteryView = 'iso' | 'side' | 'front' | 'top';
-type BatteryPart = 'enclosure' | 'cells' | 'electronics' | 'terminals';
+type BatteryPart = 'enclosure' | 'cells' | 'busbars' | 'bms' | 'terminals' | 'cover';
 
 const BATTERY_PARTS: { id: BatteryPart; en: string; ar: string }[] = [
   { id: 'enclosure', en: 'Battery enclosure', ar: 'هيكل البطارية' },
-  { id: 'cells', en: 'Battery cells', ar: 'خلايا البطارية' },
-  { id: 'electronics', en: 'BMS and electronics', ar: 'نظام إدارة البطارية والإلكترونيات' },
-  { id: 'terminals', en: 'Power terminals', ar: 'أطراف القدرة والتوصيل' }
+  { id: 'cells', en: 'Cell bank', ar: 'مجموعة الخلايا' },
+  { id: 'busbars', en: 'Busbar network', ar: 'قضبان التوصيل' },
+  { id: 'bms', en: 'Battery management system', ar: 'نظام إدارة البطارية' },
+  { id: 'terminals', en: 'Power terminals', ar: 'أطراف القدرة' },
+  { id: 'cover', en: 'Service cover', ar: 'غطاء الصيانة' }
 ];
 
+const PART_COPY: Record<BatteryPart, { en: string; ar: string; detailEn: string; detailAr: string }> = {
+  enclosure: {
+    en: 'Battery enclosure',
+    ar: 'هيكل البطارية',
+    detailEn: 'Inspect the enclosure, mounting points, seals and signs of impact or moisture ingress.',
+    detailAr: 'افحص الهيكل ونقاط التثبيت ووسائل الإحكام وأي آثار صدمات أو دخول رطوبة.'
+  },
+  cells: {
+    en: 'Cell bank',
+    ar: 'مجموعة الخلايا',
+    detailEn: 'Cell chemistry, count and arrangement are conceptual placeholders until verified against the pack label and OEM documentation.',
+    detailAr: 'نوع الخلايا وعددها وترتيبها عناصر توضيحية حتى يتم التحقق من ملصق البطارية ومستندات الشركة المصنعة.'
+  },
+  busbars: {
+    en: 'Busbar network',
+    ar: 'قضبان التوصيل',
+    detailEn: 'Inspect approved conductor routing, insulation, clearances and terminal torque using the manufacturer procedure.',
+    detailAr: 'افحص مسارات الموصلات والعزل والخلوصات وعزم ربط الأطراف وفق إجراء الشركة المصنعة المعتمد.'
+  },
+  bms: {
+    en: 'Battery management system',
+    ar: 'نظام إدارة البطارية',
+    detailEn: 'The BMS board is represented for layout guidance only. No BMS signals or protection states are connected to this model.',
+    detailAr: 'لوحة نظام إدارة البطارية مرسومة للتوضيح فقط. لا توجد إشارات BMS أو حالات حماية متصلة بهذا النموذج.'
+  },
+  terminals: {
+    en: 'Power terminals',
+    ar: 'أطراف القدرة',
+    detailEn: 'Verify polarity, connector condition, interlocks and isolation using the approved electrical safety procedure.',
+    detailAr: 'تحقق من القطبية وحالة الموصلات والتشابكات والعزل باستخدام إجراء السلامة الكهربائية المعتمد.'
+  },
+  cover: {
+    en: 'Service cover',
+    ar: 'غطاء الصيانة',
+    detailEn: 'The removable cover is shown separately in the exploded view. Do not open a pack unless qualified and authorized.',
+    detailAr: 'الغطاء القابل للإزالة يُshown بشكل منفصل في طريقة العرض المفككة. لا تفتح العبوة إلا إذا كنت مؤهلًا ومخولًا.'
+  }
+};
+
 const isBatteryPart = (value: unknown): value is BatteryPart =>
-  value === 'enclosure' || value === 'cells' || value === 'electronics' || value === 'terminals';
+  value === 'enclosure' || value === 'cells' || value === 'busbars' || value === 'bms' || value === 'terminals' || value === 'cover';
 
 interface Battery3DViewerProps {
   battery: Battery;
@@ -32,6 +73,10 @@ export default function Battery3DViewer({ battery, fallback, language = 'en' }: 
   const [selectedPart, setSelectedPart] = useState<BatteryPart>('enclosure');
   const [zoom, setZoom] = useState(1);
   const [resetVersion, setResetVersion] = useState(0);
+  const [inspectorOpen, setInspectorOpen] = useState(false);
+
+  const ar = language === 'ar';
+  const partInfo = PART_COPY[selectedPart];
 
   useEffect(() => {
     const host = hostRef.current;
@@ -82,100 +127,89 @@ export default function Battery3DViewer({ battery, fallback, language = 'en' }: 
       partGroupsRef.current[part] = group;
       return group;
     };
+    const darkShell = 0x161c24;
+    const shell = 0x33404d;
+    const cellMaterial = 0x2d3a48;
+    const cellCap = 0x1f2a36;
+    const copper = 0xb87333;
+    const fastener = 0x4d5a6a;
+    const board = 0x242e3a;
+    const chip = 0x3a4756;
+    const translucentCover = 0x6b7a8a;
+
+    const addBox = (parent: THREE.Group, size: [number, number, number], pos: [number, number, number], color: number) => {
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(size[0], size[1], size[2]), new THREE.MeshStandardMaterial({ color, metalness: 0.6, roughness: 0.4 }));
+      mesh.position.set(pos[0], pos[1], pos[2]);
+      parent.add(mesh);
+      return mesh;
+    };
+    const addCylinder = (parent: THREE.Group, rTop: number, rBottom: number, h: number, pos: [number, number, number], color: number) => {
+      const mesh = new THREE.Mesh(new THREE.CylinderGeometry(rTop, rBottom, h, 16), new THREE.MeshStandardMaterial({ color, metalness: 0.7, roughness: 0.3 }));
+      mesh.position.set(pos[0], pos[1], pos[2]);
+      parent.add(mesh);
+      return mesh;
+    };
+
+    // Enclosure — main pack housing with mounting points and seals.
     const enclosure = addPart('enclosure');
+    addBox(enclosure, [6.8, 0.34, 3.8], [0, -0.72, 0], darkShell);
+    addBox(enclosure, [6.8, 1.28, 0.18], [0, -0.03, -1.82], shell);
+    addBox(enclosure, [6.8, 1.28, 0.18], [0, -0.03, 1.82], shell);
+    addBox(enclosure, [0.18, 1.28, 3.5], [-3.31, -0.03, 0], shell);
+    addBox(enclosure, [0.18, 1.28, 3.5], [3.31, -0.03, 0], shell);
+    [-2.75, 2.75].forEach((x) => [-1.5, 1.5].forEach((z) => {
+      addCylinder(enclosure, 0.075, 0.075, 0.1, [x, -0.49, z], fastener);
+    }));
+    [-1, 1].forEach((side) => {
+      addBox(enclosure, [5.9, 0.12, 0.1], [0, -0.43, side * 1.55], fastener);
+    });
+
+    // Cells — 3 rows × 4 columns of prismatic cells with caps and connectors.
     const cells = addPart('cells');
-    const electronics = addPart('electronics');
-    const terminals = addPart('terminals');
-
-    const shell = new THREE.MeshStandardMaterial({ color: 0x354957, metalness: 0.78, roughness: 0.34 });
-    const inner = new THREE.MeshStandardMaterial({ color: 0x182831, metalness: 0.55, roughness: 0.48 });
-    const cell = new THREE.MeshStandardMaterial({ color: 0x568f7d, metalness: 0.32, roughness: 0.42 });
-    const bus = new THREE.MeshStandardMaterial({ color: 0xc58a4c, metalness: 0.82, roughness: 0.25 });
-    const board = new THREE.MeshStandardMaterial({ color: 0x275c50, metalness: 0.25, roughness: 0.62 });
-    const connector = new THREE.MeshStandardMaterial({ color: 0x171d22, metalness: 0.6, roughness: 0.35 });
-    const glow = new THREE.MeshStandardMaterial({ color: 0x79d5b0, emissive: 0x174c39, emissiveIntensity: 0.6 });
-    const fastener = new THREE.MeshStandardMaterial({ color: 0xb7c4ca, metalness: 0.92, roughness: 0.2 });
-    const insulator = new THREE.MeshStandardMaterial({ color: 0x171d25, metalness: 0.18, roughness: 0.68 });
-    const warning = new THREE.MeshStandardMaterial({ color: 0xe5aa48, emissive: 0x6b3f0a, emissiveIntensity: 0.32, metalness: 0.3 });
-
-    const box = (parent: THREE.Object3D, size: [number, number, number], position: [number, number, number], material: THREE.Material) => {
-      const mesh = new THREE.Mesh(new THREE.BoxGeometry(...size), material.clone());
-      mesh.position.set(...position);
-      mesh.castShadow = true;
-      parent.add(mesh);
-      return mesh;
-    };
-
-    const cylinder = (parent: THREE.Object3D, radius: number, height: number, position: [number, number, number], material: THREE.Material) => {
-      const mesh = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, height, 20), material.clone());
-      mesh.position.set(...position);
-      mesh.castShadow = true;
-      parent.add(mesh);
-      return mesh;
-    };
-
-    // Open-top enclosure: conceptual geometry only, not a manufacturer battery drawing.
-    box(enclosure, [6.8, 0.34, 3.7], [0, -0.72, 0], shell);
-    box(enclosure, [6.8, 1.18, 0.18], [0, -0.08, -1.76], shell);
-    box(enclosure, [6.8, 1.18, 0.18], [0, -0.08, 1.76], shell);
-    box(enclosure, [0.18, 1.18, 3.5], [-3.31, -0.08, 0], shell);
-    box(enclosure, [0.18, 1.18, 3.5], [3.31, -0.08, 0], shell);
-    box(enclosure, [6.25, 0.06, 3.15], [0, -0.48, 0], inner);
-    // Reinforced enclosure lips, insulated cell rails and removable service cover rails.
-    box(enclosure, [6.45, 0.09, 0.12], [0, 0.52, -1.55], fastener);
-    box(enclosure, [6.45, 0.09, 0.12], [0, 0.52, 1.55], fastener);
-    box(enclosure, [0.12, 0.09, 3.0], [-3.05, 0.52, 0], fastener);
-    box(enclosure, [0.12, 0.09, 3.0], [3.05, 0.52, 0], fastener);
-    [-0.82, 0.82].forEach(z => box(enclosure, [5.9, 0.12, 0.12], [0, -0.32, z], insulator));
-
-    // Twelve prismatic lithium cells arranged in two banks.
-    for (let row = 0; row < 2; row += 1) {
-      for (let col = 0; col < 6; col += 1) {
-        const x = -2.55 + col * 1.02;
-        const z = row === 0 ? -0.82 : 0.82;
-        box(cells, [0.82, 0.88, 1.32], [x, 0.02, z], cell);
-        box(cells, [0.3, 0.035, 0.22], [x, 0.49, z], bus);
-        cylinder(cells, 0.075, 0.055, [x, 0.56, z], fastener);
-        box(cells, [0.58, 0.025, 0.055], [x, 0.61, z + (row === 0 ? 0.26 : -0.26)], insulator);
+    for (let row = 0; row < 3; row += 1) {
+      for (let column = 0; column < 4; column += 1) {
+        const x = -2.1 + column * 1.4;
+        const z = -1.05 + row * 1.05;
+        addBox(cells, [1.02, 1.05, 0.78], [x, 0.02, z], cellMaterial);
+        addBox(cells, [0.82, 0.08, 0.62], [x, 0.59, z], cellCap);
+        addCylinder(cells, 0.065, 0.065, 0.08, [x - 0.25, 0.67, z], copper);
+        addCylinder(cells, 0.065, 0.065, 0.08, [x + 0.25, 0.67, z], fastener);
       }
     }
 
-    // Bus bars, BMS board, terminals, service connector and handles.
-    box(electronics, [5.85, 0.09, 0.16], [0, 0.57, -0.82], bus);
-    box(electronics, [5.85, 0.09, 0.16], [0, 0.57, 0.82], bus);
-    box(electronics, [1.4, 0.16, 1.0], [2.18, 0.62, 0.05], board);
-    // BMS controller, balancing components, fuse block and service harness.
-    box(electronics, [0.5, 0.12, 0.38], [2.18, 0.76, 0.05], shell);
-    box(electronics, [0.18, 0.08, 0.18], [1.8, 0.76, -0.2], insulator);
-    box(electronics, [0.18, 0.08, 0.18], [2.52, 0.76, 0.22], insulator);
-    for (let i = 0; i < 5; i += 1) box(electronics, [0.12, 0.04, 0.12], [1.72 + i * 0.22, 0.73, -0.18], glow);
-    for (let i = 0; i < 4; i += 1) cylinder(electronics, 0.07, 0.14, [1.82 + i * 0.2, 0.78, 0.25], warning);
-    box(electronics, [0.52, 0.18, 0.32], [2.78, 0.64, -0.64], connector);
-    box(electronics, [0.08, 0.08, 0.78], [2.78, 0.78, -0.64], fastener);
-    box(electronics, [0.62, 0.36, 0.5], [-2.65, 0.58, 0], connector);
-    const terminal = (x: number, color: number) => {
-      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.28, 20), new THREE.MeshStandardMaterial({ color, metalness: 0.8, roughness: 0.22 }));
-      post.position.set(x, 0.72, 1.28);
-      terminals.add(post);
-      const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.08, 20), connector.clone());
-      cap.position.set(x, 0.88, 1.28);
-      terminals.add(cap);
-    };
-    terminal(-2.7, 0xc94d4d);
-    terminal(-2.0, 0x4d83c9);
-    // Terminal collars, insulating boots and a protected main fuse.
-    cylinder(terminals, 0.24, 0.12, [-2.7, 0.94, 1.28], warning);
-    cylinder(terminals, 0.24, 0.12, [-2.0, 0.94, 1.28], insulator);
-    box(terminals, [0.62, 0.26, 0.44], [-1.15, 0.67, 1.25], shell);
-    box(terminals, [0.42, 0.12, 0.2], [-1.15, 0.84, 1.25], warning);
-    // Perimeter fasteners are visible service points, not dimensional callouts.
-    [-2.95, -1.45, 0, 1.45, 2.95].forEach(x => [-1.58, 1.58].forEach(z => cylinder(terminals, 0.055, 0.055, [x, 0.58, z], fastener)));
-    [-2.6, 2.6].forEach((x) => {
-      const handle = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.055, 10, 28, Math.PI), shell.clone());
-      handle.rotation.z = Math.PI / 2;
-      handle.position.set(x, 0.64, -1.45);
-      terminals.add(handle);
-    });
+    // Busbars — three rows of copper bus connectors.
+    const busbars = addPart('busbars');
+    for (let row = 0; row < 3; row += 1) {
+      const z = -1.05 + row * 1.05;
+      for (let column = 0; column < 3; column += 1) {
+        const x = -1.4 + column * 1.4;
+        addBox(busbars, [0.72, 0.075, 0.14], [x, 0.78, z], copper);
+      }
+      addBox(busbars, [4.6, 0.055, 0.08], [0, 0.82, z + 0.31], fastener);
+    }
+
+    // BMS — controller board with chips and sense pins.
+    const bms = addPart('bms');
+    addBox(bms, [1.55, 0.12, 0.92], [2.35, 0.48, 1.15], board);
+    addBox(bms, [0.46, 0.12, 0.42], [2.1, 0.61, 1.15], chip);
+    addBox(bms, [0.3, 0.08, 0.28], [2.62, 0.6, 1.15], chip);
+    for (let pin = 0; pin < 6; pin += 1) {
+      addBox(bms, [0.07, 0.035, 0.12], [1.75 + pin * 0.22, 0.57, 0.65], copper);
+    }
+
+    // Terminals — main power posts.
+    const terminals = addPart('terminals');
+    addBox(terminals, [0.78, 0.18, 0.52], [-2.8, 0.58, 1.25], darkShell);
+    addCylinder(terminals, 0.2, 0.2, 0.22, [-2.95, 0.78, 1.25], copper);
+    addCylinder(terminals, 0.2, 0.2, 0.22, [-2.58, 0.78, 1.25], fastener);
+    addBox(terminals, [0.58, 0.32, 0.45], [-2.7, 0.28, 1.25], shell);
+
+    // Cover — removable service cover.
+    const cover = addPart('cover');
+    addBox(cover, [6.55, 0.12, 3.55], [0, 1.08, 0], translucentCover);
+    [-2.65, 2.65].forEach((x) => [-1.35, 1.35].forEach((z) => {
+      addCylinder(cover, 0.055, 0.055, 0.08, [x, 1.01, z], fastener);
+    }));
 
     const grid = new THREE.GridHelper(16, 32, 0x526779, 0x263744);
     grid.position.y = -0.94;
@@ -213,7 +247,10 @@ export default function Battery3DViewer({ battery, fallback, language = 'en' }: 
         const hit = raycaster.intersectObjects(root.children, true)[0]?.object;
         let node: THREE.Object3D | null = hit || null;
         while (node && !isBatteryPart(node.userData.part)) node = node.parent;
-        if (node && isBatteryPart(node.userData.part)) setSelectedPart(node.userData.part);
+        if (node && isBatteryPart(node.userData.part)) {
+          setSelectedPart(node.userData.part);
+          setInspectorOpen(true);
+        }
       }
       down = null;
     };
@@ -316,9 +353,11 @@ export default function Battery3DViewer({ battery, fallback, language = 'en' }: 
   useEffect(() => {
     const offsets: Record<BatteryPart, number> = {
       enclosure: 0,
-      cells: exploded ? 0.9 : 0,
-      electronics: exploded ? 1.8 : 0,
-      terminals: exploded ? 2.65 : 0
+      cells: exploded ? -0.85 : 0,
+      busbars: exploded ? 0.85 : 0,
+      bms: exploded ? 1.35 : 0,
+      terminals: exploded ? -1.35 : 0,
+      cover: exploded ? 1.6 : 0
     };
     (Object.keys(offsets) as BatteryPart[]).forEach(part => {
       const group = partGroupsRef.current[part];
@@ -333,7 +372,6 @@ export default function Battery3DViewer({ battery, fallback, language = 'en' }: 
     });
   }, [selectedPart]);
 
-  const ar = language === 'ar';
   const viewLabels: Record<BatteryView, string> = ar
     ? { iso: 'منظور مجسم', side: 'جانبي', front: 'أمامي', top: 'علوي' }
     : { iso: 'Isometric', side: 'Side', front: 'Front', top: 'Top' };
@@ -355,10 +393,10 @@ export default function Battery3DViewer({ battery, fallback, language = 'en' }: 
           <button
             type="button"
             className={exploded ? 'selected' : ''}
-            aria-label="Explode battery assembly"
+            aria-label={exploded ? 'Reassemble' : 'Exploded assembly'}
             aria-pressed={exploded}
             onClick={() => setExploded(value => !value)}
-          >{ar ? 'تفكيك المجموعة' : 'Exploded view'}</button>
+          >{exploded ? (ar ? 'إعادة التجميع' : 'Reassemble') : (ar ? 'تفكيك المجموعة' : 'Exploded assembly')}</button>
           <button
             type="button"
             aria-label="Reset battery view"
@@ -367,6 +405,7 @@ export default function Battery3DViewer({ battery, fallback, language = 'en' }: 
               setZoom(1);
               setExploded(false);
               setSelectedPart('enclosure');
+              setInspectorOpen(false);
               setResetVersion(value => value + 1);
             }}
           >{ar ? 'إعادة ضبط' : 'Reset view'}</button>
@@ -384,10 +423,18 @@ export default function Battery3DViewer({ battery, fallback, language = 'en' }: 
               className={selectedPart === part.id ? 'selected' : ''}
               aria-label={part.en}
               aria-pressed={selectedPart === part.id}
-              onClick={() => setSelectedPart(part.id)}
+              onClick={() => { setSelectedPart(part.id); setInspectorOpen(true); }}
             >{ar ? part.ar : part.en}</button>
           ))}
         </div>
+        {inspectorOpen && (
+          <div className="battery-inspector-panel">
+            <span className="eyebrow">{ar ? 'فحص المكوّن المحدد' : 'SELECTED COMPONENT INSPECTOR'}</span>
+            <h3>{ar ? partInfo.ar : partInfo.en}</h3>
+            <p>{ar ? partInfo.detailAr : partInfo.detailEn}</p>
+            <p className="inspector-note">{ar ? 'مرجع توضيحي فقط — لا توجد قراءات BMS متصلة بهذا النموذج.' : 'Conceptual reference only — no BMS readings are connected to this model.'}</p>
+          </div>
+        )}
       </div>
       <div ref={hostRef} className="battery-3d-host" style={{ display: available === false ? 'none' : 'block' }} />
       {available === false && <div className="battery-3d-fallback">{fallback}</div>}
