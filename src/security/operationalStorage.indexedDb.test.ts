@@ -73,4 +73,23 @@ describe('operational bootstrap with active IndexedDB', () => {
     await expect(bootstrapOperationalStorage()).rejects.toThrow(/audit\.active/i);
     expect(localStorage.getItem('shuttle-car-automation-v1:local-accounts')).toBe(legacyAccounts);
   });
+  
+  it('verifies operational writes in IndexedDB without creating a duplicate localStorage snapshot', async () => {
+    const shuttles = [{ id: 'SC-IDB-01', manufacturer: 'Cassioli' }];
+    await set('operational.shuttles', shuttles);
+    const result = await (await import('./operationalStorage')).persistOperationalSnapshot('shuttles', shuttles);
+
+    expect(result.revision).toBe(1);
+    expect(result.checksum).toMatch(/^[a-f0-9]{64}$/);
+    expect(localStorage.getItem(OPERATIONAL_PREFIX + 'verified:shuttles')).toBeNull();
+    expect(localStorage.getItem(OPERATIONAL_PREFIX + 'verified:shuttles:previous')).toBeNull();
+  });
+
+  it('rejects operational save verification when IndexedDB differs from the requested state', async () => {
+    await set('operational.shuttles', [{ id: 'SC-IDB-01' }]);
+    await expect(
+      (await import('./operationalStorage')).persistOperationalSnapshot('shuttles', [{ id: 'SC-IDB-02' }])
+    ).rejects.toThrow(/does not match the latest application state/i);
+  });
+
 });

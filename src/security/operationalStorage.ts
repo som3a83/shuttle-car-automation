@@ -58,6 +58,21 @@ function getEngine(storage: StorageLike, collection: OperationalCollection): Ver
   return engine;
 }
 
+function canonicalValue(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonicalValue).join(',')}]`;
+  if (value && typeof value === 'object') {
+    const record = value as Record<string, unknown>;
+    return `{${Object.keys(record).sort().map(key => `${JSON.stringify(key)}:${canonicalValue(record[key])}`).join(',')}}`;
+  }
+  return JSON.stringify(value) ?? 'null';
+}
+
+async function canonicalChecksum(value: unknown): Promise<string> {
+  if (!globalThis.crypto?.subtle) throw new Error('Web Crypto SHA-256 is unavailable for operational save verification.');
+  const digest = await globalThis.crypto.subtle.digest('SHA-256', new TextEncoder().encode(canonicalValue(value)));
+  return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
+}
+
 function getQueue(storage: StorageLike): Map<string, Promise<unknown>> {
   let queues = saveQueues.get(storage);
   if (!queues) { queues = new Map(); saveQueues.set(storage, queues); }
@@ -375,6 +390,28 @@ export function persistOperationalSnapshot(
   value: unknown,
   storage: StorageLike = globalThis.localStorage
 ): Promise<{ revision: number; checksum: string }> {
+  // IndexedDB is the single source of truth after migration. Verify the completed
+  // storage-layer write in place instead of creating a second, divergent localStorage copy.
+  if (storage.getItem('shuttle-car-automation:storage-mode-preference') === 'indexeddb') {
+    return (async () => {
+      const activeStorage = await (await import('../storage/index.ts')).getStorageEngine();
+      if (await activeStorage.getMode() !== 'indexeddb') {
+        throw new Error('IndexedDB was selected but the active storage backend is not IndexedDB.');
+      }
+      const key = ('operational.' + collection) as import('../storage/index.ts').StorageKey;
+      const stored = await activeStorage.read(key);
+      if (!stored) throw new Error('The IndexedDB operational record is missing after save: ' + collection);
+      const [expectedChecksum, actualChecksum] = await Promise.all([
+        canonicalChecksum(value),
+        canonicalChecksum(stored.value)
+      ]);
+      if (expectedChecksum !== actualChecksum) {
+        throw new Error('IndexedDB operational record does not match the latest application state: ' + collection);
+      }
+      return { revision: stored.revision, checksum: actualChecksum };
+    })();
+  }
+
   const queues = getQueue(storage);
   const previous = queues.get(collection) ?? Promise.resolve();
   const operation = previous.then(() => getEngine(storage, collection).save(value));
