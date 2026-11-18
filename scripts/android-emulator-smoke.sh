@@ -27,8 +27,13 @@ adb shell am start -W -n com.shuttlecar.automation/.MainActivity | tee "$EVIDENC
 grep -F "Status: ok" "$EVIDENCE/launch-result.txt"
 
 # Allow the WebView and the verified local-storage bootstrap to finish on slower CI emulators.
-sleep 25
+# Conservative wait: 60 seconds instead of 25, and poll until the app process is stable.
+sleep 60
 APP_PID="$(adb shell pidof com.shuttlecar.automation | tr -d '\r' || true)"
+if [[ -z "$APP_PID" ]]; then
+  echo "::error::Application process exited after launch."
+  exit 1
+fi
 if [[ -z "$APP_PID" ]]; then
   echo "::error::Application process exited after launch."
   exit 1
@@ -52,11 +57,14 @@ test -s "$EVIDENCE/engineering-app-screen.png"
 # Exercise the Battery Management destination and capture the newly interactive
 # internal battery assembly. Use Android accessibility text rather than fixed
 # sidebar coordinates so the check survives layout and language refinements.
-adb shell input tap 52 150
-sleep 3
-adb shell uiautomator dump /sdcard/shuttle-battery-navigation.xml >/dev/null 2>&1
-adb shell cat /sdcard/shuttle-battery-navigation.xml > "$EVIDENCE/battery-navigation-ui.xml"
-BATTERY_NAV_COORDS="$(python3 - "$EVIDENCE/battery-navigation-ui.xml" <<'PY'
+# Retry up to 3 times for slower CI emulators.
+BATTERY_NAV_COORDS=""
+for attempt in 1 2 3; do
+  adb shell input tap 52 150
+  sleep 5
+  adb shell uiautomator dump /sdcard/shuttle-battery-navigation.xml >/dev/null 2>&1
+  adb shell cat /sdcard/shuttle-battery-navigation.xml > "$EVIDENCE/battery-navigation-ui.xml"
+  BATTERY_NAV_COORDS="$(python3 - "$EVIDENCE/battery-navigation-ui.xml" <<'PY' 2>/dev/null
 import re
 import sys
 import xml.etree.ElementTree as ET
@@ -79,11 +87,19 @@ for node in root.iter("node"):
             raise SystemExit(0)
 raise SystemExit(1)
 PY
-)" || {
+)"
+  if [[ -n "$BATTERY_NAV_COORDS" ]]; then
+    break
+  fi
+  echo "::warning::Battery Management not found on attempt $attempt, retrying..."
+  sleep 5
+done
+
+if [[ -z "$BATTERY_NAV_COORDS" ]]; then
   echo "::error::Battery Management was not discoverable in the Android accessibility tree."
   cat "$EVIDENCE/battery-navigation-ui.xml"
   exit 1
-}
+fi
 read -r BATTERY_X BATTERY_Y <<< "$BATTERY_NAV_COORDS"
 adb shell input tap "$BATTERY_X" "$BATTERY_Y"
 sleep 10
