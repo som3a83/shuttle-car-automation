@@ -43,7 +43,8 @@ describe('Battery3DViewer engineering interactions', () => {
     const user = userEvent.setup();
     render(<Battery3DViewer battery={initialBatteries[0]} language="en" fallback={<div>Battery schematic fallback</div>} />);
     const zoom = screen.getByRole('slider', { name: /Model zoom/i });
-    fireEvent.change(zoom, { target: { value: '1.35' } });
+    zoom.focus();
+    await user.keyboard('{ARROWRIGHT}'.repeat(7));
     expect(zoom).toHaveValue(1.35);
     await user.click(screen.getByRole('button', { name: /Reset view/i }));
     expect(zoom).toHaveValue(1);
