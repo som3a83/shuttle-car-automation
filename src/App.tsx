@@ -1311,6 +1311,7 @@ function App({ initialData }: { initialData: AppInitialData }) {
     showToast(language === 'ar' ? 'تمت إعادة بيانات البداية' : 'Seed data restored');
   };
 
+  const heroShuttle = selected || initialShuttles[0];
   const header = navItems.find(n => n.id === activeTab);
   const headerPreference = visibleNavigation.find(item => item.id === activeTab);
   const statusOptions: ShuttleStatus[] = ['Ready','Running','Idle','Charging','Maintenance','Fault','Disconnected','Unknown'];
@@ -1357,7 +1358,27 @@ function App({ initialData }: { initialData: AppInitialData }) {
       {activeTab === 'dashboard' && <section className="page-content">
         <div className="hero-panel">
           <div className="hero-copy"><div className="eyebrow"><span/> PRECISION INDUSTRIAL · MECHANICAL INTELLIGENCE</div><h2>{language === 'ar' ? 'تحكم هندسي في أسطول الشاتل' : 'Precision control for your shuttle fleet'}</h2><p>{language === 'ar' ? 'مركز موحد لمتابعة العربات والبطاريات والأعطال والصيانة، مع رسومات ميكانيكية تفاعلية.' : 'A unified workspace for shuttle assets, battery records, faults and maintenance — with interactive mechanical visualization.'}</p><div className="hero-actions"><button className="btn-primary" onClick={() => go('fleet')}>{t.openFleet}<Icon name="arrow" size={16}/></button><button className="btn-secondary" onClick={() => go('engineering')}>{t.openEngineering}</button></div><div className="hero-footnote"><span className="pulse-dot"/> {language === 'ar' ? 'عدد الأجهزة النشطة: ' + metrics.total : metrics.total + ' active units in the local fleet register'}</div></div>
-          <div className="hero-machine"><div className="machine-orbit orbit-one"/><div className="machine-orbit orbit-two"/><div className="machine-label label-top">SHUTTLE / ASRS</div><ShuttleModel shuttle={selected || initialShuttles[0]} view="iso" exploded={false} animated={animated}/><div className="machine-label label-bottom">{selected?.manufacturer || 'CASSIOLI'} · {selected?.id || 'SC-01'}</div></div>
+          <div className="hero-machine">
+            <div className="machine-orbit orbit-one"/>
+            <div className="machine-orbit orbit-two"/>
+            <div className="dashboard-shuttle-viewer">
+              <Suspense fallback={<ShuttleModel shuttle={heroShuttle} view="iso" exploded={false} animated={false}/>}>
+                <Shuttle3DViewer
+                  manufacturer={heroShuttle.manufacturer}
+                  shuttleId={heroShuttle.id}
+                  status={heroShuttle.status}
+                  view="iso"
+                  exploded={false}
+                  animated={false}
+                  selectedPart="chassis"
+                  zoom={1.12}
+                  resetKey={0}
+                  onSelectPart={() => undefined}
+                  fallback={<ShuttleModel shuttle={heroShuttle} view="iso" exploded={false} animated={false}/>}
+                />
+              </Suspense>
+            </div>
+          </div>
         </div>
         <div className="section-heading"><div><span className="eyebrow">FLEET TELEMETRY / LOCAL RECORDS</span><h2>{language === 'ar' ? 'مؤشرات الأسطول' : 'Fleet at a glance'}</h2></div><button className="text-button" onClick={() => go('fleet')}>{t.viewRegister}<Icon name="chevron" size={15}/></button></div>
         <div className="dashboard-composition">
