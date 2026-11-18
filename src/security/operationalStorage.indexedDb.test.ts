@@ -2,6 +2,7 @@ import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { __closeForTesting, __resetStorageForTesting, set, setStorageModePreference } from '../storage';
 import { bootstrapOperationalStorage, OPERATIONAL_PREFIX } from './operationalStorage';
+import { initialShuttles } from '../data/mockData';
 
 const values = [
   ['operational.language', 'ar'],
@@ -75,7 +76,7 @@ describe('operational bootstrap with active IndexedDB', () => {
   });
   
   it('verifies operational writes in IndexedDB without creating a duplicate localStorage snapshot', async () => {
-    const shuttles = [{ id: 'SC-IDB-01', manufacturer: 'Cassioli' }];
+    const shuttles = [{ ...initialShuttles[0], id: 'SC-IDB-01' }];
     await set('operational.shuttles', shuttles);
     const result = await (await import('./operationalStorage')).persistOperationalSnapshot('shuttles', shuttles);
 
@@ -86,9 +87,9 @@ describe('operational bootstrap with active IndexedDB', () => {
   });
 
   it('rejects operational save verification when IndexedDB differs from the requested state', async () => {
-    await set('operational.shuttles', [{ id: 'SC-IDB-01' }]);
+    await set('operational.shuttles', [{ ...initialShuttles[0], id: 'SC-IDB-01' }]);
     await expect(
-      (await import('./operationalStorage')).persistOperationalSnapshot('shuttles', [{ id: 'SC-IDB-02' }])
+      (await import('./operationalStorage')).persistOperationalSnapshot('shuttles', [{ ...initialShuttles[0], id: 'SC-IDB-02' }])
     ).rejects.toThrow(/does not match the latest application state/i);
   });
 
