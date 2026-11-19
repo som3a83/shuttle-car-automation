@@ -32,10 +32,10 @@ describe('Battery3DViewer interactive engineering controls', () => {
       />
     );
 
-    const shell = container.querySelector('.battery-3d-shell');
-    const controls = container.querySelector('.battery-engineering-controls');
-    const stage = container.querySelector('.battery-3d-stage');
-    const host = container.querySelector('.battery-3d-host');
+    const shell = container.querySelector<HTMLElement>('.battery-3d-shell');
+    const controls = container.querySelector<HTMLElement>('.battery-engineering-controls');
+    const stage = container.querySelector<HTMLElement>('.battery-3d-stage');
+    const host = container.querySelector<HTMLElement>('.battery-3d-host');
 
     expect(shell).toContainElement(controls);
     expect(stage).toContainElement(host);
