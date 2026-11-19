@@ -185,8 +185,14 @@ async function readOperationalValue<T>(key: StorageKey, fallback: T): Promise<T>
 function normalizeLegacyDemoFaults(faults: Fault[], shuttles: Shuttle[], batteries: Battery[]) {
   const legacyFaultId = 'FLT-CRAFTSMAN-01';
   const normalizedFaults = faults.filter((fault) => fault?.id !== legacyFaultId);
+  const hadLegacyAcmeDemoBattery = batteries.some((battery) =>
+    battery.id === 'BAT-ACME-01' && battery.soc == null && battery.connectionMode === 'UNKNOWN' && battery.status === 'Fault'
+  );
   const normalizedShuttles = shuttles.map((shuttle) => ({
     ...shuttle,
+    installedBattery: hadLegacyAcmeDemoBattery && shuttle.id === 'SC-05' && shuttle.installedBattery === 'Not recorded'
+      ? 'BAT-ACME-01'
+      : shuttle.installedBattery,
     faultHistory: (shuttle.faultHistory ?? []).filter((entry) =>
       entry !== 'Reported pallet recognition, battery drain and stopping anomalies' &&
       entry !== 'Battery HMI reportedly displayed 0% after repair'
@@ -198,7 +204,7 @@ function normalizeLegacyDemoFaults(faults: Fault[], shuttles: Shuttle[], batteri
       battery.soc == null &&
       battery.connectionMode === 'UNKNOWN' &&
       battery.status === 'Fault';
-    return isLegacyAcmeDemoBattery ? { ...battery, status: 'Available' as const } : battery;
+    return isLegacyAcmeDemoBattery ? { ...battery, status: 'Installed' as const } : battery;
   });
   return { faults: normalizedFaults, shuttles: normalizedShuttles, batteries: normalizedBatteries };
 }
