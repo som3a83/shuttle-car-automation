@@ -68,7 +68,7 @@ jobs:
           test -s "$APK"
           mkdir -p artifacts/android-package
           cp "$APK" artifacts/android-package/shuttle-car-automation-v7.0.0-dev.1-debug.apk
-          sha256sum artifacts/android-package/shuttle-car-automation-1.0.0-debug.apk > artifacts/android-package/SHA256SUMS.txt
+          sha256sum artifacts/android-package/shuttle-car-automation-v7.0.0-dev.1-debug.apk > artifacts/android-package/SHA256SUMS.txt
           ls -lh artifacts/android-package/
 
       - name: Publish installable Android APK
