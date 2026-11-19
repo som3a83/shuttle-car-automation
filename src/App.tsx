@@ -1952,7 +1952,7 @@ function App({ initialData }: { initialData: AppInitialData }) {
         <div className="surface-card danger-settings"><h3>{language==='ar'?'إعادة بيانات التطبيق':'Reset local records'}</h3><p className="muted-text">{language==='ar'?'إعادة السجلات المحلية إلى بيانات البداية. لا يمكن التراجع عن ذلك دون نسخة احتياطية.':'Restore local records to the original seed data. This cannot be undone without a backup.'}</p><button className="btn-danger" onClick={resetLocalData}>{language==='ar'?'إعادة بيانات البداية':'Reset local records'}</button></div>
       </div></section>}
 
-      <footer className="app-footer"><span>SHUTTLE CAR AUTOMATION · V1.0.0</span><span>{t.dataNotice}</span></footer>
+      <footer className="app-footer"><span>SHUTTLE CAR AUTOMATION · V7.0.0-DEV.1</span><span>{t.dataNotice}</span></footer>
     </main>
     {mobileNav && <button className="nav-scrim" onClick={()=>setMobileNav(false)} aria-label="Close navigation overlay"/>}
     {toast && <div className="toast"><Icon name="check"/>{toast}</div>}
