@@ -62,6 +62,11 @@ describe('operational backup validation', () => {
     expect(validateOperationalBackup(duplicate)).toMatchObject({ ok: false, error: expect.stringMatching(/More than one battery/) });
 
     const orphanFault = validBackup();
+    orphanFault.faults.push({
+      id: 'FLT-ORPHAN-TEST', shuttleId: 'SC-01', title: 'Test fault', severity: 'Minor', status: 'Open',
+      timestamp: '2026-11-19T08:00:00.000Z', description: 'Test fixture', probableCauses: [],
+      diagnosticProcedure: 'Test only', correctiveAction: '', assignedTechnician: 'Test'
+    });
     orphanFault.faults[0].shuttleId = 'SC-99';
     expect(validateOperationalBackup(orphanFault)).toMatchObject({ ok: false, error: expect.stringMatching(/unknown shuttle/) });
   });
