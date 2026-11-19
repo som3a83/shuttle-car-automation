@@ -49,7 +49,7 @@ sleep 2
 
 # Open the mobile "More" drawer, then select Engineering from the RTL navigation.
 # On the pinned 1080x2400 Pixel 7 emulator, the drawer opens from the right.
-adb shell input tap 130 445
+adb shell input tap 130 600
 sleep 2
 adb exec-out screencap -p > "$EVIDENCE/navigation-drawer-screen.png"
 test -s "$EVIDENCE/navigation-drawer-screen.png"
