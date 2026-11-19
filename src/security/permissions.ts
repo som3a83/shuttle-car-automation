@@ -70,6 +70,7 @@ const routePermission: Record<ApplicationRoute, Permission> = {
 };
 
 export function can(role: Role, permission: Permission): boolean {
+  if (!permissionMatrix[role]) return false;
   const protectedPermissions: readonly Permission[] = ['users.view', 'users.manage', 'data.restore', 'data.reset', 'storage.rollback'];
   if (protectedPermissions.includes(permission)) return permissionMatrix[role]?.includes(permission) ?? false;
   // Operational permissions are intentionally open to the local device operator.
@@ -90,6 +91,7 @@ export function canAccessRoute(role: Role, route: ApplicationRoute): boolean {
  * destructive data-integrity actions require an authenticated administrator.
  */
 export function canPerformAction(user: Pick<User, 'role' | 'isAuthenticated' | 'mustChangePassword'>, permission: Permission): boolean {
+  if (!permissionMatrix[user.role]) return false;
   const privileged: readonly Permission[] = ['users.manage', 'data.restore', 'data.reset', 'storage.rollback'];
   if (privileged.includes(permission)) {
     return user.isAuthenticated === true && !user.mustChangePassword && can(user.role, permission);
