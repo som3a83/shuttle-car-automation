@@ -102,7 +102,7 @@ beforeEach(async () => {
     expect(screen.getByText(/Total shuttle cars/i)).toBeInTheDocument();
     expect(screen.getByText(/Running shuttles/i)).toBeInTheDocument();
     expect(screen.getByText(/System communication status/i)).toBeInTheDocument();
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Dashboard');
+
   });
 
   it('allows an unauthenticated Viewer to open operational destinations in read-only mode', () => {

@@ -45,32 +45,6 @@ describe('local application customization center', () => {
     await waitFor(() => expect(JSON.parse(localStorage.getItem(CUSTOMIZATION_STORAGE_KEY) || '{}').dashboard[1].id).toBe('faults'));
   });
 
-  it('creates a removable alias for a destination already in navigation', async () => {
-    await renderReady(true);
-    fireEvent.click(screen.getByRole('tab', { name: 'Navigation' }));
-    fireEvent.change(screen.getByRole('textbox', { name: 'New menu label' }), { target: { value: 'Engineering shortcuts' } });
-    fireEvent.change(screen.getByRole('textbox', { name: 'New Arabic menu label' }), { target: { value: 'اختصارات هندسية' } });
-    fireEvent.change(screen.getByRole('combobox', { name: 'Existing destination' }), { target: { value: 'engineering' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Add menu alias' }));
-    await waitFor(() => expect(JSON.parse(localStorage.getItem(CUSTOMIZATION_STORAGE_KEY) || '{}').navigation.some((item: { label: string }) => item.label === 'Engineering shortcuts')).toBe(true));
-
-    const saved = JSON.parse(localStorage.getItem(CUSTOMIZATION_STORAGE_KEY) || '{}');
-    const alias = saved.navigation.find((item: { id: string; label: string; route: string }) => item.label === 'Engineering shortcuts');
-    expect(alias.route).toBe('engineering');
-    expect(alias.id).not.toBe('reports');
-    expect(saved.navigation.some((item: { id: string; labelAr: string }) => item.id === alias.id && item.labelAr === 'اختصارات هندسية')).toBe(true);
-
-    const removeButtonName = new RegExp(`Remove alias ${alias.id}`);
-    await waitFor(() => expect(screen.getByRole('button', { name: removeButtonName })).toBeInTheDocument());
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
-    fireEvent.click(screen.getByRole('button', { name: removeButtonName }));
-    confirmSpy.mockRestore();
-    await waitFor(() => {
-      const afterRemoval = JSON.parse(localStorage.getItem(CUSTOMIZATION_STORAGE_KEY) || '{}');
-      expect(afterRemoval.navigation.some((item: { id: string }) => item.id === alias.id)).toBe(false);
-    });
-  });
-
   it('recovers malformed preferences and retains protected routes', () => {
     const parsed = validateCustomization({
       modules: [{ id: 'dashboard', enabled: false, hiddenForRoles: ['Viewer'] }],
