@@ -8,7 +8,7 @@ export default function ImmersiveWarehouse({ shuttles, language }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const [selectedId, setSelectedId] = useState(shuttles[0]?.id ?? 'SC-01');
   const [simulation, setSimulation] = useState(false);
-  const [view, setView] = useState<'overview' | 'aisle'>('overview');
+  const [view, setView] = useState<'iso' | 'top' | 'aisle'>('iso');
   const [webgl, setWebgl] = useState<boolean | null>(null);
   const viewRef = useRef(view);
   useEffect(() => { viewRef.current = view; }, [view]);
@@ -148,8 +148,15 @@ export default function ImmersiveWarehouse({ shuttles, language }: Props) {
       const t=clock.getElapsedTime();
       if (viewRef.current !== previousView) {
         previousView = viewRef.current;
-        camera.position.set(previousView === 'aisle' ? 9 : 15, previousView === 'aisle' ? 7 : 13, previousView === 'aisle' ? 12 : 22);
-        camera.lookAt(0, 2, 0);
+        if (previousView === 'top') {
+          camera.up.set(0, 0, -1);
+          camera.position.set(0, 34, 0.01);
+          camera.lookAt(0, 0, 0);
+        } else {
+          camera.up.set(0, 1, 0);
+          camera.position.set(previousView === 'aisle' ? 0 : 15, previousView === 'aisle' ? 6.5 : 13, previousView === 'aisle' ? 18 : 22);
+          camera.lookAt(0, 2, 0);
+        }
       }
       if(simulationRef.current) shuttleGroups.forEach((car,index)=>{car.position.x=-8+index*4+Math.sin(t*.75+index)*.7;car.rotation.y=Math.sin(t*.75+index)*.025;});
       shuttleGroups.forEach((car)=>{const selected=car.userData.shuttleId===selectedRef.current;(car.children[0] as THREE.Mesh).material=selected?orange:darkSteel;});
@@ -171,11 +178,11 @@ export default function ImmersiveWarehouse({ shuttles, language }: Props) {
   const ar = language === 'ar';
   return <section className="page-content immersive-warehouse-page">
     <div className="immersive-warehouse-heading">
-      <div><span className="eyebrow">DIGITAL TWIN / VISUAL SIMULATION</span><h1>{ar ? 'المخزن الآلي ثلاثي الأبعاد' : 'Immersive automated warehouse'}</h1><p>{ar ? 'استكشف الممرات والرفوف والطبالي وعربات الشاتل باللمس.' : 'Explore aisles, racking, pallets and shuttle cars with touch controls.'}</p></div>
+      <div><span className="eyebrow">DIGITAL TWIN / CAD BLUEPRINT · 4 RACK LEVELS</span><h1>{ar ? 'التوأم الرقمي للمخزن' : 'Warehouse Digital Twin'}</h1><p>{ar ? 'راكات معدنية بأربعة مستويات، طبالي، ومسارات عربات الشاتل مع زوايا رؤية هندسية.' : 'Four-level steel racks, stored pallets and shuttle-car tracks with engineering camera views.'}</p></div>
       <span className="warehouse-demo-chip">{ar ? 'مشهد توضيحي · ليس تحكمًا حيًا' : 'CONCEPT SCENE · NOT LIVE CONTROL'}</span>
     </div>
     <div className="warehouse-toolbar">
-      <div className="warehouse-segment"><button className={view==='overview'?'active':''} onClick={()=>setView('overview')}>{ar?'نظرة عامة':'Overview'}</button><button className={view==='aisle'?'active':''} onClick={()=>setView('aisle')}>{ar?'داخل الممر':'Aisle view'}</button></div>
+      <div className="warehouse-segment" role="group" aria-label={ar?'زوايا الرؤية':'Camera views'}><button className={view==='iso'?'active':''} aria-pressed={view==='iso'} onClick={()=>setView('iso')}>{ar?'عرض مجسم':'3D Isometric'}</button><button className={view==='top'?'active':''} aria-pressed={view==='top'} onClick={()=>setView('top')}>{ar?'مخطط علوي CAD':'Top CAD Plan'}</button><button className={view==='aisle'?'active':''} aria-pressed={view==='aisle'} onClick={()=>setView('aisle')}>{ar?'منظور الممر':'Aisle View'}</button></div>
       <button className={simulation?'active':''} onClick={()=>setSimulation(v=>!v)}>{simulation?(ar?'إيقاف المحاكاة':'Stop simulation'):(ar?'تشغيل حركة توضيحية':'Run visual simulation')}</button>
       <button onClick={()=>{setSelectedId(shuttles[0]?.id??'SC-01');setSimulation(false);}}>{ar?'إعادة ضبط':'Reset'}</button>
     </div>
