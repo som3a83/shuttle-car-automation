@@ -1427,11 +1427,11 @@ function App({ initialData }: { initialData: AppInitialData }) {
       </header>
 
       <nav className="mobile-nav" aria-label={language === 'ar' ? 'التنقل الرئيسي' : 'Primary navigation'}>
-        <button type="button" className={activeTab === 'dashboard' ? 'active' : ''} aria-current={activeTab === 'dashboard' ? 'page' : undefined} onClick={() => go('dashboard')}><Icon name="grid" size={16}/><span>{language === 'ar' ? 'الرئيسية' : 'Home'}</span></button>
+        <button type="button" className={activeTab === 'dashboard' ? 'active' : ''} aria-current={activeTab === 'dashboard' ? 'page' : undefined} onClick={() => go('dashboard')}><Icon name="grid" size={16}/><span>{language === 'ar' ? 'الرئيسية' : 'Dashboard'}</span></button>
         <button type="button" className={activeTab === 'fleet' ? 'active' : ''} aria-current={activeTab === 'fleet' ? 'page' : undefined} onClick={() => go('fleet')}><Icon name="truck" size={16}/><span>{language === 'ar' ? 'الأجهزة' : 'Devices'}</span></button>
         <button type="button" className={activeTab === 'shifts' ? 'active' : ''} aria-current={activeTab === 'shifts' ? 'page' : undefined} onClick={() => go('shifts')}><Icon name="clock" size={16}/><span>{language === 'ar' ? 'الورديات' : 'Shifts'}</span></button>
         <button type="button" className={activeTab === 'hub' ? 'active' : ''} aria-current={activeTab === 'hub' ? 'page' : undefined} onClick={() => go('hub')}><Icon name="grid" size={16}/><span>{language === 'ar' ? 'الأقسام' : 'Sections'}</span></button>
-        <button type="button" onClick={() => setMobileNav(true)} aria-expanded={mobileNav}><Icon name="more-horizontal" size={16}/><span>{language === 'ar' ? 'المزيد' : 'More'}</span></button>
+        <button type="button" onClick={() => setMobileNav(true)} aria-label={language === 'ar' ? 'فتح قائمة التنقل الإضافية' : 'Open overflow navigation'} aria-expanded={mobileNav}><Icon name="more-horizontal" size={16}/><span>{language === 'ar' ? 'المزيد' : 'More'}</span></button>
       </nav>
       {activeTab === 'dashboard' && <nav className="dashboard-tabs" aria-label={language === 'ar' ? 'أقسام لوحة القيادة' : 'Dashboard sections'}>
         <button type="button" className="active" onClick={() => go('dashboard')}><Icon name="grid" size={15}/>{language === 'ar' ? 'لوحة القيادة' : 'Dashboard'}</button>
