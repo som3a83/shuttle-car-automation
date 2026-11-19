@@ -18,7 +18,7 @@ permissions:
 
 concurrency:
   group: shuttle-ci-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   validate:
@@ -73,8 +73,8 @@ jobs:
       - name: Build production bundle
         run: npm run build
 
-      - name: Install Chromium for responsive screenshot evidence
-        run: npx playwright install --with-deps chromium
+      - name: Verify hosted Chrome for responsive screenshot evidence
+        run: google-chrome --version
 
       - name: Capture responsive application screenshots
         run: |

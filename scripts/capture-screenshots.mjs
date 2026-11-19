@@ -6,7 +6,7 @@ const viewports=[{name:'mobile-390x844',width:390,height:844},{name:'tablet-768x
 const routes=[{name:'dashboard',path:'/#/dashboard'},{name:'sections-hub',path:'/#/hub'},{name:'shuttle-engineering',path:'/#/engineering'},{name:'battery-engineering',path:'/#/batteries'}];
 async function main(){
  fs.mkdirSync(OUT,{recursive:true});
- const browser=await chromium.launch({headless:true});
+ const browser=await chromium.launch({headless:true,channel:'chrome'});
  const failures=[];
  for(const viewport of viewports){
   const page=await browser.newPage({viewport:{width:viewport.width,height:viewport.height},deviceScaleFactor:1});
