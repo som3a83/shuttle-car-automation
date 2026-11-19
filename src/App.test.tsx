@@ -145,6 +145,7 @@ beforeEach(async () => {
     window.sessionStorage.clear();
     renderApp();
     await user.click(screen.getAllByRole('button', { name: /AI Technical Assistant/i })[0]);
+    await user.selectOptions(screen.getByRole('combobox', { name: /Initial report severity/i }), 'Major');
     expect(screen.getByRole('button', { name: /Create fault report/i })).toBeEnabled();
   });
 
