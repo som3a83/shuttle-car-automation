@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App, { flushApplicationPersistence, type AppInitialData } from './App';
 import { defaultSettings, initialBatteries, initialConnections, initialFaults, initialMaintenance, initialNotifications, initialShuttles } from './data/mockData';

@@ -13,6 +13,7 @@ const Shuttle3DViewer = lazy(() => import('./components/Shuttle3DViewer'));
 const Battery3DViewer = lazy(() => import('./components/Battery3DViewer'));
 import { getManufacturerReference } from './data/manufacturerReferences';
 import ShiftOperations from './components/ShiftOperations';
+import SectionsHub from './components/SectionsHub';
 import LiveGatewayPanel from './components/LiveGatewayPanel';
 import BleReadOnlyExplorer from './components/BleReadOnlyExplorer';
 import DiagnosticWorkbench from './components/DiagnosticWorkbench';
@@ -47,7 +48,7 @@ import type {
   ShiftRecord
 } from './types';
 
-type Tab = 'dashboard' | 'warehouse' | 'fleet' | 'shifts' | 'engineering' | 'batteries' | 'faults' | 'maintenance' | 'connections' | 'ai' | 'reports' | 'notifications' | 'users' | 'settings';
+type Tab = 'hub' | 'dashboard' | 'warehouse' | 'fleet' | 'shifts' | 'engineering' | 'batteries' | 'faults' | 'maintenance' | 'connections' | 'ai' | 'reports' | 'notifications' | 'users' | 'settings';
 type ModelView = 'iso' | 'side' | 'front' | 'top';
 type EngineeringPart = 'chassis' | 'drive' | 'wheels' | 'battery' | 'sensors';
 
@@ -148,7 +149,7 @@ export async function flushApplicationPersistence(): Promise<void> {
 function tabFromLocation(): Tab {
   const hash = window.location.hash;
   const candidate = (hash.startsWith('#/') ? hash.slice(2) : hash.replace(/^#/, '')) as Tab;
-  return navItems.some((item) => item.id === candidate) ? candidate : 'dashboard';
+  return candidate === 'hub' || navItems.some((item) => item.id === candidate) ? candidate : 'dashboard';
 }
 
 async function readOperationalValue<T>(key: StorageKey, fallback: T): Promise<T> {
@@ -1348,6 +1349,9 @@ function App({ initialData }: { initialData: AppInitialData }) {
   const heroShuttle = selected || initialShuttles[0];
   const header = navItems.find(n => n.id === activeTab);
   const headerPreference = visibleNavigation.find(item => item.id === activeTab);
+  const pageTitle = activeTab === 'hub'
+    ? (language === 'ar' ? 'كل الأقسام' : 'All Sections')
+    : (language === 'ar' ? (headerPreference?.ar || header?.ar) : (headerPreference?.en || header?.en));
   const statusOptions: ShuttleStatus[] = ['Ready','Running','Idle','Charging','Maintenance','Fault','Disconnected','Unknown'];
 
   return <div className={'app-shell ' + theme + (sidebarCollapsed ? ' sidebar-collapsed' : '')} dir={language === 'ar' ? 'rtl' : 'ltr'}>
@@ -1371,7 +1375,7 @@ function App({ initialData }: { initialData: AppInitialData }) {
     <main className="workspace">
       {storageIssues.length > 0 && <div className="notice-inline storage-integrity-notice" role="status"><strong>{language === 'ar' ? 'تنبيه سلامة التخزين' : 'STORAGE INTEGRITY NOTICE'}</strong><span>{storageIssues.slice(0, 3).join(' · ')}</span></div>}
       <header className="topbar">
-        <div className="topbar-heading"><button className="mobile-menu" onClick={() => setMobileNav(true)} aria-label="Open navigation"><Icon name="grid" size={20}/></button><div className="breadcrumb">SHUTTLE CAR AUTOMATION <span>/</span> {language === 'ar' ? (headerPreference?.ar || header?.ar) : (headerPreference?.en || header?.en)}</div><h1>{language === 'ar' ? (headerPreference?.ar || header?.ar) : (headerPreference?.en || header?.en)}</h1></div>
+        <div className="topbar-heading"><button className="mobile-menu" onClick={() => setMobileNav(true)} aria-label="Open navigation"><Icon name="grid" size={20}/></button><div className="breadcrumb">SHUTTLE CAR AUTOMATION <span>/</span> {pageTitle}</div><h1>{pageTitle}</h1></div>
         <div className="topbar-actions">
           <button className="topbar-route-button" type="button" onClick={goBack} disabled={!canGoBack} aria-label={language === 'ar' ? 'رجوع' : 'Go back'} title={language === 'ar' ? 'رجوع' : 'Go back'}><Icon name="chevron" size={17}/></button>
           <button className="topbar-route-button" type="button" onClick={() => go('dashboard')} aria-label={language === 'ar' ? 'الرئيسية' : 'Home'} title={language === 'ar' ? 'الرئيسية' : 'Home'}><Icon name="grid" size={17}/></button>
@@ -1383,7 +1387,7 @@ function App({ initialData }: { initialData: AppInitialData }) {
       </header>
 
       <nav className="mobile-nav" aria-label={language === 'ar' ? 'التنقل السريع' : 'Quick navigation'}>
-        {visibleNavigation.slice(0, 4).map((item) => <button key={item.menuId} type="button" className={activeTab === item.id ? 'active' : ''} aria-current={activeTab === item.id ? 'page' : undefined} onClick={() => go(item.id)}><Icon name={item.icon} size={16}/><span>{language === 'ar' ? item.ar : item.en}</span></button>)}
+        {visibleNavigation.slice(0, 3).map((item) => <button key={item.menuId} type="button" className={activeTab === item.id ? 'active' : ''} aria-current={activeTab === item.id ? 'page' : undefined} onClick={() => go(item.id)}><Icon name={item.icon} size={16}/><span>{language === 'ar' ? item.ar : item.en}</span></button>)}
         <button type="button" onClick={() => setMobileNav(true)} aria-expanded={mobileNav}><Icon name="grid" size={16}/><span>{language === 'ar' ? 'المزيد' : 'More'}</span></button>
       </nav>
 
@@ -1428,7 +1432,7 @@ function App({ initialData }: { initialData: AppInitialData }) {
         <div className="dashboard-grid">
           <div className="surface-card">
             <div className="card-head"><div><span className="eyebrow">ASSET REGISTER</span><h3>{t.fleet}</h3></div><button className="icon-button" onClick={() => go('fleet')}><Icon name="arrow"/></button></div>
-            <div className="mini-fleet">{activeShuttles.map(s => <button className="mini-asset" key={s.id} onClick={() => {setSelectedId(s.id);go('engineering');}}><div className={'mini-machine mini-' + s.manufacturer.toLowerCase()}><Icon name="truck" size={20}/></div><div className="mini-asset-info"><strong>{s.id}</strong><span>{s.manufacturer} · {s.model}</span></div><StatusPill status={s.status} language={language}/><Icon name="chevron" size={15}/></button>)}</div>
+            <div className="mini-fleet">{activeShuttles.map(s => <button className="mini-asset" key={s.id} onClick={() => {setSelectedId(s.id);go('engineering');}}><div className={'mini-machine mini-' + s.manufacturer.toLowerCase()}><Icon name="truck" size={20}/></div><div className="mini-asset-info"><strong>{s.id}</strong>{' '}<span>{s.manufacturer} · {s.model}</span></div><StatusPill status={s.status} language={language}/><Icon name="chevron" size={15}/></button>)}</div>
           </div>
           <div className="surface-card">
             <div className="card-head"><div><span className="eyebrow">SYSTEM HEALTH</span><h3>{t.systemState}</h3></div><span className="status-pill status-unknown">OFFLINE</span></div>
@@ -1467,7 +1471,7 @@ function App({ initialData }: { initialData: AppInitialData }) {
         <div className="fleet-layout">
           <div className="surface-card fleet-list-card">
             <div className="list-toolbar"><div className="search-box"><Icon name="grid"/><input value={search} onChange={e => setSearch(e.target.value)} placeholder={t.search}/></div><select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}><option value="ALL">{t.allStates}</option>{statusOptions.map(s => <option key={s} value={s}>{statusText(s)}</option>)}</select></div>
-            <div className="asset-list">{filteredShuttles.map(s => <button key={s.id} onClick={() => setSelectedId(s.id)} className={'asset-row ' + (selected?.id === s.id ? 'selected' : '')}><div className={'asset-icon icon-' + s.manufacturer.toLowerCase()}><Icon name="truck" size={22}/></div><div className="asset-main"><div><strong>{s.id}</strong><span className="asset-maker">{s.manufacturer}</span></div><small>{s.model} · {s.warehouseZone}</small></div><StatusPill status={s.status} language={language}/></button>)}</div>
+            <div className="asset-list">{filteredShuttles.map(s => <button key={s.id} onClick={() => setSelectedId(s.id)} className={'asset-row ' + (selected?.id === s.id ? 'selected' : '')}><div className={'asset-icon icon-' + s.manufacturer.toLowerCase()}><Icon name="truck" size={22}/></div><div className="asset-main"><div><strong>{s.id}</strong>{' '}<span className="asset-maker">{s.manufacturer}</span></div><small>{s.model} · {s.warehouseZone}</small></div><StatusPill status={s.status} language={language}/></button>)}</div>
             {filteredShuttles.length === 0 && <div className="empty-state">{t.empty}</div>}
             <button className="btn-secondary full" onClick={() => {setSearch('');setStatusFilter('ALL');}}>{t.removeFilters}</button>
           </div>
@@ -1602,7 +1606,7 @@ function App({ initialData }: { initialData: AppInitialData }) {
           </div>
           <div className="surface-card battery-detail">
             <div className="card-head"><div><span className="eyebrow">BATTERY REGISTER</span><h3>{language==='ar'?'سجل البطاريات':'Battery assets'}</h3></div><span className="counter">{activeBatteries.length}</span></div>
-            {activeBatteries.map(b=><button key={b.id} className={'battery-row '+(selectedBattery?.id===b.id?'selected':'')} onClick={()=>{setSelectedBatteryId(b.id);setEditingBattery(false);}}><div className="battery-row-icon"><Icon name="battery"/></div><div><strong>{b.id}</strong><small>{b.manufacturer} · {b.assignment}</small></div><StatusPill status={b.status} language={language}/></button>)}
+            {activeBatteries.map(b=><button key={b.id} className={'battery-row '+(selectedBattery?.id===b.id?'selected':'')} onClick={()=>{setSelectedBatteryId(b.id);setEditingBattery(false);}}><div className="battery-row-icon"><Icon name="battery"/></div><div><strong>{b.id}</strong>{' '}<small>{b.manufacturer} · {b.assignment}</small></div><StatusPill status={b.status} language={language}/></button>)}
             {selectedBattery && <>
               <div className="battery-assignment">
                 <label>{language==='ar'?'تخصيص البطارية إلى جهاز':'Assign battery to shuttle'}</label>
