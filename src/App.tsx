@@ -1426,7 +1426,7 @@ function App({ initialData }: { initialData: AppInitialData }) {
         </div>
       </header>
 
-      <nav className="mobile-nav" aria-label={language === 'ar' ? 'التنقل الرئيسي' : 'Primary navigation'}>
+      <nav className="mobile-nav" aria-label={language === 'ar' ? 'التنقل السريع' : 'Quick navigation'}>
         <button type="button" className={activeTab === 'dashboard' ? 'active' : ''} aria-current={activeTab === 'dashboard' ? 'page' : undefined} onClick={() => go('dashboard')}><Icon name="grid" size={16}/><span>{language === 'ar' ? 'الرئيسية' : 'Dashboard'}</span></button>
         <button type="button" className={activeTab === 'fleet' ? 'active' : ''} aria-current={activeTab === 'fleet' ? 'page' : undefined} onClick={() => go('fleet')}><Icon name="truck" size={16}/><span>{language === 'ar' ? 'الأجهزة' : 'Devices'}</span></button>
         <button type="button" className={activeTab === 'shifts' ? 'active' : ''} aria-current={activeTab === 'shifts' ? 'page' : undefined} onClick={() => go('shifts')}><Icon name="clock" size={16}/><span>{language === 'ar' ? 'الورديات' : 'Shifts'}</span></button>
