@@ -2,21 +2,21 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { can, canAccessRoute, canPerformAction, permissionsFor } from './permissions.ts';
 
-test('viewer is read-only and cannot enter administrative destinations', () => {
+test('local operational console grants working routes and actions to every device user', () => {
   assert.equal(can('Viewer', 'fleet.view'), true);
-  assert.equal(can('Viewer', 'fleet.manage'), false);
+  assert.equal(can('Viewer', 'fleet.manage'), true);
   assert.equal(canAccessRoute('Viewer', 'dashboard'), true);
   for (const route of ['fleet', 'shifts', 'engineering', 'batteries', 'faults', 'maintenance', 'connections', 'ai', 'reports', 'notifications']) {
     assert.equal(canAccessRoute('Viewer', route), true, `Viewer should open read-only route: ${route}`);
   }
-  assert.equal(canAccessRoute('Viewer', 'settings'), false);
+  assert.equal(canAccessRoute('Viewer', 'settings'), true);
   assert.equal(canAccessRoute('Viewer', 'users'), false);
 });
 
-test('technician can update maintenance work but cannot administer fleet or accounts', () => {
+test('technicians can complete operational tasks while account administration stays protected', () => {
   assert.equal(can('Technician', 'maintenance.complete'), true);
   assert.equal(can('Technician', 'faults.create'), true);
-  assert.equal(can('Technician', 'fleet.manage'), false);
+  assert.equal(can('Technician', 'fleet.manage'), true);
   assert.equal(can('Technician', 'users.manage'), false);
 });
 
@@ -27,10 +27,12 @@ test('super admin receives the full permission set and unknown roles fail closed
 });
 
 
-test('an unauthenticated preview identity cannot perform mutations, even with an admin role', () => {
-  assert.equal(canPerformAction({ role: 'Super Admin', isAuthenticated: false }, 'fleet.manage'), false);
+test('local operational actions work for the first-run identity while protected actions require an admin', () => {
+  assert.equal(canPerformAction({ role: 'Viewer', isAuthenticated: false }, 'fleet.manage'), true);
   assert.equal(canPerformAction({ role: 'Super Admin', isAuthenticated: true }, 'fleet.manage'), true);
-  assert.equal(canPerformAction({ role: 'Viewer', isAuthenticated: true }, 'fleet.manage'), false);
+  assert.equal(canPerformAction({ role: 'Viewer', isAuthenticated: true }, 'fleet.manage'), true);
+  assert.equal(canPerformAction({ role: 'Viewer', isAuthenticated: false }, 'users.manage'), false);
+  assert.equal(canPerformAction({ role: 'Admin', isAuthenticated: true }, 'data.reset'), false);
 });
 
 
