@@ -636,12 +636,11 @@ function App({ initialData }: { initialData: AppInitialData }) {
       });
     } catch {
       showToast(language === 'ar'
-        ? 'تم منع العملية: تعذر التحقق من سجل التدقيق أو حفظ حدث التفويض.'
-        : 'Action blocked: audit integrity could not be verified or the authorization event could not be saved.');
-      return false;
+        ? 'تنبيه: تعذر تحديث سجل التدقيق المحلي. تم الاحتفاظ بإمكانية التشغيل، ويرجى مراجعة سلامة التخزين.'
+        : 'Notice: the local audit entry could not be saved. The permitted local operation can continue; review storage integrity.');
     }
     if (!allowed) {
-      showToast(language === 'ar' ? 'ليس لديك صلاحية لتنفيذ هذا الإجراء' : 'You do not have permission to perform this action.');
+      showToast(language === 'ar' ? 'هذا الإجراء الإداري مخصص لمسؤول النظام. وظائف التشغيل متاحة للاستخدام المعتاد.' : 'This administrative action is reserved for the system administrator. Operational features remain available.');
       return false;
     }
     return true;
@@ -1413,6 +1412,11 @@ function App({ initialData }: { initialData: AppInitialData }) {
       <header className="topbar">
         <div className="topbar-heading"><button className="mobile-menu" onClick={() => setMobileNav(true)} aria-label="Open navigation"><Icon name="grid" size={20}/></button><div className="breadcrumb">SHUTTLE CAR AUTOMATION <span>/</span> {pageTitle}</div><h1>{pageTitle}</h1></div>
         <div className="topbar-actions">
+          <div className="cold-status-widget" aria-label={language === 'ar' ? 'مؤشرات تبريد مرجعية غير متصلة' : 'Reference cold storage indicators, offline'}>
+            <span className="cold-status-title">COLD STORAGE STATUS</span>
+            <span className="cold-status-reading"><Icon name="snowflake" size={17}/><strong>−22°C</strong><i/><Icon name="droplet" size={16}/><strong>65%</strong></span>
+            <small>{language === 'ar' ? 'قيم مرجعية · غير متصلة' : 'REFERENCE VALUES · OFFLINE'}</small>
+          </div>
           <button className="topbar-route-button" type="button" onClick={goBack} disabled={!canGoBack} aria-label={language === 'ar' ? 'رجوع' : 'Go back'} title={language === 'ar' ? 'رجوع' : 'Go back'}><Icon name="chevron" size={17}/></button>
           <button className="topbar-route-button" type="button" onClick={() => go('dashboard')} aria-label={language === 'ar' ? 'الرئيسية' : 'Home'} title={language === 'ar' ? 'الرئيسية' : 'Home'}><Icon name="grid" size={17}/></button>
           {canAccessRoute(currentUser.role, 'settings') && <button className="topbar-route-button" type="button" onClick={() => go('settings')} aria-label={language === 'ar' ? 'الإعدادات' : 'Settings'} title={language === 'ar' ? 'الإعدادات' : 'Settings'}><Icon name="settings" size={17}/></button>}
@@ -1422,11 +1426,20 @@ function App({ initialData }: { initialData: AppInitialData }) {
         </div>
       </header>
 
-      <nav className="mobile-nav" aria-label={language === 'ar' ? 'التنقل السريع' : 'Quick navigation'}>
-        {visibleNavigation.slice(0, 3).map((item) => <button key={item.menuId} type="button" className={activeTab === item.id ? 'active' : ''} aria-current={activeTab === item.id ? 'page' : undefined} onClick={() => go(item.id)}><Icon name={item.icon} size={16}/><span>{language === 'ar' ? item.ar : item.en}</span></button>)}
-         <button type="button" className={activeTab === 'hub' ? 'active' : ''} aria-current={activeTab === 'hub' ? 'page' : undefined} onClick={() => go('hub')}><Icon name="grid" size={16}/><span>{language === 'ar' ? 'الأقسام' : 'Sections'}</span></button>
-         <button type="button" onClick={() => setMobileNav(true)} aria-expanded={mobileNav}><Icon name="grid" size={16}/><span>{language === 'ar' ? 'المزيد' : 'More'}</span></button>
+      <nav className="mobile-nav" aria-label={language === 'ar' ? 'التنقل الرئيسي' : 'Primary navigation'}>
+        <button type="button" className={activeTab === 'dashboard' ? 'active' : ''} aria-current={activeTab === 'dashboard' ? 'page' : undefined} onClick={() => go('dashboard')}><Icon name="grid" size={16}/><span>{language === 'ar' ? 'الرئيسية' : 'Home'}</span></button>
+        <button type="button" className={activeTab === 'fleet' ? 'active' : ''} aria-current={activeTab === 'fleet' ? 'page' : undefined} onClick={() => go('fleet')}><Icon name="truck" size={16}/><span>{language === 'ar' ? 'الأجهزة' : 'Devices'}</span></button>
+        <button type="button" className={activeTab === 'shifts' ? 'active' : ''} aria-current={activeTab === 'shifts' ? 'page' : undefined} onClick={() => go('shifts')}><Icon name="clock" size={16}/><span>{language === 'ar' ? 'الورديات' : 'Shifts'}</span></button>
+        <button type="button" className={activeTab === 'hub' ? 'active' : ''} aria-current={activeTab === 'hub' ? 'page' : undefined} onClick={() => go('hub')}><Icon name="grid" size={16}/><span>{language === 'ar' ? 'الأقسام' : 'Sections'}</span></button>
+        <button type="button" onClick={() => setMobileNav(true)} aria-expanded={mobileNav}><Icon name="more-horizontal" size={16}/><span>{language === 'ar' ? 'المزيد' : 'More'}</span></button>
       </nav>
+      {activeTab === 'dashboard' && <nav className="dashboard-tabs" aria-label={language === 'ar' ? 'أقسام لوحة القيادة' : 'Dashboard sections'}>
+        <button type="button" className="active" onClick={() => go('dashboard')}><Icon name="grid" size={15}/>{language === 'ar' ? 'لوحة القيادة' : 'Dashboard'}</button>
+        <button type="button" onClick={() => go('fleet')}><Icon name="truck" size={15}/>{language === 'ar' ? 'إدارة الأجهزة' : 'Device management'}</button>
+        <button type="button" onClick={() => go('shifts')}><Icon name="clock" size={15}/>{language === 'ar' ? 'الورديات والتسليم' : 'Shifts & handover'}</button>
+        <button type="button" onClick={() => go('hub')}><Icon name="layers" size={15}/>{language === 'ar' ? 'الأقسام' : 'Departments'}</button>
+        <button type="button" onClick={() => setMobileNav(true)}><Icon name="more-horizontal" size={15}/>{language === 'ar' ? 'المزيد' : 'More'}</button>
+      </nav>}
 
       {activeTab === 'hub' && <SectionsHub items={visibleNavigation} language={language} activeId={activeTab} onOpen={go} renderIcon={(name) => <Icon name={name} size={22}/>} />}
 
@@ -1434,27 +1447,56 @@ function App({ initialData }: { initialData: AppInitialData }) {
 
       {activeTab === 'dashboard' && <section className="page-content">
         <div className="hero-panel">
-          <div className="hero-copy"><div className="eyebrow"><span/> PRECISION INDUSTRIAL · MECHANICAL INTELLIGENCE</div><h2>{language === 'ar' ? 'تحكم هندسي في أسطول الشاتل' : 'Precision control for your shuttle fleet'}</h2><p>{language === 'ar' ? 'مركز موحد لمتابعة العربات والبطاريات والأعطال والصيانة، مع رسومات ميكانيكية تفاعلية.' : 'A unified workspace for shuttle assets, battery records, faults and maintenance — with interactive mechanical visualization.'}</p><div className="hero-actions"><button className="btn-primary" onClick={() => go('fleet')}>{t.openFleet}<Icon name="arrow" size={16}/></button><button className="btn-secondary" onClick={() => go('engineering')}>{t.openEngineering}</button><button className="btn-secondary" onClick={() => go('warehouse')}>{language === 'ar' ? 'استكشاف المخزن ثلاثي الأبعاد' : 'Explore 3D warehouse'}</button></div><div className="hero-footnote"><span className="pulse-dot"/> {language === 'ar' ? 'عدد الأجهزة النشطة: ' + metrics.total : metrics.total + ' active units in the local fleet register'}</div></div>
-          <div className="hero-machine">
-            <div className="machine-orbit orbit-one"/>
-            <div className="machine-orbit orbit-two"/>
-            <div className="dashboard-shuttle-viewer">
-              <Suspense fallback={<ShuttleModel shuttle={heroShuttle} view="iso" exploded={false} animated={false}/>}>
-                <Shuttle3DViewer
-                  manufacturer={heroShuttle.manufacturer}
-                  shuttleId={heroShuttle.id}
-                  status={heroShuttle.status}
-                  view="iso"
-                  exploded={false}
-                  animated={false}
-                  selectedPart="chassis"
-                  zoom={1.12}
-                  resetKey={0}
-                  onSelectPart={() => undefined}
-                  fallback={<ShuttleModel shuttle={heroShuttle} view="iso" exploded={false} animated={false}/>}
-                />
-              </Suspense>
+          <div className="hero-main-row">
+            <div className="hero-machine">
+              <div className="machine-orbit orbit-one"/>
+              <div className="machine-orbit orbit-two"/>
+              <div className="machine-orbit orbit-three"/>
+              <div className="machine-telemetry-badge"><span className="pulse-dot"/> 3D TWIN · LOCAL REFERENCE</div>
+              <div className="dashboard-shuttle-viewer">
+                <Suspense fallback={<ShuttleModel shuttle={heroShuttle} view="iso" exploded={false} animated={false}/>}>
+                  <Shuttle3DViewer
+                    manufacturer={heroShuttle.manufacturer}
+                    shuttleId={heroShuttle.id}
+                    status={heroShuttle.status}
+                    view="iso"
+                    exploded={false}
+                    animated={false}
+                    selectedPart="chassis"
+                    zoom={1.12}
+                    resetKey={0}
+                    onSelectPart={() => undefined}
+                    fallback={<ShuttleModel shuttle={heroShuttle} view="iso" exploded={false} animated={false}/>}
+                  />
+                </Suspense>
+              </div>
+              <div className="equipment-state-panel">
+                <span>{language === 'ar' ? 'حالة سجل المعدة' : 'EQUIPMENT REGISTER STATE'}</span>
+                <strong><i/> {statusText(heroShuttle.status).toUpperCase()}</strong>
+                <small>{language === 'ar' ? 'بيانات محلية · لا توجد قراءة حركة مباشرة' : 'LOCAL RECORD · NO LIVE MOTION SIGNAL'}</small>
+              </div>
             </div>
+            <div className="hero-copy">
+              <div className="eyebrow"><span/> PRECISION INDUSTRIAL INTELLIGENCE</div>
+              <h2>{language === 'ar' ? 'المراقبة الهندسية لأسطول الشاتل' : 'Engineering intelligence for your shuttle fleet'}</h2>
+              <p>{language === 'ar' ? 'مركز موحد لمتابعة العربات والبطاريات والأعطال والصيانة، مع رسومات ميكانيكية تفاعلية.' : 'A unified control room for shuttle cars, batteries, faults and maintenance, with interactive mechanical engineering views.'}</p>
+              <div className="hero-actions">
+                <button className="btn-primary" onClick={() => go('warehouse')}>{language === 'ar' ? 'استكشاف المخزن ثلاثي الأبعاد' : 'Explore 3D warehouse'}<Icon name="arrow" size={16}/></button>
+                <button className="btn-secondary" onClick={() => go('engineering')}>{language === 'ar' ? 'فتح التصور الهندسي' : 'Open engineering view'}</button>
+                <button className="btn-secondary" onClick={() => go('fleet')}>{language === 'ar' ? 'فتح سجل الأسطول' : 'Open fleet register'}</button>
+              </div>
+              <div className="hero-footnote"><span className="pulse-dot"/> {language === 'ar' ? 'عدد الأجهزة النشطة: ' + metrics.total : metrics.total + ' active units in the local fleet register'}</div>
+            </div>
+          </div>
+          <div className="dashboard-telemetry-wave">
+            <div className="wave-heading"><div><span className="eyebrow">RF TELEMETRY / LOCAL SIGNAL PREVIEW</span><strong>{language === 'ar' ? 'موجة إشارة لاسلكية' : 'RF telemetry waveform'}</strong></div><span className="wave-frequency">2.4 GHz · −54 dBm <i>{language === 'ar' ? 'قيمة توضيحية' : 'ILLUSTRATIVE'}</i></span></div>
+            <svg className="telemetry-wave-svg" viewBox="0 0 920 92" preserveAspectRatio="none" role="img" aria-label={language === 'ar' ? 'رسم توضيحي لموجة تردد لاسلكي غير متصلة' : 'Illustrative disconnected radio frequency waveform'}>
+              <defs><linearGradient id="rfWaveGlow" x1="0" x2="1"><stop stopColor="#2ceaa3" stopOpacity=".08"/><stop offset=".5" stopColor="#48dff0" stopOpacity=".95"/><stop offset="1" stopColor="#2ceaa3" stopOpacity=".12"/></linearGradient></defs>
+              <path className="wave-grid-lines" d="M0 16H920M0 46H920M0 76H920M115 0V92M230 0V92M345 0V92M460 0V92M575 0V92M690 0V92M805 0V92"/>
+              <path className="wave-trace wave-trace-muted" d="M0 46 C25 46 25 22 48 22 S72 70 95 70 S120 46 145 46 S170 14 195 14 S220 78 245 78 S270 46 295 46 S320 25 345 25 S370 66 395 66 S420 46 445 46 S470 9 495 9 S520 82 545 82 S570 46 595 46 S620 24 645 24 S670 68 695 68 S720 46 745 46 S770 13 795 13 S820 79 845 79 S870 46 895 46 H920"/>
+              <path className="wave-trace" d="M0 46 C25 46 25 22 48 22 S72 70 95 70 S120 46 145 46 S170 14 195 14 S220 78 245 78 S270 46 295 46 S320 25 345 25 S370 66 395 66 S420 46 445 46 S470 9 495 9 S520 82 545 82 S570 46 595 46 S620 24 645 24 S670 68 695 68 S720 46 745 46 S770 13 795 13 S820 79 845 79 S870 46 895 46 H920"/>
+            </svg>
+            <div className="wave-footnote"><span><i/> {language === 'ar' ? 'عرض محلي تجريبي — لا توجد حزمة RF مستقبلة' : 'LOCAL PREVIEW — NO RF PACKETS RECEIVED'}</span><span>2.4 GHz ISM BAND</span></div>
           </div>
         </div>
         <div className="section-heading"><div><span className="eyebrow">FLEET TELEMETRY / LOCAL RECORDS</span><h2>{language === 'ar' ? 'مؤشرات الأسطول' : 'Fleet at a glance'}</h2></div><button className="text-button" onClick={() => go('fleet')}>{t.viewRegister}<Icon name="chevron" size={15}/></button></div>
