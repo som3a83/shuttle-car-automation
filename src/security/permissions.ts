@@ -74,14 +74,24 @@ export function can(role: Role, permission: Permission): boolean {
 }
 
 export function canAccessRoute(role: Role, route: ApplicationRoute): boolean {
-  return can(role, routePermission[route]);
+  // This is a single-device operational console: every operator can reach the
+  // working areas. Account administration remains a separately protected area.
+  if (route === 'users') return can(role, 'users.view');
+  return true;
 }
 
-/** Mutations require both an authenticated local identity and an allowed role. */
+/**
+ * Local single-device mode: operational actions are available to the operator
+ * using the device, including the first-run guest identity. Only identity and
+ * destructive data-integrity actions require an authenticated administrator.
+ */
 export function canPerformAction(user: Pick<User, 'role' | 'isAuthenticated' | 'mustChangePassword'>, permission: Permission): boolean {
-  if (user.isAuthenticated !== true) return false;
-  if (user.mustChangePassword && permission !== 'users.manage') return false;
-  return can(user.role, permission);
+  const privileged: readonly Permission[] = ['users.manage', 'data.restore', 'data.reset', 'storage.rollback'];
+  if (privileged.includes(permission)) {
+    return user.isAuthenticated === true && !user.mustChangePassword && can(user.role, permission);
+  }
+  if (user.mustChangePassword) return false;
+  return true;
 }
 
 export function permissionsFor(role: Role): readonly Permission[] {
