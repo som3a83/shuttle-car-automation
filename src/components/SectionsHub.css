@@ -1,0 +1,19 @@
+.sections-hub { display:grid; gap:24px; }
+.sections-hub-heading { padding:26px 28px; border:1px solid var(--line-strong); border-radius:18px; background:radial-gradient(ellipse at 88% 0,rgba(27,198,202,.13),transparent 46%),linear-gradient(135deg,var(--surface-2),var(--surface)); }
+.sections-hub-kicker { color:var(--cyan); font:700 10px/1.5 ui-monospace,monospace; letter-spacing:.14em; }
+.sections-hub-heading h2 { margin:8px 0 5px; color:var(--text); font-size:clamp(23px,3vw,32px); }
+.sections-hub-heading p { margin:0; max-width:720px; color:var(--muted); line-height:1.7; }
+.sections-hub-group { display:grid; gap:12px; }
+.sections-hub-group-title { display:flex; align-items:center; gap:14px; color:var(--muted); font-size:11px; font-weight:800; letter-spacing:.15em; }
+.sections-hub-group-title i { height:1px; flex:1; background:var(--line-strong); }
+.sections-hub-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.sections-hub-card { min-width:0; display:grid; grid-template-columns:48px minmax(0,1fr) auto; align-items:center; gap:14px; padding:17px; text-align:start; border:1px solid var(--line); border-radius:15px; background:var(--surface); color:var(--text); transition:border-color .18s,transform .18s,background .18s; }
+.sections-hub-card:hover,.sections-hub-card:focus-visible { border-color:var(--cyan); background:var(--surface-2); transform:translateY(-2px); }
+.sections-hub-card.active { border-color:var(--cyan); box-shadow:inset 0 0 0 1px var(--cyan); }
+.sections-hub-icon { width:48px; height:48px; display:grid; place-items:center; border:1px solid rgba(31,204,207,.22); border-radius:13px; color:var(--cyan); background:rgba(31,204,207,.08); }
+.sections-hub-card-copy { min-width:0; display:grid; gap:5px; }
+.sections-hub-card-copy strong { font-size:14px; line-height:1.35; }
+.sections-hub-card-copy small { color:var(--muted); font-size:11px; line-height:1.55; }
+.sections-hub-open { display:flex; align-items:center; gap:5px; color:var(--cyan); font-size:11px; font-weight:800; white-space:nowrap; }
+[dir="rtl"] .sections-hub-open span { transform:scaleX(-1); }
+@media(max-width:760px) { .sections-hub-grid { grid-template-columns:1fr; } .sections-hub-heading { padding:20px; } .sections-hub-card { grid-template-columns:42px minmax(0,1fr) auto; gap:11px; padding:13px; } .sections-hub-icon { width:42px; height:42px; } }

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
+import { applyStudioEnvironment, applyStudioRenderer, configureKeyLightShadow, createShadowCatcher } from './three/studioLook';
 import type { Battery, Language } from '../types';
 
 type BatteryView = 'iso' | 'side' | 'front' | 'top';
@@ -96,7 +97,7 @@ export default function Battery3DViewer({ battery, fallback, language = 'en' }: 
     setAvailable(true);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.25));
     renderer.setClearColor(0x0b121a, 0);
-    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    applyStudioRenderer(renderer, 1.1);
     renderer.domElement.className = 'battery-webgl-canvas';
     renderer.domElement.style.touchAction = 'none';
     renderer.domElement.setAttribute('aria-label', 'Interactive conceptual lithium battery assembly. Drag or use arrow keys to rotate; press Home to reset the view.');
@@ -105,9 +106,11 @@ export default function Battery3DViewer({ battery, fallback, language = 'en' }: 
     host.appendChild(renderer.domElement);
 
     const scene = new THREE.Scene();
-    scene.add(new THREE.HemisphereLight(0xe0efff, 0x25333c, 2.2));
-    const key = new THREE.DirectionalLight(0xffe3c4, 3);
+    const disposeEnvironment = applyStudioEnvironment(renderer, scene, 0.6);
+    scene.add(new THREE.HemisphereLight(0xe0efff, 0x25333c, 1.0));
+    const key = new THREE.DirectionalLight(0xffe3c4, 2.6);
     key.position.set(6, 9, 7);
+    configureKeyLightShadow(key, 9);
     scene.add(key);
     const rim = new THREE.DirectionalLight(0x6bb9dc, 1.8);
     rim.position.set(-6, 3, -5);
@@ -217,6 +220,13 @@ export default function Battery3DViewer({ battery, fallback, language = 'en' }: 
     (grid.material as THREE.Material).transparent = true;
     (grid.material as THREE.Material).opacity = 0.35;
     scene.add(grid);
+    scene.add(createShadowCatcher(22, -1.05));
+    root.traverse((object) => {
+      if (object instanceof THREE.Mesh) {
+        object.castShadow = true;
+        object.receiveShadow = true;
+      }
+    });
 
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
@@ -346,6 +356,7 @@ export default function Battery3DViewer({ battery, fallback, language = 'en' }: 
       renderer.domElement.removeEventListener('pointercancel', onUp);
       renderer.domElement.removeEventListener('wheel', onWheel);
       renderer.domElement.removeEventListener('keydown', onKeyDown);
+      disposeEnvironment();
       scene.traverse((object) => {
         if (object instanceof THREE.Mesh) {
           object.geometry.dispose();

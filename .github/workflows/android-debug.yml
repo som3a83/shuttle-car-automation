@@ -84,8 +84,9 @@ jobs:
           import fs from 'node:fs';
           const run = Number(process.env.GITHUB_RUN_NUMBER);
           if (!Number.isSafeInteger(run) || run < 1) throw new Error('Invalid GitHub run number');
-          const version = '6.0.0-dev.' + run;
-          const versionCode = 6000000 + run;
+          const version = JSON.parse(fs.readFileSync('package.json', 'utf8')).version;
+          if (!/^7\.0\.0-dev\.1$/.test(version)) throw new Error('Unexpected V7 package version: ' + version);
+          const versionCode = 7000000 + run;
           const file = 'android/app/build.gradle';
           let gradle = fs.readFileSync(file, 'utf8');
           if (!/\bversionCode\s+\d+/.test(gradle) || !/\bversionName\s+['"][^'"]+['"]/.test(gradle)) {
@@ -99,7 +100,6 @@ jobs:
           }
           console.log('Android development build: ' + version + ' (' + versionCode + ')');
           NODE
-
       - name: Sync web assets to Android
         run: npx cap sync android
 

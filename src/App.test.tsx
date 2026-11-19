@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App, { flushApplicationPersistence, type AppInitialData } from './App';
 import type { Fault } from './types';
@@ -868,6 +868,17 @@ beforeEach(async () => {
       const saved = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:connections') || '[]') as Array<{name:string;protocol:string;mode:string;archivedAt?:string|null}>;
       expect(saved.find(item => item.name === 'Approved test gateway')).toMatchObject({ protocol:'opc-ua', mode:'UNKNOWN', archivedAt:null });
     });
+  });
+
+  it('opens Device Connections from the dedicated mobile sections hub', async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await user.click(screen.getByRole('button', { name: 'Sections' }));
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('All Sections');
+    const hub = screen.getByRole('region', { name: 'All sections' });
+    await user.click(within(hub).getByRole('button', { name: /Device Connections/i }));
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Device Connections');
+    expect(window.location.hash).toBe('#/connections');
   });
 
 });

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
+import { applyStudioEnvironment, applyStudioRenderer, configureKeyLightShadow, createShadowCatcher } from './three/studioLook';
 
 type ModelView = 'iso' | 'side' | 'front' | 'top';
 type EngineeringPart = 'chassis' | 'drive' | 'wheels' | 'battery' | 'sensors';
@@ -63,9 +64,7 @@ export default function Shuttle3DViewer({
     setWebglAvailable(true);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.25));
     renderer.setClearColor(0x0b121a, 0);
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.12;
-    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    applyStudioRenderer(renderer, 1.1);
     host.appendChild(renderer.domElement);
     renderer.domElement.className = 'shuttle-webgl-canvas';
     renderer.domElement.style.touchAction = 'none';
@@ -74,6 +73,7 @@ export default function Shuttle3DViewer({
     renderer.domElement.setAttribute('aria-keyshortcuts', 'ArrowLeft ArrowRight ArrowUp ArrowDown Home');
 
     const scene = new THREE.Scene();
+    const disposeEnvironment = applyStudioEnvironment(renderer, scene, 0.6);
     sceneRef.current = scene;
     const camera = new THREE.OrthographicCamera(-8, 8, 5, -5, 0.1, 100);
     camera.zoom = zoom;
@@ -84,9 +84,10 @@ export default function Shuttle3DViewer({
     rootRef.current = root;
 
     scene.fog = new THREE.FogExp2(0x0b121a, 0.018);
-    scene.add(new THREE.HemisphereLight(0xdcecff, 0x26313b, 2.1));
-    const keyLight = new THREE.DirectionalLight(0xffe0bd, 3.0);
+    scene.add(new THREE.HemisphereLight(0xdcecff, 0x26313b, 1.0));
+    const keyLight = new THREE.DirectionalLight(0xffe0bd, 2.6);
     keyLight.position.set(7, 10, 6);
+    configureKeyLightShadow(keyLight, 9);
     scene.add(keyLight);
     const rimLight = new THREE.DirectionalLight(0x77b8e7, 1.7);
     rimLight.position.set(-7, 4, -6);
@@ -100,6 +101,7 @@ export default function Shuttle3DViewer({
     (floor.material as THREE.Material).transparent = true;
     (floor.material as THREE.Material).opacity = 0.42;
     scene.add(floor);
+    scene.add(createShadowCatcher(22, -1.04));
 
     const statusColor: Record<string, number> = {
       Ready: 0x64c99b,
@@ -116,7 +118,7 @@ export default function Shuttle3DViewer({
     const metal = new THREE.MeshStandardMaterial({ color: 0x526575, metalness: 0.82, roughness: 0.3 });
     const darkMetal = new THREE.MeshStandardMaterial({ color: 0x1c2934, metalness: 0.72, roughness: 0.4 });
     const deckMaterial = new THREE.MeshStandardMaterial({ color: 0x82919c, metalness: 0.78, roughness: 0.32 });
-    const accentMaterial = new THREE.MeshStandardMaterial({ color: accent, metalness: 0.58, roughness: 0.3 });
+    const accentMaterial = new THREE.MeshPhysicalMaterial({ color: accent, metalness: 0.58, roughness: 0.3, clearcoat: 0.6, clearcoatRoughness: 0.2 });
     const rubber = new THREE.MeshStandardMaterial({ color: 0x111820, roughness: 0.88 });
     const batteryMaterial = new THREE.MeshStandardMaterial({ color: 0x243b3b, metalness: 0.45, roughness: 0.45 });
     const cellMaterial = new THREE.MeshStandardMaterial({ color: 0x4e9c82, metalness: 0.25, roughness: 0.48 });
@@ -409,6 +411,7 @@ export default function Shuttle3DViewer({
       renderer.domElement.removeEventListener('pointercancel', onPointerUp);
       renderer.domElement.removeEventListener('wheel', onWheel);
       renderer.domElement.removeEventListener('keydown', onKeyDown);
+      disposeEnvironment();
       scene.traverse((object) => {
         if (object instanceof THREE.Mesh) {
           object.geometry.dispose();

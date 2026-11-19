@@ -14,11 +14,11 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: shuttle-ci-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   validate:
@@ -28,12 +28,29 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
+        with:
+          ref: ${{ github.head_ref || github.ref }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v7
         with:
           node-version: 22
 
+      - name: Synchronize package lockfile for the requested dependency set
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+          if ! git diff --quiet -- package-lock.json; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add package-lock.json
+            git commit -m 'build: synchronize V7 npm lockfile'
+            git push origin "HEAD:${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
+            gh workflow run ci.yml --ref "${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
+            gh workflow run android-package.yml --ref "${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
+          fi
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
 
@@ -55,6 +72,29 @@ jobs:
 
       - name: Build production bundle
         run: npm run build
+
+      - name: Verify hosted Chrome for responsive screenshot evidence
+        run: google-chrome --version
+
+      - name: Capture responsive application screenshots
+        run: |
+          npm run preview -- --host 127.0.0.1 > /tmp/shuttle-vite-preview.log 2>&1 &
+          PREVIEW_PID=$!
+          trap 'kill "$PREVIEW_PID" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 40); do
+            if curl --silent --fail http://127.0.0.1:4173/ >/dev/null; then break; fi
+            sleep 1
+          done
+          curl --silent --fail http://127.0.0.1:4173/ >/dev/null
+          npm run screenshots
+
+      - name: Upload responsive screenshot evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: shuttle-v7-responsive-screenshots
+          path: artifacts/screenshots/*.png
+          if-no-files-found: error
+          retention-days: 30
 
       - name: Upload Google Play listing artwork
         uses: actions/upload-artifact@v7
