@@ -7,6 +7,7 @@ on:
       - "development/**"
       - "copilot/**"
       - "industrial/**"
+      - "feat/mobile-immersive-3d-v6-20261119"
   pull_request:
     branches:
       - main
@@ -75,6 +76,30 @@ jobs:
           npx cap add android
           npx capacitor-assets generate --android --iconBackgroundColor '#111820' --iconBackgroundColorDark '#111820' --splashBackgroundColor '#111820' --splashBackgroundColorDark '#111820'
 
+      - name: Stamp traceable development version
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const run = Number(process.env.GITHUB_RUN_NUMBER);
+          if (!Number.isSafeInteger(run) || run < 1) throw new Error('Invalid GitHub run number');
+          const version = '6.0.0-dev.' + run;
+          const versionCode = 6000000 + run;
+          const file = 'android/app/build.gradle';
+          let gradle = fs.readFileSync(file, 'utf8');
+          if (!/\bversionCode\s+\d+/.test(gradle) || !/\bversionName\s+['"][^'"]+['"]/.test(gradle)) {
+            throw new Error('Android Gradle version fields were not found');
+          }
+          gradle = gradle.replace(/(\bversionCode\s+)\d+/, '$1' + versionCode);
+          gradle = gradle.replace(/(\bversionName\s+)['"][^'"]+['"]/, '$1"' + version + '"');
+          fs.writeFileSync(file, gradle);
+          if (!gradle.includes('versionCode ' + versionCode) || !gradle.includes('versionName "' + version + '"')) {
+            throw new Error('Android development version stamp did not verify');
+          }
+          console.log('Android development build: ' + version + ' (' + versionCode + ')');
+          NODE
+
       - name: Sync web assets to Android
         run: npx cap sync android
 
@@ -127,7 +152,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: shuttle-car-automation-debug-apk
+          name: shuttle-car-automation-v6-dev-${{ github.run_number }}
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: ignore
           retention-days: 14

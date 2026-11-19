@@ -17,7 +17,7 @@ export type Permission =
   | 'data.backup' | 'data.restore' | 'data.reset' | 'storage.rollback';
 
 export type ApplicationRoute =
-  | 'dashboard' | 'fleet' | 'shifts' | 'engineering' | 'batteries' | 'faults'
+  | 'dashboard' | 'warehouse' | 'fleet' | 'shifts' | 'engineering' | 'batteries' | 'faults'
   | 'maintenance' | 'connections' | 'ai' | 'reports' | 'notifications' | 'users' | 'settings';
 
 const allPermissions: readonly Permission[] = [
@@ -63,7 +63,7 @@ const permissionMatrix: Record<Role, readonly Permission[]> = {
 };
 
 const routePermission: Record<ApplicationRoute, Permission> = {
-  dashboard: 'dashboard.view', fleet: 'fleet.view', shifts: 'shifts.view',
+  dashboard: 'dashboard.view', warehouse: 'dashboard.view', fleet: 'fleet.view', shifts: 'shifts.view',
   engineering: 'engineering.view', batteries: 'batteries.view', faults: 'faults.view',
   maintenance: 'maintenance.view', connections: 'connections.view', ai: 'ai.view',
   reports: 'reports.view', notifications: 'notifications.view', users: 'users.view', settings: 'settings.view'

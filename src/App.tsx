@@ -16,6 +16,7 @@ import ShiftOperations from './components/ShiftOperations';
 import LiveGatewayPanel from './components/LiveGatewayPanel';
 import BleReadOnlyExplorer from './components/BleReadOnlyExplorer';
 import DiagnosticWorkbench from './components/DiagnosticWorkbench';
+import ImmersiveWarehouse from './components/ImmersiveWarehouse';
 import { CONNECTION_OPTIONS, getConnectionOption } from './industrial/connectionCatalog';
 import SecurityCenter from './components/SecurityCenter';
 import { loadCustomizationAsync, validateCustomization, type CustomizationConfig } from './data/applicationCustomization';
@@ -46,12 +47,13 @@ import type {
   ShiftRecord
 } from './types';
 
-type Tab = 'dashboard' | 'fleet' | 'shifts' | 'engineering' | 'batteries' | 'faults' | 'maintenance' | 'connections' | 'ai' | 'reports' | 'notifications' | 'users' | 'settings';
+type Tab = 'dashboard' | 'warehouse' | 'fleet' | 'shifts' | 'engineering' | 'batteries' | 'faults' | 'maintenance' | 'connections' | 'ai' | 'reports' | 'notifications' | 'users' | 'settings';
 type ModelView = 'iso' | 'side' | 'front' | 'top';
 type EngineeringPart = 'chassis' | 'drive' | 'wheels' | 'battery' | 'sensors';
 
 const navItems: { id: Tab; en: string; ar: string; icon: string; group: string }[] = [
   { id: 'dashboard', en: 'Dashboard', ar: 'لوحة القيادة', icon: 'grid', group: 'OPERATIONS' },
+  { id: 'warehouse', en: '3D Warehouse Experience', ar: 'المخزن ثلاثي الأبعاد', icon: 'warehouse', group: 'OPERATIONS' },
   { id: 'fleet', en: 'Fleet Control Center', ar: 'إدارة الأسطول', icon: 'truck', group: 'OPERATIONS' },
   { id: 'shifts', en: 'Shift Operations & Handover', ar: 'الورديات وتسليم التشغيل', icon: 'clock', group: 'OPERATIONS' },
   { id: 'engineering', en: 'Engineering Visualization', ar: 'التصور الهندسي', icon: 'blueprint', group: 'ENGINEERING' },
@@ -450,7 +452,7 @@ function App({ initialData }: { initialData: AppInitialData }) {
   const dashboardWidgets = customization.dashboard
     .filter((widget) => widget.visible)
     .sort((a, b) => a.order - b.order);
-  const activeShuttles = shuttles.filter(s => !s.archivedAt);
+  const activeShuttles = useMemo(() => shuttles.filter(s => !s.archivedAt), [shuttles]);
   const archivedShuttles = shuttles.filter(s => Boolean(s.archivedAt));
   const activeBatteries = batteries.filter(b => !b.archivedAt);
   const archivedBatteries = batteries.filter(b => Boolean(b.archivedAt));
@@ -1389,7 +1391,7 @@ function App({ initialData }: { initialData: AppInitialData }) {
 
       {activeTab === 'dashboard' && <section className="page-content">
         <div className="hero-panel">
-          <div className="hero-copy"><div className="eyebrow"><span/> PRECISION INDUSTRIAL · MECHANICAL INTELLIGENCE</div><h2>{language === 'ar' ? 'تحكم هندسي في أسطول الشاتل' : 'Precision control for your shuttle fleet'}</h2><p>{language === 'ar' ? 'مركز موحد لمتابعة العربات والبطاريات والأعطال والصيانة، مع رسومات ميكانيكية تفاعلية.' : 'A unified workspace for shuttle assets, battery records, faults and maintenance — with interactive mechanical visualization.'}</p><div className="hero-actions"><button className="btn-primary" onClick={() => go('fleet')}>{t.openFleet}<Icon name="arrow" size={16}/></button><button className="btn-secondary" onClick={() => go('engineering')}>{t.openEngineering}</button></div><div className="hero-footnote"><span className="pulse-dot"/> {language === 'ar' ? 'عدد الأجهزة النشطة: ' + metrics.total : metrics.total + ' active units in the local fleet register'}</div></div>
+          <div className="hero-copy"><div className="eyebrow"><span/> PRECISION INDUSTRIAL · MECHANICAL INTELLIGENCE</div><h2>{language === 'ar' ? 'تحكم هندسي في أسطول الشاتل' : 'Precision control for your shuttle fleet'}</h2><p>{language === 'ar' ? 'مركز موحد لمتابعة العربات والبطاريات والأعطال والصيانة، مع رسومات ميكانيكية تفاعلية.' : 'A unified workspace for shuttle assets, battery records, faults and maintenance — with interactive mechanical visualization.'}</p><div className="hero-actions"><button className="btn-primary" onClick={() => go('fleet')}>{t.openFleet}<Icon name="arrow" size={16}/></button><button className="btn-secondary" onClick={() => go('engineering')}>{t.openEngineering}</button><button className="btn-secondary" onClick={() => go('warehouse')}>{language === 'ar' ? 'استكشاف المخزن ثلاثي الأبعاد' : 'Explore 3D warehouse'}</button></div><div className="hero-footnote"><span className="pulse-dot"/> {language === 'ar' ? 'عدد الأجهزة النشطة: ' + metrics.total : metrics.total + ' active units in the local fleet register'}</div></div>
           <div className="hero-machine">
             <div className="machine-orbit orbit-one"/>
             <div className="machine-orbit orbit-two"/>
@@ -1457,6 +1459,8 @@ function App({ initialData }: { initialData: AppInitialData }) {
         ))}
         </div>
       </section>}
+
+      {activeTab === 'warehouse' && <ImmersiveWarehouse shuttles={activeShuttles} language={language}/>}
 
       {activeTab === 'fleet' && <section className="page-content">
         <PageIntro eyebrow="ASSET MANAGEMENT / REGISTER" title={t.fleet} subtitle={t.fleetSub}/>

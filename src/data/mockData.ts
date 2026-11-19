@@ -19,13 +19,13 @@ export const users: User[] = [
 ];
 
 export const rolePermissions: Record<Role, string[]> = {
-  'Super Admin': ['dashboard', 'fleet', 'engineering', 'batteries', 'faults', 'maintenance', 'ai', 'connections', 'reports', 'notifications', 'users', 'settings'],
-  Admin: ['dashboard', 'fleet', 'engineering', 'batteries', 'faults', 'maintenance', 'ai', 'connections', 'reports', 'notifications', 'users', 'settings'],
-  Supervisor: ['dashboard', 'fleet', 'engineering', 'batteries', 'faults', 'maintenance', 'reports', 'notifications'],
-  'Maintenance Engineer': ['dashboard', 'fleet', 'engineering', 'batteries', 'faults', 'maintenance', 'reports', 'notifications'],
-  Technician: ['dashboard', 'fleet', 'faults', 'maintenance', 'notifications'],
-  Operator: ['dashboard', 'fleet', 'notifications'],
-  Viewer: ['dashboard', 'fleet']
+  'Super Admin': ['dashboard', 'warehouse', 'fleet', 'engineering', 'batteries', 'faults', 'maintenance', 'ai', 'connections', 'reports', 'notifications', 'users', 'settings'],
+  Admin: ['dashboard', 'warehouse', 'fleet', 'engineering', 'batteries', 'faults', 'maintenance', 'ai', 'connections', 'reports', 'notifications', 'users', 'settings'],
+  Supervisor: ['dashboard', 'warehouse', 'fleet', 'engineering', 'batteries', 'faults', 'maintenance', 'reports', 'notifications'],
+  'Maintenance Engineer': ['dashboard', 'warehouse', 'fleet', 'engineering', 'batteries', 'faults', 'maintenance', 'reports', 'notifications'],
+  Technician: ['dashboard', 'warehouse', 'fleet', 'faults', 'maintenance', 'notifications'],
+  Operator: ['dashboard', 'warehouse', 'fleet', 'notifications'],
+  Viewer: ['dashboard', 'warehouse', 'fleet']
 };
 
 const unknownAssetFields = {
