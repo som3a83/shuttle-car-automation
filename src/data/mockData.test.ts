@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { initialBatteries, initialShuttles } from './mockData';
+import { initialBatteries, initialFaults, initialShuttles } from './mockData';
 
 describe('Fleet seed data quality and provenance', () => {
   it('contains exactly the operator-reported fleet composition', () => {
     expect(initialShuttles).toHaveLength(5);
+    expect(initialFaults).toEqual([]);
     expect(initialShuttles.filter((item) => item.manufacturer === 'Cassioli')).toHaveLength(3);
     expect(initialShuttles.filter((item) => item.manufacturer === 'Craftsman')).toHaveLength(1);
     expect(initialShuttles.filter((item) => item.manufacturer === 'ACME')).toHaveLength(1);
@@ -29,7 +30,9 @@ describe('Fleet seed data quality and provenance', () => {
     const battery = initialBatteries.find((item) => item.manufacturer === 'ACME');
     expect(battery).toBeDefined();
     expect(battery?.soc).toBeNull();
-    expect(battery?.notes).toMatch(/HMI was manually reported to display 0%/i);
+    expect(battery?.status).toBe('Installed');
+    expect(battery?.assignment).toBe('SC-05');
+    expect(battery?.notes).toMatch(/Historical HMI 0% display was reported after repair/i);
     expect(battery?.connectionMode).toBe('UNKNOWN');
     expect(battery?.soh).toBeNull();
     expect(battery?.temperature).toBeNull();
