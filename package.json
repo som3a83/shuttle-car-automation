@@ -1,7 +1,7 @@
 {
   "name": "shuttle-car-automation",
   "private": true,
-  "version": "7.0.0-dev.1",
+  "version": "7.1.0-dev.1",
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",

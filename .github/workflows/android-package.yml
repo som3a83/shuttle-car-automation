@@ -63,7 +63,7 @@ jobs:
           const run = Number(process.env.GITHUB_RUN_NUMBER);
           if (!Number.isSafeInteger(run) || run < 1) throw new Error('Invalid GitHub run number');
           const version = JSON.parse(fs.readFileSync('package.json', 'utf8')).version;
-          if (!/^7\.0\.0-dev\.1$/.test(version)) throw new Error('Unexpected V7 package version: ' + version);
+          if (!/^7\.1\.0-dev\.1$/.test(version)) throw new Error('Unexpected V7 package version: ' + version);
           const versionCode = 7000000 + run;
           const file = 'android/app/build.gradle';
           let gradle = fs.readFileSync(file, 'utf8');
@@ -91,14 +91,14 @@ jobs:
           APK="android/app/build/outputs/apk/debug/app-debug.apk"
           test -s "$APK"
           mkdir -p artifacts/android-package
-          cp "$APK" artifacts/android-package/shuttle-car-automation-v7.0.0-dev.1-debug.apk
-          sha256sum artifacts/android-package/shuttle-car-automation-v7.0.0-dev.1-debug.apk > artifacts/android-package/SHA256SUMS.txt
+          cp "$APK" artifacts/android-package/shuttle-car-automation-v7.1.0-dev.1-debug.apk
+          sha256sum artifacts/android-package/shuttle-car-automation-v7.1.0-dev.1-debug.apk > artifacts/android-package/SHA256SUMS.txt
           ls -lh artifacts/android-package/
 
       - name: Publish installable Android APK
         uses: actions/upload-artifact@v7
         with:
-          name: shuttle-car-automation-v7.0.0-dev.1-debug-apk
+          name: shuttle-car-automation-v7.1.0-dev.1-debug-apk
           path: artifacts/android-package/
           if-no-files-found: error
           retention-days: 30
