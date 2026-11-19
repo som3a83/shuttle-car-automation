@@ -1099,3 +1099,88 @@ body{background:#07111b}
 .app-shell.light .model-canvas{background-color:#eaf3f7;background-image:linear-gradient(rgba(42,108,143,.10) 1px,transparent 1px),linear-gradient(90deg,rgba(42,108,143,.10) 1px,transparent 1px),linear-gradient(rgba(42,108,143,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(42,108,143,.035) 1px,transparent 1px)}
 @media(max-width:1050px){.engineering-workspace{grid-template-columns:minmax(0,1fr)}.engineering-side{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:720px){.page-content{padding:12px}.metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.dashboard-grid,.engineering-side{grid-template-columns:minmax(0,1fr)}.model-canvas{min-height:330px}.topbar{min-height:64px}}
+
+
+/* SHUTTLE V7.2 — Obsidian / Deep Teal mobile control-room */
+.app-shell{
+  --bg:#071315;--bg-2:#0b1b1d;--surface:#102326;--surface-2:#142d30;--surface-3:#1b393b;
+  --line:rgba(99,190,180,.15);--line-strong:rgba(74,211,193,.28);
+  --text:#effaf8;--muted:#a0b9b6;--subtle:#698783;--copper:#2ceaa3;--copper-2:#79ffd0;
+  --blue:#46dce7;--green:#2ceaa3;--cyan:#46dce7;
+  background:radial-gradient(ellipse at 72% -15%,rgba(44,234,163,.10),transparent 42%),#071315;
+}
+.app-shell::before{opacity:.23;background-image:linear-gradient(rgba(67,202,188,.075) 1px,transparent 1px),linear-gradient(90deg,rgba(67,202,188,.075) 1px,transparent 1px);background-size:32px 32px}
+.app-shell .sidebar{background:linear-gradient(180deg,#0d2022,#081416);border-color:rgba(64,202,185,.18)}
+.app-shell .brand-symbol{background:linear-gradient(145deg,#1c5e55,#0d292b);border-color:rgba(44,234,163,.4);box-shadow:0 0 25px rgba(44,234,163,.12)}
+.app-shell .brand-symbol span{background:#b5ffe9}
+.app-shell .nav-button.active{color:#b9ffeb;border-color:rgba(44,234,163,.3);background:linear-gradient(100deg,rgba(44,234,163,.14),rgba(44,234,163,.025));box-shadow:inset -3px 0 0 #2ceaa3,0 0 20px rgba(44,234,163,.05)}
+.app-shell .nav-button.active svg,.app-shell .nav-active-mark{color:#2ceaa3}.app-shell .nav-active-mark{background:#2ceaa3;box-shadow:0 0 12px #2ceaa3}
+.app-shell .topbar{background:rgba(7,19,21,.93);border-color:rgba(64,202,185,.17)}
+.app-shell .hero-panel{display:flex;flex-direction:column;gap:20px;min-height:0;padding:clamp(18px,2.3vw,30px);border:1px solid rgba(44,234,163,.25);border-radius:20px;background:radial-gradient(ellipse at 22% 45%,rgba(44,234,163,.10),transparent 42%),linear-gradient(135deg,#102527 0%,#091719 58%,#0d2425 100%);box-shadow:0 22px 58px rgba(0,0,0,.24),inset 0 1px rgba(255,255,255,.035)}
+.app-shell .hero-panel::before{opacity:.7;background-image:linear-gradient(rgba(44,234,163,.065) 1px,transparent 1px),linear-gradient(90deg,rgba(44,234,163,.065) 1px,transparent 1px);background-size:22px 22px}
+.app-shell .hero-panel::after{content:"SHUTTLE CONTROL / RF SYSTEMS / LOCAL DATA";font-size:8px;color:rgba(121,255,208,.45)}
+.hero-main-row{position:relative;z-index:1;display:grid;grid-template-columns:minmax(0,1.08fr) minmax(300px,.92fr);gap:clamp(18px,3vw,42px);align-items:center;direction:ltr}
+.hero-main-row .hero-machine{grid-column:1;grid-row:1;min-height:310px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:9px;position:relative;overflow:hidden;border:1px solid rgba(70,220,231,.17);border-radius:16px;background:radial-gradient(ellipse at center,rgba(44,234,163,.13),transparent 66%),repeating-linear-gradient(0deg,transparent 0 28px,rgba(44,234,163,.035) 29px),repeating-linear-gradient(90deg,transparent 0 28px,rgba(44,234,163,.035) 29px)}
+.hero-main-row .hero-copy{grid-column:2;grid-row:1;max-width:none;direction:rtl;text-align:right}
+.hero-copy .eyebrow{color:#79d9c2;letter-spacing:.16em}.hero-copy .eyebrow>span{background:#2ceaa3;box-shadow:0 0 12px #2ceaa3}
+.hero-copy h2{max-width:680px;margin:13px 0 10px;font-size:clamp(28px,3.3vw,45px);line-height:1.28;color:#f4fffc}
+.hero-copy p{max-width:620px;color:#a7bfbb;font-size:13px;line-height:1.95}
+.hero-copy .hero-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:22px}
+.hero-copy .btn-primary{color:#04231b;border-color:#a6ffe0;background:linear-gradient(135deg,#a9ffe0,#2ceaa3 65%,#0d9874);box-shadow:0 8px 24px rgba(44,234,163,.17)}
+.hero-copy .btn-secondary{border-color:rgba(111,192,180,.22);background:rgba(12,35,36,.76);color:#d2e8e3}
+.hero-copy .hero-footnote{color:#a5c6bd;margin-top:18px}
+.machine-orbit{border-color:rgba(70,220,231,.35);box-shadow:0 0 25px rgba(70,220,231,.08),inset 0 0 24px rgba(70,220,231,.05)}
+.machine-orbit.orbit-three{position:absolute;width:76%;height:62%;border:1px dashed rgba(44,234,163,.25);border-radius:50%;transform:rotate(-22deg);pointer-events:none}
+.machine-telemetry-badge{position:absolute;top:13px;left:14px;z-index:5;display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid rgba(44,234,163,.28);border-radius:99px;background:rgba(4,19,19,.78);color:#aaffdf;font:800 8px/1 ui-monospace,monospace;letter-spacing:.1em}
+.machine-telemetry-badge .pulse-dot{width:7px;height:7px;margin:0;background:#2ceaa3;box-shadow:0 0 12px #2ceaa3}
+.dashboard-shuttle-viewer{width:100%;max-width:580px;position:relative;z-index:2;filter:drop-shadow(0 18px 24px rgba(0,0,0,.4))}
+.dashboard-shuttle-viewer .shuttle-svg{max-height:310px}
+.equipment-state-panel{position:relative;z-index:3;display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;width:min(92%,540px);padding:9px 12px;border:1px solid rgba(44,234,163,.23);border-radius:9px;background:rgba(4,18,19,.78);font:800 9px/1.4 ui-monospace,monospace;letter-spacing:.08em}
+.equipment-state-panel>span{color:#6d9c91}.equipment-state-panel strong{color:#53f3c1}.equipment-state-panel strong i{display:inline-block;width:7px;height:7px;margin-inline-end:6px;border-radius:50%;background:#2ceaa3;box-shadow:0 0 10px #2ceaa3}
+.equipment-state-panel small{width:100%;text-align:center;color:#76958f;font-size:7px;letter-spacing:.08em}
+.dashboard-telemetry-wave{position:relative;z-index:1;padding:13px 16px 10px;border:1px solid rgba(70,220,231,.17);border-radius:13px;background:rgba(4,18,20,.68);overflow:hidden}
+.wave-heading{display:flex;justify-content:space-between;align-items:center;gap:12px}.wave-heading>div{display:grid;gap:4px}.wave-heading .eyebrow{font-size:8px;color:#6eb6ac}.wave-heading strong{font-size:13px;color:#dffbf4}.wave-frequency{font:800 9px/1.4 ui-monospace,monospace;color:#6ce9d3;white-space:nowrap}.wave-frequency i{font-size:7px;color:#819b95;font-style:normal}
+.telemetry-wave-svg{display:block;width:100%;height:78px;margin-top:5px;overflow:visible}.wave-grid-lines{stroke:rgba(112,190,182,.14);stroke-width:1;fill:none;stroke-dasharray:2 5}
+.wave-trace{fill:none;stroke:url(#rfWaveGlow);stroke-width:2.3;filter:drop-shadow(0 0 5px rgba(70,220,231,.7));stroke-linecap:round}
+.wave-trace-muted{stroke:rgba(44,234,163,.22);stroke-width:8;filter:blur(5px)}
+.wave-footnote{display:flex;justify-content:space-between;gap:10px;color:#71958d;font:700 7px/1.5 ui-monospace,monospace;letter-spacing:.09em}.wave-footnote span:first-child{display:flex;align-items:center;gap:6px}.wave-footnote i{width:6px;height:6px;border-radius:50%;background:#f2b65d;box-shadow:0 0 9px rgba(242,182,93,.6)}
+.cold-status-widget{display:grid;gap:3px;min-width:150px;padding:7px 10px;border:1px solid rgba(70,220,231,.2);border-radius:10px;background:linear-gradient(135deg,rgba(17,54,57,.8),rgba(9,28,30,.9))}
+.cold-status-title{font:800 7px/1.2 ui-monospace,monospace;letter-spacing:.13em;color:#78bcb0}.cold-status-reading{display:flex;align-items:center;gap:6px;color:#8efbe0}.cold-status-reading strong{font:800 12px/1 ui-monospace,monospace}.cold-status-reading i{width:1px;height:15px;background:rgba(110,201,185,.25);margin:0 3px}.cold-status-widget small{font:700 6px/1.2 ui-monospace,monospace;letter-spacing:.07em;color:#829c95}
+.dashboard-tabs{display:flex;align-items:center;gap:7px;margin:12px 0 0;padding:7px;border:1px solid rgba(76,187,173,.16);border-radius:13px;background:rgba(8,24,25,.76);overflow-x:auto;scrollbar-width:none}
+.dashboard-tabs::-webkit-scrollbar{display:none}.dashboard-tabs button{display:flex;align-items:center;justify-content:center;gap:8px;flex:1;min-width:max-content;padding:11px 14px;border:1px solid transparent;border-radius:9px;background:transparent;color:#a1bbb5;font-size:10px;font-weight:750;white-space:nowrap}
+.dashboard-tabs button.active{color:#aaffdf;border-color:rgba(44,234,163,.32);background:linear-gradient(120deg,rgba(44,234,163,.13),rgba(44,234,163,.035));box-shadow:0 0 20px rgba(44,234,163,.06)}
+.dashboard-tabs button:hover{border-color:rgba(44,234,163,.22);color:#e6fff6}
+.app-shell .btn-primary{color:#05251e;border-color:#9dffda;background:linear-gradient(135deg,#adffe2,#2ceaa3 62%,#0d9671)}
+.app-shell .btn-primary:hover{box-shadow:0 10px 28px rgba(44,234,163,.22)}
+.app-shell .section-heading{margin-top:23px}.app-shell .section-heading .eyebrow{color:#7bc1b4}
+.app-shell .metric-card{border-color:rgba(81,186,174,.18);background:linear-gradient(145deg,rgba(17,42,43,.96),rgba(9,25,27,.96))}
+.app-shell .surface-card{border-color:rgba(84,181,169,.17);background:linear-gradient(145deg,rgba(16,38,39,.96),rgba(10,26,28,.96))}
+.app-shell .metric-icon.cyan{color:#46dce7;background:rgba(70,220,231,.12)}
+.app-shell .system-chip i,.app-shell .connection-indicator i{background:#f1b85d;box-shadow:0 0 0 4px rgba(241,184,93,.12)}
+.app-shell .system-chip{border-color:rgba(241,184,93,.2);color:#d8c49d}
+.app-shell .mobile-nav{border-color:rgba(74,211,193,.2);background:rgba(7,19,21,.94);box-shadow:0 12px 40px rgba(0,0,0,.4),0 0 28px rgba(44,234,163,.05);backdrop-filter:blur(20px)}
+.app-shell .mobile-nav button{color:#92aaa4}.app-shell .mobile-nav button.active{color:#72ffd0}
+.app-shell .toast{border-color:rgba(44,234,163,.3);background:#0d2424;color:#eafff7}
+.app-shell.light .hero-panel{background:linear-gradient(135deg,#f8fffd,#e4f7f1)}.app-shell.light .hero-copy h2{color:#0b2926}.app-shell.light .hero-copy p{color:#46635d}
+.app-shell.light .hero-machine,.app-shell.light .dashboard-telemetry-wave{background:#eaf8f3}.app-shell.light .equipment-state-panel{background:#f6fffb}.app-shell.light .equipment-state-panel strong{color:#087b5a}
+.app-shell.light .cold-status-widget{background:#effbf7}.app-shell.light .cold-status-title,.app-shell.light .cold-status-widget small{color:#39776a}
+@media(max-width:900px){.hero-main-row{grid-template-columns:minmax(0,1fr);gap:18px}.hero-main-row .hero-machine{grid-column:1;grid-row:2;min-height:270px}.hero-main-row .hero-copy{grid-column:1;grid-row:1}.hero-copy h2{font-size:clamp(26px,6vw,38px)}.cold-status-widget{min-width:126px}.topbar-actions{gap:6px}}
+@media(max-width:700px){
+  .app-shell .workspace{padding:0 10px 88px}
+  .app-shell .topbar{min-height:68px;padding:8px 9px;gap:7px}
+  .topbar-heading h1{font-size:16px}.topbar-heading .breadcrumb{font-size:7px}
+  .topbar-actions .topbar-route-button,.topbar-actions .system-chip,.topbar-actions .theme-toggle{display:none}
+  .cold-status-widget{min-width:112px;padding:6px 7px}.cold-status-title{font-size:6px}.cold-status-reading strong{font-size:10px}.cold-status-widget small{font-size:5px}
+  .dashboard-tabs{margin:8px 0 0;padding:5px;gap:4px}.dashboard-tabs button{padding:9px 10px;font-size:9px;gap:5px}
+  .app-shell .hero-panel{padding:13px;gap:14px;border-radius:15px}
+  .hero-main-row{gap:14px}.hero-main-row .hero-machine{min-height:220px}.dashboard-shuttle-viewer .shuttle-svg{max-height:210px}
+  .machine-telemetry-badge{top:8px;left:8px;font-size:6px;padding:6px 8px}
+  .equipment-state-panel{font-size:7px;width:96%;padding:7px}.equipment-state-panel small{font-size:6px}
+  .hero-copy p{font-size:11px}.hero-copy .hero-actions{display:grid;grid-template-columns:1fr;gap:7px}.hero-copy .hero-actions button{width:100%;justify-content:center}
+  .dashboard-telemetry-wave{padding:10px}.wave-heading strong{font-size:11px}.wave-frequency{font-size:7px}.telemetry-wave-svg{height:60px}.wave-footnote{font-size:6px}
+  .app-shell .metric-grid{gap:8px}.app-shell .metric-card{min-height:100px;padding:12px}
+  .app-shell .section-heading h2{font-size:20px}
+  .app-shell .mobile-nav{left:10px;right:10px;bottom:10px;width:auto;border:1px solid rgba(44,234,163,.22);border-radius:17px;padding:6px;grid-template-columns:repeat(5,minmax(0,1fr));}
+  .app-shell .mobile-nav button{gap:3px}.app-shell .mobile-nav button span{font-size:8px}
+}
+@media(prefers-reduced-motion:reduce){.machine-orbit,.pulse-dot,.wave-trace{animation:none!important}}
