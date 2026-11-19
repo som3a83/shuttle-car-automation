@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - 'development/**'
+      - 'feature/v7-modernization'
   workflow_dispatch:
 
 permissions:
@@ -66,14 +67,14 @@ jobs:
           APK="android/app/build/outputs/apk/debug/app-debug.apk"
           test -s "$APK"
           mkdir -p artifacts/android-package
-          cp "$APK" artifacts/android-package/shuttle-car-automation-1.0.0-debug.apk
+          cp "$APK" artifacts/android-package/shuttle-car-automation-v7.0.0-dev.1-debug.apk
           sha256sum artifacts/android-package/shuttle-car-automation-1.0.0-debug.apk > artifacts/android-package/SHA256SUMS.txt
           ls -lh artifacts/android-package/
 
       - name: Publish installable Android APK
         uses: actions/upload-artifact@v7
         with:
-          name: shuttle-car-automation-1.0.0-debug-apk
+          name: shuttle-car-automation-v7.0.0-dev.1-debug-apk
           path: artifacts/android-package/
           if-no-files-found: error
           retention-days: 30

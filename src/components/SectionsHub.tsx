@@ -1,9 +1,10 @@
 import React from 'react';
 import type { Language } from '../types';
+import type { ApplicationRoute } from '../security/permissions';
 import './SectionsHub.css';
 
 export interface SectionsHubItem {
-  id: string;
+  id: ApplicationRoute;
   menuId: string;
   icon: string;
   en: string;
@@ -15,7 +16,7 @@ interface SectionsHubProps {
   items: SectionsHubItem[];
   language: Language;
   activeId: string;
-  onOpen: (id: any) => void;
+  onOpen: (id: ApplicationRoute) => void;
   renderIcon: (name: string) => React.ReactNode;
 }
 
