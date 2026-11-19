@@ -70,7 +70,11 @@ const routePermission: Record<ApplicationRoute, Permission> = {
 };
 
 export function can(role: Role, permission: Permission): boolean {
-  return permissionMatrix[role]?.includes(permission) ?? false;
+  const protectedPermissions: readonly Permission[] = ['users.view', 'users.manage', 'data.restore', 'data.reset', 'storage.rollback'];
+  if (protectedPermissions.includes(permission)) return permissionMatrix[role]?.includes(permission) ?? false;
+  // Operational permissions are intentionally open to the local device operator.
+  // The only gated areas are identity administration and destructive recovery.
+  return true;
 }
 
 export function canAccessRoute(role: Role, route: ApplicationRoute): boolean {
