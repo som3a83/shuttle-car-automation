@@ -863,4 +863,15 @@ beforeEach(async () => {
     });
   });
 
+  it('opens Device Connections from the dedicated mobile sections hub', async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await user.click(screen.getByRole('button', { name: 'Sections' }));
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('All Sections');
+    const hub = screen.getByRole('region', { name: 'All sections' });
+    await user.click(within(hub).getByRole('button', { name: /Device Connections/i }));
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Device Connections');
+    expect(window.location.hash).toBe('#/connections');
+  });
+
 });

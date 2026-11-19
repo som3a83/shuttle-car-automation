@@ -1391,6 +1391,8 @@ function App({ initialData }: { initialData: AppInitialData }) {
         <button type="button" onClick={() => setMobileNav(true)} aria-expanded={mobileNav}><Icon name="grid" size={16}/><span>{language === 'ar' ? 'المزيد' : 'More'}</span></button>
       </nav>
 
+      {activeTab === 'hub' && <SectionsHub items={visibleNavigation} language={language} activeId={activeTab} onOpen={go} renderIcon={(name) => <Icon name={name} size={22}/>} />}
+
       {/* Telemetry remains explicitly unverified in its data fields; no global demo banner is shown. */}
 
       {activeTab === 'dashboard' && <section className="page-content">
