@@ -210,7 +210,12 @@ export default function Battery3DViewer({ battery, fallback, language = 'en' }: 
 
     // Cover — removable service cover.
     const cover = addPart('cover');
-    addBox(cover, [6.55, 0.12, 3.55], [0, 1.08, 0], translucentCover);
+    const serviceCover = addBox(cover, [6.55, 0.12, 3.55], [0, 1.08, 0], translucentCover);
+    const serviceCoverMaterial = serviceCover.material as THREE.MeshStandardMaterial;
+    serviceCoverMaterial.transparent = true;
+    serviceCoverMaterial.opacity = 0.18;
+    serviceCoverMaterial.depthWrite = false;
+    serviceCoverMaterial.roughness = 0.22;
     [-2.65, 2.65].forEach((x) => [-1.35, 1.35].forEach((z) => {
       addCylinder(cover, 0.055, 0.055, 0.08, [x, 1.01, z], fastener);
     }));
@@ -500,7 +505,7 @@ export default function Battery3DViewer({ battery, fallback, language = 'en' }: 
           </g>
         </svg>
         <div className="battery-dimension-label battery-dimension-length">REF 680 × 370 mm · L × W</div>
-        <div className="battery-dimension-label battery-dimension-width">3.70 MU · PACK WIDTH</div>
+        <div className="battery-dimension-label battery-dimension-width">WIDTH · REFERENCE ONLY</div>
         <div className="battery-cad-stamp">ORTHOGRAPHIC / INTERNAL REFERENCE GEOMETRY</div>
       </div>
     </div>
