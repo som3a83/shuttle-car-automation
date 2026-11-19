@@ -189,7 +189,7 @@ export default function ImmersiveWarehouse({ shuttles, language }: Props) {
           camera.lookAt(0, 2, 0);
         }
       }
-      if(simulationRef.current) shuttleGroups.forEach((car,index)=>{car.position.x=-8+index*4+Math.sin(t*.75+index)*.7;car.rotation.y=Math.sin(t*.75+index)*.025;});
+      if(simulationRef.current) shuttleGroups.slice(0,3).forEach((car,index)=>{car.position.x=-8+index*4+Math.sin(t*.75+index)*.7;car.rotation.y=Math.sin(t*.75+index)*.025;});
       shuttleGroups.forEach((car)=>{const selected=car.userData.shuttleId===selectedRef.current;(car.children[0] as THREE.Mesh).material=selected?orange:darkSteel;});
       renderer.render(scene,camera);
     };
