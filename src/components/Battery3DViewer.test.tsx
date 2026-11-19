@@ -23,6 +23,26 @@ describe('Battery3DViewer WebGL fallback', () => {
 });
 
 describe('Battery3DViewer interactive engineering controls', () => {
+  it('keeps the engineering controls outside the fixed-height 3D viewport', () => {
+    const { container } = render(
+      <Battery3DViewer
+        battery={initialBatteries[0]}
+        language="en"
+        fallback={<div data-testid="battery-schematic-fallback">Battery schematic fallback</div>}
+      />
+    );
+
+    const shell = container.querySelector('.battery-3d-shell');
+    const controls = container.querySelector('.battery-engineering-controls');
+    const stage = container.querySelector('.battery-3d-stage');
+    const host = container.querySelector('.battery-3d-host');
+
+    expect(shell).toContainElement(controls);
+    expect(stage).toContainElement(host);
+    expect(stage).not.toContainElement(controls);
+    expect(stage).toHaveClass('battery-3d-stage');
+  });
+
   it('changes orthographic view, exploded state and selected battery assembly', async () => {
     const battery = initialBatteries[0];
     render(

@@ -482,25 +482,27 @@ export default function Battery3DViewer({ battery, fallback, language = 'en' }: 
           </div>
         )}
       </div>
-      <div ref={hostRef} className="battery-3d-host" style={{ display: available === false ? 'none' : 'block' }} />
-      {available === false && <div className="battery-3d-fallback">{fallback}</div>}
-      <div className="battery-3d-caption">LITHIUM PACK · CONCEPTUAL INTERNAL ASSEMBLY</div>
-      <div className="battery-3d-id">{battery.id}</div>
-      <div className="battery-3d-help" aria-hidden="true">DRAG TO ROTATE · PINCH / WHEEL TO ZOOM</div>
-      <div className="battery-cad-overlay" aria-hidden="true">
-        <span><i/>PRISMATIC CELL BANKS</span><span><i/>BMS / BALANCING</span><span><i/>BUS BAR NETWORK</span><span><i/>SERVICE TERMINALS</span>
+      <div className="battery-3d-stage">
+        <div ref={hostRef} className="battery-3d-host" style={{ display: available === false ? 'none' : 'block' }} />
+        {available === false && <div className="battery-3d-fallback">{fallback}</div>}
+        <div className="battery-3d-caption">LITHIUM PACK · CONCEPTUAL INTERNAL ASSEMBLY</div>
+        <div className="battery-3d-id">{battery.id}</div>
+        <div className="battery-3d-help" aria-hidden="true">DRAG TO ROTATE · PINCH / WHEEL TO ZOOM</div>
+        <div className="battery-cad-overlay" aria-hidden="true">
+          <span><i/>PRISMATIC CELL BANKS</span><span><i/>BMS / BALANCING</span><span><i/>BUS BAR NETWORK</span><span><i/>SERVICE TERMINALS</span>
+        </div>
+        <div className="battery-cad-crosshair" aria-hidden="true">+</div>
+        <svg className="battery-dimension-overlay" viewBox="0 0 1000 600" preserveAspectRatio="none" aria-hidden="true">
+          <defs><marker id="battery-dim-arrow" markerWidth="7" markerHeight="7" refX="3.5" refY="3.5" orient="auto-start-reverse"><path d="M0,0 L7,3.5 L0,7" fill="none" stroke="#83aabd" strokeWidth="1"/></marker></defs>
+          <g fill="none" stroke="#83aabd" strokeWidth="1.2" opacity=".82">
+            <path d="M170 485 V520 M830 485 V520 M170 510 H830" markerStart="url(#battery-dim-arrow)" markerEnd="url(#battery-dim-arrow)"/>
+            <path d="M860 180 H890 M860 405 H890 M880 180 V405" markerStart="url(#battery-dim-arrow)" markerEnd="url(#battery-dim-arrow)"/>
+          </g>
+        </svg>
+        <div className="battery-dimension-label battery-dimension-length">REF 680 × 370 mm · L × W</div>
+        <div className="battery-dimension-label battery-dimension-width">3.70 MU · PACK WIDTH</div>
+        <div className="battery-cad-stamp">ORTHOGRAPHIC / INTERNAL REFERENCE GEOMETRY</div>
       </div>
-      <div className="battery-cad-crosshair" aria-hidden="true">+</div>
-      <svg className="battery-dimension-overlay" viewBox="0 0 1000 600" preserveAspectRatio="none" aria-hidden="true">
-        <defs><marker id="battery-dim-arrow" markerWidth="7" markerHeight="7" refX="3.5" refY="3.5" orient="auto-start-reverse"><path d="M0,0 L7,3.5 L0,7" fill="none" stroke="#83aabd" strokeWidth="1"/></marker></defs>
-        <g fill="none" stroke="#83aabd" strokeWidth="1.2" opacity=".82">
-          <path d="M170 485 V520 M830 485 V520 M170 510 H830" markerStart="url(#battery-dim-arrow)" markerEnd="url(#battery-dim-arrow)"/>
-          <path d="M860 180 H890 M860 405 H890 M880 180 V405" markerStart="url(#battery-dim-arrow)" markerEnd="url(#battery-dim-arrow)"/>
-        </g>
-      </svg>
-      <div className="battery-dimension-label battery-dimension-length">REF 680 × 370 mm · L × W</div>
-      <div className="battery-dimension-label battery-dimension-width">3.70 MU · PACK WIDTH</div>
-      <div className="battery-cad-stamp">ORTHOGRAPHIC / INTERNAL REFERENCE GEOMETRY</div>
     </div>
   );
 }
