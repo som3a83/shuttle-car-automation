@@ -105,7 +105,7 @@ beforeEach(async () => {
 
   });
 
-  it('allows an unauthenticated Viewer to open operational destinations in read-only mode', () => {
+  it('allows an unauthenticated local operator to open all operational destinations', () => {
     window.sessionStorage.clear();
     renderApp();
     for (const name of [/Fleet Control Center/i, /Battery Management/i, /Maintenance Management/i, /Fault & Diagnostics/i, /Device Connections/i, /AI Technical Assistant/i]) {
@@ -140,12 +140,12 @@ beforeEach(async () => {
     expect(screen.getAllByText(/Wooden pallet not detected/i).length).toBeGreaterThan(0);
   });
 
-  it('keeps diagnostic fault creation disabled for the unauthenticated Viewer', async () => {
+  it('allows local diagnostic fault creation without an account setup detour', async () => {
     const user = userEvent.setup();
     window.sessionStorage.clear();
     renderApp();
     await user.click(screen.getAllByRole('button', { name: /AI Technical Assistant/i })[0]);
-    expect(screen.getByRole('button', { name: /Create fault report/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /Create fault report/i })).toBeEnabled();
   });
 
   it('persists the selected appearance across a reload', async () => {
