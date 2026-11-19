@@ -72,6 +72,7 @@ export const initialShuttles: Shuttle[] = [
   {
     id: 'SC-05', manufacturer: 'ACME', ...unknownAssetFields,
     model: 'Namla Polar Edition',
+    installedBattery: 'BAT-ACME-01',
     faultHistory: [],
     maintenanceHistory: [],
     notes: 'Namla Polar Edition confirmed by the user. Exact serial-specific ratings and telemetry remain unverified. Historical report of an ACME HMI 0% display after repair is retained as an unverified note only; it is not an active fault or verified battery reading.'
@@ -96,7 +97,7 @@ export const initialBatteries: Battery[] = [
     lastMaintenance: 'After repair — date not recorded',
     assignment: 'SC-05',
     notes: 'Historical HMI 0% display was reported after repair. This is an unverified historical observation, not a connected state-of-charge reading; soc remains null until measured through a verified source.',
-    status: 'Available',
+    status: 'Installed',
     connectionMode: 'UNKNOWN'
   }
 ];
