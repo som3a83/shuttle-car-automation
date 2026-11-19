@@ -111,9 +111,9 @@ beforeEach(async () => {
     for (const name of [/Fleet Control Center/i, /Battery Management/i, /Maintenance Management/i, /Fault & Diagnostics/i, /Device Connections/i, /AI Technical Assistant/i]) {
       expect(screen.getAllByRole('button', { name })[0]).toBeInTheDocument();
     }
-    // Users & Security remains the first-run sign-in/account bootstrap entry; administrative settings stay restricted.
+    // Account administration remains protected, while local presentation settings are available on this device.
     expect(screen.getAllByRole('button', { name: /Users & Security/i })[0]).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /System Settings/i })).not.toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /System Settings/i })[0]).toBeInTheDocument();
   });
 
   it('switches to Arabic and updates interface direction', async () => {
