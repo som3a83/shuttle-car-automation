@@ -311,7 +311,9 @@ function Icon({ name, size = 18 }: { name: string; size?: number }) {
     arrow: <path d="M5 12h14M13 6l6 6-6 6"/>,
     plus: <path d="M12 5v14M5 12h14"/>,
     check: <path d="m5 12 4 4L19 6"/>,
-    clock: <><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></>
+    clock: <><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></>,
+    snowflake: <><path d="M12 2v20M4 7l16 10M4 17 20 7"/><path d="m7 4 5 3 5-3M7 20l5-3 5 3"/></>,
+    droplet: <><path d="M12 2C9 7 5 11 5 15a7 7 0 0 0 14 0c0-4-4-8-7-13Z"/><path d="M9 16a3 3 0 0 0 3 3"/></>
   };
   return <svg width={size} height={size} viewBox="0 0 24 24" {...common}>{paths[name] || paths.grid}</svg>;
 }
@@ -1414,7 +1416,7 @@ function App({ initialData }: { initialData: AppInitialData }) {
         <div className="topbar-actions">
           <div className="cold-status-widget" aria-label={language === 'ar' ? 'مؤشرات تبريد مرجعية غير متصلة' : 'Reference cold storage indicators, offline'}>
             <span className="cold-status-title">COLD STORAGE STATUS</span>
-            <span className="cold-status-reading"><Icon name="snowflake" size={17}/><strong>−22°C</strong><i/><Icon name="droplet" size={16}/><strong>65%</strong></span>
+            <span className="cold-status-reading" dir="ltr"><Icon name="snowflake" size={17}/><strong>−22°C</strong><i/><Icon name="droplet" size={16}/><strong>65%</strong></span>
             <small>{language === 'ar' ? 'قيم مرجعية · غير متصلة' : 'REFERENCE VALUES · OFFLINE'}</small>
           </div>
           <button className="topbar-route-button" type="button" onClick={goBack} disabled={!canGoBack} aria-label={language === 'ar' ? 'رجوع' : 'Go back'} title={language === 'ar' ? 'رجوع' : 'Go back'}><Icon name="chevron" size={17}/></button>
@@ -1489,7 +1491,7 @@ function App({ initialData }: { initialData: AppInitialData }) {
             </div>
           </div>
           <div className="dashboard-telemetry-wave">
-            <div className="wave-heading"><div><span className="eyebrow">RF TELEMETRY / LOCAL SIGNAL PREVIEW</span><strong>{language === 'ar' ? 'موجة إشارة لاسلكية' : 'RF telemetry waveform'}</strong></div><span className="wave-frequency">2.4 GHz · −54 dBm <i>{language === 'ar' ? 'قيمة توضيحية' : 'ILLUSTRATIVE'}</i></span></div>
+            <div className="wave-heading"><div><span className="eyebrow">RF TELEMETRY / LOCAL SIGNAL PREVIEW</span><strong>{language === 'ar' ? 'موجة إشارة لاسلكية' : 'RF telemetry waveform'}</strong></div><span className="wave-frequency" dir="ltr">2.4 GHz · −54 dBm <i>{language === 'ar' ? 'قيمة توضيحية' : 'ILLUSTRATIVE'}</i></span></div>
             <svg className="telemetry-wave-svg" viewBox="0 0 920 92" preserveAspectRatio="none" role="img" aria-label={language === 'ar' ? 'رسم توضيحي لموجة تردد لاسلكي غير متصلة' : 'Illustrative disconnected radio frequency waveform'}>
               <defs><linearGradient id="rfWaveGlow" x1="0" x2="1"><stop stopColor="#2ceaa3" stopOpacity=".08"/><stop offset=".5" stopColor="#48dff0" stopOpacity=".95"/><stop offset="1" stopColor="#2ceaa3" stopOpacity=".12"/></linearGradient></defs>
               <path className="wave-grid-lines" d="M0 16H920M0 46H920M0 76H920M115 0V92M230 0V92M345 0V92M460 0V92M575 0V92M690 0V92M805 0V92"/>
