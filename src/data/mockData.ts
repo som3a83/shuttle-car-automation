@@ -65,16 +65,17 @@ export const initialShuttles: Shuttle[] = [
   {
     id: 'SC-04', manufacturer: 'Craftsman', ...unknownAssetFields,
     model: 'Pallet Shuttle (Standard)',
-    faultHistory: ['Reported pallet recognition, battery drain and stopping anomalies'],
+    faultHistory: [],
     maintenanceHistory: [],
-    notes: 'Standard Pallet Shuttle model confirmed by the user. Exact model code, serial number, installed options and technical ratings remain unverified. Reported operating observations require inspection.'
+    notes: 'Standard Pallet Shuttle model confirmed by the user. Exact model code, serial number, installed options and technical ratings remain unverified. No active fault is pre-registered.'
   },
   {
     id: 'SC-05', manufacturer: 'ACME', ...unknownAssetFields,
     model: 'Namla Polar Edition',
-    faultHistory: ['Battery HMI reportedly displayed 0% after repair'],
+    installedBattery: 'BAT-ACME-01',
+    faultHistory: [],
     maintenanceHistory: [],
-    notes: 'Namla Polar Edition confirmed by the user. Exact serial-specific ratings and telemetry remain unverified. ACME battery was reported at 0% on the HMI after repair; verify the physical display and battery interface.'
+    notes: 'Namla Polar Edition confirmed by the user. Exact serial-specific ratings and telemetry remain unverified. Historical report of an ACME HMI 0% display after repair is retained as an unverified note only; it is not an active fault or verified battery reading.'
   }
 ];
 
@@ -95,27 +96,14 @@ export const initialBatteries: Battery[] = [
     installationDate: 'Not recorded',
     lastMaintenance: 'After repair — date not recorded',
     assignment: 'SC-05',
-    notes: 'HMI was manually reported to display 0% after repair. This is an unverified field observation, not a connected state-of-charge reading; soc remains null until measured through a verified source.',
-    status: 'Fault',
+    notes: 'Historical HMI 0% display was reported after repair. This is an unverified historical observation, not a connected state-of-charge reading; soc remains null until measured through a verified source.',
+    status: 'Installed',
     connectionMode: 'UNKNOWN'
   }
 ];
 
-export const initialFaults: Fault[] = [
-  {
-    id: 'FLT-CRAFTSMAN-01',
-    shuttleId: 'SC-04',
-    title: 'Multiple operating anomalies reported',
-    severity: 'Moderate',
-    status: 'Open',
-    timestamp: 'Not recorded',
-    description: 'Reported observations: wooden pallet recognition issue, rapid battery drain, harsh pallet handling, false alarms, wheel slip on ice, sensor cut-out and sudden stop. Symptoms are not yet independently verified.',
-    probableCauses: ['Not established — inspection required'],
-    diagnosticProcedure: 'Inspect event logs, sensors, wheel condition and battery behavior under a controlled and approved test procedure.',
-    correctiveAction: '',
-    assignedTechnician: 'Not assigned'
-  }
-];
+// No open fault is seeded. Only an authorized user can create a current fault record.
+export const initialFaults: Fault[] = [];
 
 export const initialMaintenance: MaintenanceJob[] = [];
 
@@ -169,8 +157,8 @@ export const initialConnections: CommunicationEndpoint[] = [
 export const initialReports: ReportSummary[] = [
   { title: 'Registered shuttle cars', value: '5', detail: 'Three Cassioli, one Craftsman and one ACME — as reported.' },
   { title: 'Verified live telemetry', value: '0', detail: 'No PLC or manufacturer gateway is connected.' },
-  { title: 'Open field reports', value: '1', detail: 'Manual report only; root cause not confirmed.' },
-  { title: 'Verified battery readings', value: '0', detail: 'One ACME HMI reading has been reported and needs verification.' }
+  { title: 'Open field reports', value: '0', detail: 'No active fault is registered.' },
+  { title: 'Verified battery readings', value: '0', detail: 'Historical ACME HMI report remains unverified; no live reading is available.' }
 ];
 
 export const defaultSettings = {

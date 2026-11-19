@@ -178,6 +178,37 @@ async function readOperationalValue<T>(key: StorageKey, fallback: T): Promise<T>
   return value;
 }
 
+/**
+ * Remove only the exact historical demo records that shipped in earlier builds.
+ * User-created faults and unrelated battery states are preserved.
+ */
+function normalizeLegacyDemoFaults(faults: Fault[], shuttles: Shuttle[], batteries: Battery[]) {
+  const legacyFaultId = 'FLT-CRAFTSMAN-01';
+  const normalizedFaults = faults.filter((fault) => fault?.id !== legacyFaultId);
+  const hadLegacyAcmeDemoBattery = batteries.some((battery) =>
+    battery.id === 'BAT-ACME-01' && battery.soc == null && battery.connectionMode === 'UNKNOWN' && battery.status === 'Fault'
+  );
+  const normalizedShuttles = shuttles.map((shuttle) => ({
+    ...shuttle,
+    installedBattery: hadLegacyAcmeDemoBattery && shuttle.id === 'SC-05' && shuttle.installedBattery === 'Not recorded'
+      ? 'BAT-ACME-01'
+      : shuttle.installedBattery,
+    faultHistory: (shuttle.faultHistory ?? []).filter((entry) =>
+      entry !== 'Reported pallet recognition, battery drain and stopping anomalies' &&
+      entry !== 'Battery HMI reportedly displayed 0% after repair'
+    )
+  }));
+  const normalizedBatteries = batteries.map((battery) => {
+    const isLegacyAcmeDemoBattery =
+      battery.id === 'BAT-ACME-01' &&
+      battery.soc == null &&
+      battery.connectionMode === 'UNKNOWN' &&
+      battery.status === 'Fault';
+    return isLegacyAcmeDemoBattery ? { ...battery, status: 'Installed' as const } : battery;
+  });
+  return { faults: normalizedFaults, shuttles: normalizedShuttles, batteries: normalizedBatteries };
+}
+
 export interface AppInitialData {
   language: Language;
   theme: Theme;
@@ -247,9 +278,14 @@ export async function hydrateApplicationState(): Promise<AppInitialData> {
     readOperationalValue('operational.shifts', [] as ShiftRecord[])
   ]);
 
+  const normalizedLegacyState = normalizeLegacyDemoFaults(faults, shuttles, batteries);
+
   return {
-    language, theme, customization, currentUser, shuttles, batteries, faults, jobs,
-    connections, notifications, settings, sidebarCollapsed,
+    language, theme, customization, currentUser,
+    shuttles: normalizedLegacyState.shuttles,
+    batteries: normalizedLegacyState.batteries,
+    faults: normalizedLegacyState.faults,
+    jobs, connections, notifications, settings, sidebarCollapsed,
     storageIssues: readOperationalStorageIssues(),
     dailyReports, shifts
   };

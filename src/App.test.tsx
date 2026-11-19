@@ -1,6 +1,7 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App, { flushApplicationPersistence, type AppInitialData } from './App';
+import type { Fault } from './types';
 import { defaultSettings, initialBatteries, initialConnections, initialFaults, initialMaintenance, initialNotifications, initialShuttles } from './data/mockData';
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 import '@testing-library/jest-dom/vitest';
@@ -59,8 +60,14 @@ function getTestInitialData(): AppInitialData {
   };
 }
 
-function renderApp() {
-  return render(<App initialData={getTestInitialData()} />);
+const testFault: Fault = {
+  id: 'FLT-TEST-01', shuttleId: 'SC-04', title: 'Test reported fault', severity: 'Moderate', status: 'Open',
+  timestamp: '2026-11-19T08:00:00.000Z', description: 'A fault created explicitly by the test fixture.',
+  probableCauses: ['Test fixture'], diagnosticProcedure: 'Test only', correctiveAction: '', assignedTechnician: 'Test technician'
+};
+
+function renderApp(overrides: Partial<AppInitialData> = {}) {
+  return render(<App initialData={{ ...getTestInitialData(), ...overrides }} />);
 }
 
 describe('Shuttle Car Automation V10', () => {
@@ -163,7 +170,7 @@ beforeEach(async () => {
 
   it('does not allow a fault to be resolved without a corrective action', async () => {
     const user = userEvent.setup();
-    renderApp();
+    renderApp({ faults: [testFault] });
     await user.click(screen.getByRole('button', { name: /Fault & Diagnostics/i }));
     const resolveButtons = screen.getAllByRole('button', { name: /Resolve fault/i });
     expect(resolveButtons.some((button) => (button as HTMLButtonElement).disabled)).toBe(true);
@@ -171,7 +178,7 @@ beforeEach(async () => {
 
   it('requires and records corrective action before resolving a fault', async () => {
     const user = userEvent.setup();
-    renderApp();
+    renderApp({ faults: [testFault] });
     await user.click(screen.getByRole('button', { name: /Fault & Diagnostics/i }));
     const actionFields = screen.getAllByPlaceholderText('Document corrective action');
     await user.type(actionFields[0], 'Replaced damaged sensor and verified detection in a controlled test.');
@@ -213,7 +220,7 @@ beforeEach(async () => {
     await user.click(screen.getAllByRole('button', { name: /Battery Management/i })[0]);
     expect(screen.getByText(/Battery assets/i)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /Fault & Diagnostics/i }));
-    expect(screen.getByText(/Multiple operating anomalies reported/i)).toBeInTheDocument();
+    expect(screen.getByText(/No fault records\. Add an observation when a fault is reported\./i)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /Maintenance Management/i }));
     expect(screen.getByText(/Create work order/i)).toBeInTheDocument();
   });
@@ -378,7 +385,7 @@ beforeEach(async () => {
     renderApp();
     await user.click(screen.getAllByRole('button', { name: /Notifications/i })[0]);
     expect(await screen.findByText('Battery status changed')).toBeInTheDocument();
-    expect(screen.getByText(/BAT-ACME-01: Fault → Available/)).toBeInTheDocument();
+    expect(screen.getByText(/BAT-ACME-01: Installed → Available/)).toBeInTheDocument();
   });
 
   it('clears the complete local notification list', async () => {
@@ -527,7 +534,7 @@ beforeEach(async () => {
 
   it('blocks shuttle archiving while a linked fault is unresolved', async () => {
     const user = userEvent.setup();
-    renderApp();
+    renderApp({ faults: [testFault] });
     await user.click(screen.getAllByRole('button', { name: /Fleet Control Center/i })[0]);
     await user.click(screen.getByRole('button', { name: /SC-04 Craftsman/i }));
     await user.click(screen.getByRole('button', { name: /Archive device/i }));

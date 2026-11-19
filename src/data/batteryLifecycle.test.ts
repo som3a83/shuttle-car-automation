@@ -11,6 +11,8 @@ const spareBattery: Battery = {
   connectionMode: 'UNKNOWN', movementHistory: []
 };
 
+const faultedAcmeBattery: Battery = { ...initialBatteries[0], status: 'Fault' };
+
 describe('battery lifecycle and assignment consistency', () => {
   it('moves a spare battery to a shuttle and updates both sides of the relationship', () => {
     const result = assignBatteryToShuttle(
@@ -43,7 +45,7 @@ describe('battery lifecycle and assignment consistency', () => {
     const archived = { ...spareBattery, archivedAt: '2026-11-16T00:00:00.000Z' };
     const archivedResult = assignBatteryToShuttle([archived], initialShuttles, archived.id, 'SC-01');
     const unknownResult = assignBatteryToShuttle([spareBattery], initialShuttles, spareBattery.id, 'SC-99');
-    const faultedResult = assignBatteryToShuttle(initialBatteries, initialShuttles, 'BAT-ACME-01', 'SC-01');
+    const faultedResult = assignBatteryToShuttle([faultedAcmeBattery], initialShuttles, 'BAT-ACME-01', 'SC-01');
     expect(archivedResult.changed).toBe(false);
     expect(unknownResult.changed).toBe(false);
     expect(unknownResult.message).toMatch(/Target shuttle/);
@@ -52,7 +54,7 @@ describe('battery lifecycle and assignment consistency', () => {
   });
 
   it('allows a faulted battery to be manually detached while preserving its fault state', () => {
-    const result = assignBatteryToShuttle(initialBatteries, initialShuttles, 'BAT-ACME-01', '');
+    const result = assignBatteryToShuttle([faultedAcmeBattery], initialShuttles, 'BAT-ACME-01', '');
     expect(result.changed).toBe(true);
     expect(result.batteries[0]).toMatchObject({ assignment: 'Unassigned', status: 'Fault' });
     expect(result.batteries[0].movementHistory?.[0]).toMatchObject({
@@ -62,7 +64,7 @@ describe('battery lifecycle and assignment consistency', () => {
   });
 
   it('archives and detaches a battery while preserving its movement journal', () => {
-    const result = archiveBatteryAndDetach(initialBatteries, initialShuttles, 'BAT-ACME-01', '2026-11-17T09:00:00.000Z');
+    const result = archiveBatteryAndDetach([faultedAcmeBattery], initialShuttles, 'BAT-ACME-01', '2026-11-17T09:00:00.000Z');
     expect(result.batteries[0]).toMatchObject({
       archivedAt: '2026-11-17T09:00:00.000Z', assignment: 'Unassigned', status: 'Fault',
       movementHistory: [expect.objectContaining({ action: 'Archived', fromShuttleId: 'SC-05', toShuttleId: 'Unassigned' })]
