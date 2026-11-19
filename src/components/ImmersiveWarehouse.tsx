@@ -76,6 +76,37 @@ export default function ImmersiveWarehouse({ shuttles, language }: Props) {
         }
       }
     });
+    // Twin shuttle guide rails run through the two rack aisles.
+    const railMat = new THREE.MeshStandardMaterial({ color: 0x52798a, metalness: .82, roughness: .24, emissive: 0x123a48, emissiveIntensity: .45 });
+    [-3.5, 3.5].forEach((z) => {
+      [-.62, .62].forEach((offset) => {
+        const rail = new THREE.Mesh(new THREE.BoxGeometry(25, .12, .13), railMat);
+        rail.position.set(0, .12, z + offset);
+        root.add(rail);
+      });
+      const guide = new THREE.Mesh(new THREE.BoxGeometry(25, .025, .035), new THREE.MeshBasicMaterial({ color: 0x2ceaa3 }));
+      guide.position.set(0, .2, z);
+      root.add(guide);
+    });
+
+    // Clearly mark all four rack elevations in the CAD scene.
+    for (let level = 0; level < 4; level++) {
+      const labelCanvas = document.createElement('canvas');
+      labelCanvas.width = 128; labelCanvas.height = 64;
+      const ctx = labelCanvas.getContext('2d');
+      if (ctx) {
+        ctx.fillStyle = '#0b2026'; ctx.fillRect(0, 0, 128, 64);
+        ctx.strokeStyle = '#2ceaa3'; ctx.lineWidth = 3; ctx.strokeRect(2, 2, 124, 60);
+        ctx.fillStyle = '#d7fff0'; ctx.font = 'bold  thirtypx Arial'.replace(' thirty', '30');
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('LEVEL ' + (level + 1), 64, 33);
+      }
+      const texture = new THREE.CanvasTexture(labelCanvas);
+      const tag = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false }));
+      tag.position.set(-12.3, 1.15 + level * 2.25, -7);
+      tag.scale.set(1.65, .82, 1);
+      root.add(tag);
+    }
+
     const shuttleGroups: THREE.Group[] = [];
     const shuttlePickables: THREE.Object3D[] = [];
     shuttles.slice(0, 5).forEach((shuttle, index) => {
