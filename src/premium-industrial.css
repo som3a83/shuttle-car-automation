@@ -1073,3 +1073,29 @@ body{background:#07111b}
 .mobile-nav button.active{color:var(--copper-2)}
 [dir="rtl"]{font-family:"Noto Sans Arabic","Segoe UI",Tahoma,Arial,sans-serif}
 @media(max-width:700px){.mobile-nav{grid-template-columns:repeat(5,minmax(0,1fr))}.mobile-nav button{min-width:0}.mobile-nav button span{font-size:9px}}
+
+
+/* Precision CAD workstation refinement — V7.1 */
+.app-shell{--cad-grid:rgba(117,177,207,.10);--cad-edge:rgba(128,174,199,.28);--cad-glow:rgba(81,174,213,.13)}
+.workspace{min-width:0}.topbar{min-height:76px;border-bottom:1px solid var(--line-strong);background:linear-gradient(180deg,rgba(13,25,37,.96),rgba(9,17,27,.88));backdrop-filter:blur(18px)}
+.topbar-heading h1{letter-spacing:-.035em}.breadcrumb{font:700 9px/1.4 ui-monospace,monospace;letter-spacing:.12em}.sidebar{border-inline-end:1px solid var(--cad-edge)}
+.nav-group-title{font:800 9px/1.4 ui-monospace,monospace;letter-spacing:.16em}.nav-button{min-height:42px;border:1px solid transparent;transition:background .18s,border-color .18s,transform .18s}
+.nav-button.active{border-color:rgba(213,138,74,.25);box-shadow:inset 3px 0 0 var(--copper);background:linear-gradient(90deg,rgba(213,138,74,.13),rgba(213,138,74,.025))}
+.page-content{width:min(100%,1680px);margin-inline:auto;padding:clamp(14px,2vw,28px)}.page-intro{margin-bottom:18px}.page-intro h2{font-size:clamp(22px,2vw,30px);letter-spacing:-.04em}
+.hero-panel{min-height:340px;border-radius:18px;border-color:var(--cad-edge);background:radial-gradient(ellipse at 76% 48%,rgba(80,155,190,.17),transparent 44%),linear-gradient(118deg,#101f2d 0%,#0b1723 52%,#142a3a 100%)}
+.hero-panel::before{opacity:.78;background-size:24px 24px;mask-image:linear-gradient(90deg,#000 0%,#000 58%,transparent 100%)}
+.hero-panel::after{content:"CAD WORKSPACE / SHUTTLE SYSTEMS / REV 7.1";bottom:14px;font-size:8px}.hero-copy{max-width:700px}.hero-copy h2{max-width:620px;font-size:clamp(29px,3.5vw,48px)}
+.hero-machine{filter:drop-shadow(0 24px 34px rgba(0,0,0,.35))}.metric-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.metric-card{min-height:112px;border-radius:12px;border-color:var(--cad-edge);background:linear-gradient(145deg,rgba(22,39,54,.96),rgba(12,23,34,.96))}
+.dashboard-grid{grid-template-columns:minmax(0,1.35fr) minmax(280px,.85fr);gap:16px}.surface-card{border-radius:14px;border-color:var(--cad-edge);box-shadow:0 14px 36px rgba(0,0,0,.14),inset 0 1px rgba(255,255,255,.025)}
+.engineering-workspace{grid-template-columns:minmax(0,1.7fr) minmax(300px,.8fr);align-items:start;gap:16px}.model-stage{border-color:rgba(104,183,227,.34);background:linear-gradient(155deg,rgba(18,34,49,.98),rgba(9,18,28,.98))}
+.model-toolbar{padding-bottom:13px;border-bottom:1px solid var(--line)}.model-toolbar button,.view-tabs button{border-radius:7px}
+.model-canvas{position:relative;min-height:clamp(390px,48vw,650px);overflow:hidden;border:1px solid rgba(107,175,209,.36);border-radius:12px;background-color:#07131e;background-image:linear-gradient(rgba(100,169,204,.10) 1px,transparent 1px),linear-gradient(90deg,rgba(100,169,204,.10) 1px,transparent 1px),linear-gradient(rgba(100,169,204,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(100,169,204,.035) 1px,transparent 1px),radial-gradient(ellipse at 50% 48%,rgba(60,133,169,.16),transparent 62%);background-size:40px 40px,40px 40px,8px 8px,8px 8px,auto;box-shadow:inset 0 0 90px rgba(0,0,0,.28)}
+.model-canvas::after{content:"X + Y + Z / MM / ISO";position:absolute;inset-inline-end:14px;top:12px;z-index:4;color:rgba(168,202,220,.62);font:800 9px/1 ui-monospace,monospace;letter-spacing:.13em;pointer-events:none}
+.canvas-topline,.canvas-bottomline{z-index:5}.canvas-topline{border-bottom:1px solid rgba(140,190,216,.12)}.canvas-bottomline{border-top:1px solid rgba(140,190,216,.12)}
+.engineering-side{display:grid;gap:14px}.component-select-row{border:1px solid transparent;border-radius:9px}.component-select-row.selected{border-color:rgba(213,138,74,.38);background:rgba(213,138,74,.08)}
+.part-inspector{border:1px solid rgba(104,183,227,.22);border-radius:10px;background:linear-gradient(145deg,rgba(17,36,52,.88),rgba(10,21,32,.92))}.disclaimer{border-inline-start:2px solid var(--copper);padding-inline-start:10px}
+.app-shell.light .topbar{background:rgba(248,252,255,.94)}.app-shell.light .metric-card{background:linear-gradient(145deg,#fff,#edf4f8)}.app-shell.light .model-stage{background:linear-gradient(155deg,#fff,#edf4f8)}
+.app-shell.light .model-canvas{background-color:#eaf3f7;background-image:linear-gradient(rgba(42,108,143,.10) 1px,transparent 1px),linear-gradient(90deg,rgba(42,108,143,.10) 1px,transparent 1px),linear-gradient(rgba(42,108,143,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(42,108,143,.035) 1px,transparent 1px)}
+@media(max-width:1050px){.engineering-workspace{grid-template-columns:minmax(0,1fr)}.engineering-side{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:720px){.page-content{padding:12px}.metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.dashboard-grid,.engineering-side{grid-template-columns:minmax(0,1fr)}.model-canvas{min-height:330px}.topbar{min-height:64px}}

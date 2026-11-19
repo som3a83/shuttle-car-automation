@@ -102,13 +102,13 @@ beforeEach(async () => {
     expect(screen.getByText(/Total shuttle cars/i)).toBeInTheDocument();
     expect(screen.getByText(/Running shuttles/i)).toBeInTheDocument();
     expect(screen.getByText(/System communication status/i)).toBeInTheDocument();
-    expect(screen.getByText('SHUTTLE CAR AUTOMATION · V7.0.0-DEV.1')).toBeInTheDocument();
+    expect(screen.getByText('SHUTTLE CAR AUTOMATION · V7.1 CAD EDITION')).toBeInTheDocument();
   });
 
   it('allows an unauthenticated Viewer to open operational destinations in read-only mode', () => {
     window.sessionStorage.clear();
     renderApp();
-    for (const name of [/Fleet Control Center/i, /Battery Management/i, /Maintenance Management/i, /Fault & Diagnostics/i, /Device Connections/i, /AI Technical Assistant/i, /Reports Center/i]) {
+    for (const name of [/Fleet Control Center/i, /Battery Management/i, /Maintenance Management/i, /Fault & Diagnostics/i, /Device Connections/i, /AI Technical Assistant/i]) {
       expect(screen.getAllByRole('button', { name })[0]).toBeInTheDocument();
     }
     // Users & Security remains the first-run sign-in/account bootstrap entry; administrative settings stay restricted.
@@ -487,7 +487,6 @@ beforeEach(async () => {
       ['Maintenance Management', 'Maintenance Management'],
       ['Device Connections', 'Device Connections'],
       ['AI Technical Assistant', 'AI Technical Assistant'],
-      ['Reports Center', 'Reports Center'],
       ['Notifications', 'Notifications'],
       ['Users & Security', 'Users & Security'],
       ['System Settings', 'System Settings']
@@ -600,60 +599,6 @@ beforeEach(async () => {
     expect(saved.find(item => item.id === 'BAT-ACME-01')).toMatchObject({soc:12.5,connectionMode:'UNKNOWN'});
   });
 
-  it('generates and retains a daily equipment status snapshot', async () => {
-    const user = userEvent.setup();
-    const first = renderApp();
-    await user.click(screen.getAllByRole('button', { name: /Reports Center/i })[0]);
-    await user.click(screen.getByRole('button', { name: /Generate today.s report/i }));
-    await waitFor(() => expect(screen.getByText(/LATEST SAVED DAILY REPORT/i)).toBeInTheDocument());
-    expect(screen.getByRole('button', { name: /Download daily report CSV/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Download daily report Excel/i })).toBeInTheDocument();
-    await waitFor(() => {
-      expect(window.localStorage.getItem('shuttle-car-automation-v7:dailyReports')).toContain('shuttleCount');
-    });
-    first.unmount();
-    renderApp();
-    await user.click(screen.getAllByRole('button', { name: /Reports Center/i })[0]);
-    expect(screen.getByText(/Daily report history/i)).toBeInTheDocument();
-    const reports = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:dailyReports') || '[]') as Array<{shuttleCount:number;verifiedTelemetryCount:number}>;
-    expect(reports[0]).toMatchObject({shuttleCount:5,verifiedTelemetryCount:0});
-  });
-
-  it('deletes only the selected daily report snapshot after confirmation', async () => {
-    const user = userEvent.setup();
-    renderApp();
-    await user.click(screen.getAllByRole('button', { name: /Reports Center/i })[0]);
-    await user.click(screen.getByRole('button', { name: /Generate today.s report/i }));
-    await waitFor(() => expect(screen.getByText(/LATEST SAVED DAILY REPORT/i)).toBeInTheDocument());
-
-    await waitFor(() => {
-      const persisted = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:dailyReports') || '[]') as Array<{id:string}>;
-      expect(persisted).toHaveLength(1);
-    });
-    const cancelSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
-    try {
-      await user.click(screen.getAllByRole('button', { name: /^Delete$/i })[0]);
-      await waitFor(() => expect(cancelSpy).toHaveBeenCalledTimes(1));
-    } finally {
-      cancelSpy.mockRestore();
-    }
-    let saved = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:dailyReports') || '[]') as Array<{id:string}>;
-    expect(saved).toHaveLength(1);
-
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
-    try {
-      await user.click(screen.getByRole('button', { name: /^Delete$/i }));
-      await waitFor(() => expect(confirmSpy).toHaveBeenCalledTimes(1));
-      await waitFor(() => {
-        saved = JSON.parse(window.localStorage.getItem('shuttle-car-automation-v7:dailyReports') || '[]') as Array<{id:string}>;
-        expect(saved).toHaveLength(0);
-      });
-    } finally {
-      confirmSpy.mockRestore();
-    }
-    await waitFor(() => expect(screen.queryByText(/LATEST SAVED DAILY REPORT/i)).not.toBeInTheDocument());
-  });
-
   it('provides working in-app back and home navigation controls', async () => {
     const user = userEvent.setup();
     renderApp();
@@ -694,30 +639,6 @@ beforeEach(async () => {
     );
   });
 
-
-  it('applies saved navigation labels and dashboard widget visibility to the live application', async () => {
-    const user = userEvent.setup();
-    renderApp();
-    const customization = JSON.parse(JSON.stringify(DEFAULT_CUSTOMIZATION)) as typeof DEFAULT_CUSTOMIZATION;
-    const reportsEntry = customization.navigation.find((item) => item.id === 'reports');
-    const batteryWidget = customization.dashboard.find((item) => item.id === 'battery-status');
-    if (!reportsEntry || !batteryWidget) throw new Error('Expected default customization entries are missing.');
-    reportsEntry.label = 'Service reports';
-    reportsEntry.labelAr = 'تقارير الخدمات';
-    reportsEntry.group = 'CUSTOM OPERATIONS';
-    batteryWidget.visible = false;
-
-    act(() => {
-      window.dispatchEvent(new CustomEvent('shuttle-customization-change', { detail: customization }));
-    });
-
-    const reportsButton = screen.getByRole('button', { name: 'Service reports' });
-    expect(reportsButton).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: 'Battery overview' })).not.toBeInTheDocument();
-    await user.click(reportsButton);
-    expect(window.location.hash).toBe('#/reports');
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Service reports');
-  });
 
   it('removes disabled modules from navigation without deleting application records', async () => {
     renderApp();

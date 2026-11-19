@@ -40,7 +40,7 @@ export interface AuditEntry {
 }
 
 const ROLES: readonly Role[] = ['Super Admin', 'Admin', 'Supervisor', 'Maintenance Engineer', 'Technician', 'Operator', 'Viewer'];
-const ROUTES: readonly CustomizableRoute[] = ['dashboard', 'fleet', 'shifts', 'engineering', 'batteries', 'faults', 'maintenance', 'connections', 'ai', 'reports', 'notifications', 'users', 'settings'];
+const ROUTES: readonly CustomizableRoute[] = ['dashboard', 'fleet', 'shifts', 'engineering', 'batteries', 'faults', 'maintenance', 'connections', 'ai', 'notifications', 'users', 'settings'];
 
 export const DEFAULT_CUSTOMIZATION: CustomizationConfig = {
   modules: [
@@ -53,7 +53,6 @@ export const DEFAULT_CUSTOMIZATION: CustomizationConfig = {
     ['maintenance', 'Maintenance Management', 'Maintenance plans and work orders.'],
     ['connections', 'Device Connections', 'Read-only integration readiness information.'],
     ['ai', 'AI Technical Assistant', 'Advisory support; does not authorize actions.'],
-    ['reports', 'Reports Center', 'Local register reports and exports.'],
     ['notifications', 'Notifications', 'On-device application notifications.'],
     ['users', 'Users & Security', 'Device-local sign-in, local roles and audit integrity.'],
     ['settings', 'System Settings', 'Local application preferences and data backup.']
@@ -68,7 +67,6 @@ export const DEFAULT_CUSTOMIZATION: CustomizationConfig = {
     { id:'maintenance', route:'maintenance', label:'Maintenance Management', labelAr:'إدارة الصيانة', group:'ENGINEERING', visible:true, order:6 },
     { id:'connections', route:'connections', label:'Device Connections', labelAr:'اتصالات المعدات', group:'SYSTEM', visible:true, order:7 },
     { id:'ai', route:'ai', label:'AI Technical Assistant', labelAr:'المساعد الفني', group:'SYSTEM', visible:true, order:8 },
-    { id:'reports', route:'reports', label:'Reports Center', labelAr:'مركز التقارير', group:'SYSTEM', visible:true, order:9 },
     { id:'notifications', route:'notifications', label:'Notifications', labelAr:'الإشعارات', group:'SYSTEM', visible:true, order:10 },
     { id:'users', route:'users', label:'Users & Security', labelAr:'المستخدمون والأمان', group:'ADMIN', visible:true, order:11 },
     { id:'settings', route:'settings', label:'System Settings', labelAr:'إعدادات النظام', group:'ADMIN', visible:true, order:12 }
