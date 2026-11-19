@@ -102,7 +102,7 @@ beforeEach(async () => {
     expect(screen.getByText(/Total shuttle cars/i)).toBeInTheDocument();
     expect(screen.getByText(/Running shuttles/i)).toBeInTheDocument();
     expect(screen.getByText(/System communication status/i)).toBeInTheDocument();
-    expect(screen.getByText('SHUTTLE CAR AUTOMATION · V1.0.0')).toBeInTheDocument();
+    expect(screen.getByText('SHUTTLE CAR AUTOMATION · V7.0.0-DEV.1')).toBeInTheDocument();
   });
 
   it('allows an unauthenticated Viewer to open operational destinations in read-only mode', () => {
