@@ -331,10 +331,11 @@ td:first-child { color:var(--text); font-weight:700; }
   .sidebar.mobile-open { transform:translateX(0); }
   .mobile-close { display:block; margin-inline-start:auto; border:0; background:transparent; color:var(--muted); font-size:23px; }
   .mobile-menu { display:grid; place-items:center; width:33px; height:33px; border:1px solid var(--line); border-radius:8px; color:var(--text); background:var(--surface); }
-  .topbar-heading { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
-  .topbar-heading > div { flex-basis:100%; order:2; }
-  .topbar-heading h1 { order:3; }
-  .topbar { min-height:75px; }
+  .topbar { min-height:75px; flex-wrap:wrap; align-items:flex-start; }
+  .topbar-heading { display:flex; flex:1 1 100%; width:100%; max-width:100%; min-width:0; align-items:center; gap:10px; flex-wrap:wrap; }
+  .topbar-heading > div { flex:1 1 100%; min-width:0; max-width:100%; order:2; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .topbar-heading h1 { order:3; max-width:100%; overflow-wrap:anywhere; }
+  .topbar-actions { flex:0 0 auto; max-width:100%; }
   .mobile-nav { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:5px; padding:0 0 13px; margin-top:-9px; }
   .mobile-nav button { min-width:0; min-height:47px; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:4px; border:1px solid var(--line); border-radius:8px; background:var(--surface); color:var(--muted); padding:6px 3px; font-size:8px; line-height:1.2; }
   .mobile-nav button span { max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -1002,6 +1003,11 @@ button,select,input,textarea { touch-action:manipulation; }
 }
 .app-shell[dir="rtl"] ~ .customization-launcher { right: auto; left: 22px; }
 .app-shell[dir="rtl"] ~ .customization-overlay { direction: rtl; }
+@media (max-width:640px) {
+  .customization-launcher { right:12px; left:auto; bottom:calc(12px + env(safe-area-inset-bottom)); width:42px; min-width:42px; min-height:42px; padding:0; justify-content:center; gap:0; }
+  .customization-launcher span:last-child { display:none; }
+  .app-shell[dir="rtl"] ~ .customization-launcher { right:12px; left:auto; }
+}
 @media print {
   .customization-launcher,.customization-overlay { display:none !important; }
 }
