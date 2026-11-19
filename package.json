@@ -15,30 +15,31 @@
     "check:release": "node --test scripts/android-release-config.check.mjs"
   },
   "dependencies": {
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
     "@capacitor/core": "^8.6.2",
     "@capacitor/android": "^8.6.2",
-    "three": "^0.180.0",
+    "three": "0.187.0",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
     "@capacitor-community/bluetooth-le": "8.3.0"
   },
   "devDependencies": {
-    "@testing-library/jest-dom": "^6.6.1",
+    "@testing-library/jest-dom": "8.0.0",
     "@testing-library/react": "^16.0.1",
     "@testing-library/user-event": "^14.5.2",
-    "@types/react": "^18.3.12",
-    "@types/react-dom": "^18.3.1",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
     "@vitejs/plugin-react": "^6.3.0",
-    "jsdom": "^25.0.1",
-    "typescript": "^5.5.4",
+    "jsdom": "31.0.1",
+    "typescript": "7.0.2",
     "vite": "^8.3.8",
     "vitest": "^5.1.0",
     "@capacitor/cli": "^8.6.2",
-    "@types/three": "^0.180.0",
+    "@types/three": "0.187.0",
     "@capacitor/assets": "4.0.0",
     "@resvg/resvg-js": "2.6.2",
-    "fake-indexeddb": "^6.2.5"
+    "fake-indexeddb": "^6.2.5",
+    "@types/node": "^22.19.0"
   },
   "overrides": {
     "csstype": "3.2.3"
