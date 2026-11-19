@@ -47,9 +47,13 @@ test -s "$EVIDENCE/android-app-screen.png"
 adb shell input tap 320 1360 || true
 sleep 2
 
-# Exercise the Engineering Visualization destination from the visible mobile navigation.
-# The workflow uses a 1080x2400 portrait emulator; this targets the third quick-navigation tile.
-adb shell input tap 545 445
+# Open the mobile "More" drawer, then select Engineering from the RTL navigation.
+# On the pinned 1080x2400 Pixel 7 emulator, the drawer opens from the right.
+adb shell input tap 130 445
+sleep 2
+adb exec-out screencap -p > "$EVIDENCE/navigation-drawer-screen.png"
+test -s "$EVIDENCE/navigation-drawer-screen.png"
+adb shell input tap 900 960
 sleep 8
 adb exec-out screencap -p > "$EVIDENCE/engineering-app-screen.png"
 test -s "$EVIDENCE/engineering-app-screen.png"
