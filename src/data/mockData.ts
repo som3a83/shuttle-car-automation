@@ -46,9 +46,9 @@ const unknownAssetFields = {
 export const initialShuttles: Shuttle[] = [
   {
     id: 'SC-01', manufacturer: 'Cassioli', ...unknownAssetFields,
-    model: 'ISAT Semi-Automatic',
+    model: 'Not recorded',
     faultHistory: [], maintenanceHistory: [],
-    notes: 'Installed product family and semi-automatic configuration confirmed by the user. Serial number, exact hardware revision, cold-store variant and telemetry remain unverified.'
+    notes: 'Manufacturer Cassioli is confirmed by the user. Exact model, serial number, hardware revision, configuration and telemetry are not recorded.'
   },
   {
     id: 'SC-02', manufacturer: 'Cassioli', ...unknownAssetFields,
@@ -64,24 +64,24 @@ export const initialShuttles: Shuttle[] = [
   },
   {
     id: 'SC-04', manufacturer: 'Craftsman', ...unknownAssetFields,
-    model: 'Pallet Shuttle (Standard)',
+    model: 'Not recorded',
     faultHistory: [],
     maintenanceHistory: [],
-    notes: 'Standard Pallet Shuttle model confirmed by the user. Exact model code, serial number, installed options and technical ratings remain unverified. No active fault is pre-registered.'
+    notes: 'Manufacturer Craftsman is confirmed by the user. Exact model code, serial number, installed options and technical ratings are not recorded. No active fault is pre-registered.'
   },
   {
     id: 'SC-05', manufacturer: 'ACME', ...unknownAssetFields,
-    model: 'Namla Polar Edition',
+    model: 'Not recorded',
     installedBattery: 'BAT-ACME-01',
     faultHistory: [],
     maintenanceHistory: [],
-    notes: 'Namla Polar Edition confirmed by the user. Exact serial-specific ratings and telemetry remain unverified. Historical report of an ACME HMI 0% display after repair is retained as an unverified note only; it is not an active fault or verified battery reading.'
+    notes: 'Manufacturer ACME is confirmed by the user. Exact model, serial number, serial-specific ratings and telemetry are not recorded. Historical report of an ACME HMI 0% display after repair is retained as an unverified note only; it is not an active fault or verified battery reading.'
   }
 ];
 
 export const initialBatteries: Battery[] = [
   {
-    id: 'BAT-ACME-01',
+    id: 'BAT-ACME-01', // Local application record key; not a manufacturer serial number.
     manufacturer: 'ACME',
     model: 'Not recorded',
     chemistry: 'Not verified',
@@ -96,7 +96,7 @@ export const initialBatteries: Battery[] = [
     installationDate: 'Not recorded',
     lastMaintenance: 'After repair — date not recorded',
     assignment: 'SC-05',
-    notes: 'Historical HMI 0% display was reported after repair. This is an unverified historical observation, not a connected state-of-charge reading; soc remains null until measured through a verified source.',
+    notes: 'Local application record key only; no manufacturer battery serial was supplied. Historical HMI 0% display was reported after repair. This is an unverified historical observation, not a connected state-of-charge reading; soc remains null until measured through a verified source.',
     status: 'Installed',
     connectionMode: 'UNKNOWN'
   }
