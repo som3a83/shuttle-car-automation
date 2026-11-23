@@ -64,7 +64,7 @@ const navItems: { id: Tab; en: string; ar: string; icon: string; group: string }
 
 const copy = {
   en: {
-    appName: 'SHUTTLE CAR AUTOMATION', subtitle: 'Industrial control & engineering suite',
+    appName: 'SHUTTLE CAR AUTOMATION', subtitle: 'Industrial shuttle operations & engineering suite',
     demo: 'DEMO MODE · LOCAL RECORDS', demoText: 'No live equipment connection: no shuttle is connected to live PLC or manufacturer telemetry. Values marked unverified are not machine readings.',
     total: 'Total shuttle cars', running: 'Running shuttles', idle: 'Idle / Ready', faulted: 'Fault records', disconnected: 'Offline / unknown', battery: 'Verified battery SOC',
     fleet: 'Fleet overview', fleetSub: 'Manage equipment identity, operating condition, assignment and service history.',
