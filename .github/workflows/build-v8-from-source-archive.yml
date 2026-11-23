@@ -96,11 +96,11 @@ jobs:
           const versionCode = 8000000 + run;
           const file = 'android/app/build.gradle';
           let gradle = fs.readFileSync(file, 'utf8');
-          if (!/\\bversionCode\\s+\\d+/.test(gradle) || !/\\bversionName\\s+['"][^'"]+['"]/.test(gradle)) {
+          if (!/\bversionCode\s+\d+/.test(gradle) || !/\bversionName\s+['"][^'"]+['"]/.test(gradle)) {
             throw new Error('Android version fields missing from generated Gradle file');
           }
-          gradle = gradle.replace(/(\\bversionCode\\s+)\\d+/, '$1' + versionCode);
-          gradle = gradle.replace(/(\\bversionName\\s+)['"][^'"]+['"]/, '$1"' + version + '"');
+          gradle = gradle.replace(/(\bversionCode\s+)\d+/, '$1' + versionCode);
+          gradle = gradle.replace(/(\bversionName\s+)['"][^'"]+['"]/, '$1"' + version + '"');
           fs.writeFileSync(file, gradle);
           console.log('Stamped V' + version + ', versionCode ' + versionCode);
           NODE
