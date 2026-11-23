@@ -1184,3 +1184,113 @@ body{background:#07111b}
   .app-shell .mobile-nav button{gap:3px}.app-shell .mobile-nav button span{font-size:8px}
 }
 @media(prefers-reduced-motion:reduce){.machine-orbit,.pulse-dot,.wave-trace{animation:none!important}}
+
+
+/* V8 FINAL PERSONAL IDENTITY — graphite / titanium / copper only. */
+.app-shell {
+  --bg:#090d12;
+  --bg-2:#10161d;
+  --surface:#141b22;
+  --surface-2:#1b242d;
+  --surface-3:#242e38;
+  --line:rgba(177,187,197,.13);
+  --line-strong:rgba(177,187,197,.23);
+  --text:#edf0f2;
+  --muted:#a5afb8;
+  --subtle:#77838d;
+  --copper:#d58a4a;
+  --copper-2:#f0b56e;
+  --blue:#91a8ba;
+  --green:#d58a4a;
+  --cyan:#d58a4a;
+  --amber:#e7b66a;
+  --red:#e67878;
+  --violet:#a892e8;
+  background:
+    radial-gradient(ellipse at 78% -12%,rgba(213,138,74,.075),transparent 38%),
+    radial-gradient(ellipse at 0% 100%,rgba(145,168,186,.045),transparent 40%),
+    linear-gradient(145deg,#090d12,#0d131a 58%,#090d12);
+}
+.app-shell::before {
+  opacity:.22;
+  background-image:linear-gradient(rgba(213,138,74,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(213,138,74,.045) 1px,transparent 1px);
+  background-size:32px 32px;
+}
+.app-shell .sidebar {background:linear-gradient(180deg,#111820,#090e14);border-color:rgba(177,187,197,.14)}
+.app-shell .topbar {background:rgba(9,14,20,.94);border-color:rgba(177,187,197,.16)}
+.app-shell .brand-symbol {background:linear-gradient(145deg,#f0b56e,#b96732 72%,#713d24);border:1px solid rgba(240,181,110,.45);box-shadow:0 8px 24px rgba(213,138,74,.2);color:#25180f}
+.app-shell .brand-symbol span {background:#25180f}
+.app-shell .nav-button.active {color:#f0c18e;border-color:rgba(213,138,74,.28);background:linear-gradient(90deg,rgba(213,138,74,.16),rgba(213,138,74,.035));box-shadow:inset 3px 0 0 #d58a4a,0 0 18px rgba(213,138,74,.035)}
+.app-shell .nav-button.active svg,.app-shell .nav-active-mark {color:#f0b56e}
+.app-shell .nav-active-mark {background:#d58a4a;box-shadow:0 0 10px rgba(213,138,74,.5)}
+.app-shell .connection-indicator i,.app-shell .system-chip i {background:#d58a4a;box-shadow:0 0 0 4px rgba(213,138,74,.12)}
+.app-shell .system-chip {border-color:rgba(213,138,74,.2);color:#d8c49d}
+.app-shell .hero-panel {
+  border-color:rgba(213,138,74,.24);
+  background:radial-gradient(ellipse at 22% 45%,rgba(213,138,74,.11),transparent 43%),linear-gradient(135deg,#18212a 0%,#0c1219 58%,#151d25 100%);
+}
+.app-shell .hero-panel::before {opacity:.72;background-image:linear-gradient(rgba(213,138,74,.065) 1px,transparent 1px),linear-gradient(90deg,rgba(213,138,74,.065) 1px,transparent 1px);background-size:24px 24px}
+.app-shell .hero-panel::after {content:"SHUTTLE OPERATIONS / LOCAL RECORDS / V8.0";color:rgba(240,181,110,.52)}
+.app-shell .hero-machine,.app-shell .hero-gear-visual {
+  display:grid;
+  place-items:center;
+  align-content:center;
+  gap:14px;
+  min-height:300px;
+  border:1px solid rgba(213,138,74,.2);
+  border-radius:15px;
+  background:radial-gradient(ellipse at center,rgba(213,138,74,.12),transparent 65%),repeating-linear-gradient(0deg,transparent 0 31px,rgba(213,138,74,.025) 32px),repeating-linear-gradient(90deg,transparent 0 31px,rgba(213,138,74,.025) 32px);
+  filter:none;
+}
+.hero-gear-symbol {color:#e59a55;font-size:clamp(128px,19vw,220px);line-height:1;text-shadow:0 12px 38px rgba(213,138,74,.2),0 2px 0 #6f3c22;filter:drop-shadow(0 8px 22px rgba(0,0,0,.42))}
+.app-shell .hero-copy .eyebrow {color:#dca36d}
+.app-shell .hero-copy .eyebrow>span,.app-shell .eyebrow>span {background:#d58a4a;box-shadow:0 0 10px rgba(213,138,74,.5)}
+.app-shell .hero-copy h2 {color:#f0f2f3}
+.app-shell .hero-copy p {color:#aab2ba}
+.app-shell .equipment-state-panel {border-color:rgba(213,138,74,.24);background:rgba(12,17,22,.88);color:#d8c49d}
+.app-shell .equipment-state-panel>span,.app-shell .equipment-state-panel small {color:#9b8874}
+.app-shell .equipment-state-panel strong {color:#e5a15f}
+.app-shell .equipment-state-panel strong i {background:#d58a4a;box-shadow:0 0 10px rgba(213,138,74,.55)}
+.app-shell .btn-primary,.app-shell .hero-copy .btn-primary {
+  color:#211307;
+  border-color:#e5a15f;
+  background:linear-gradient(135deg,#f5c58e,#d58a4a 58%,#9c5729);
+  box-shadow:0 8px 22px rgba(200,121,58,.18);
+}
+.app-shell .btn-primary:hover,.app-shell .hero-copy .btn-primary:hover {box-shadow:0 11px 27px rgba(200,121,58,.27)}
+.app-shell .btn-secondary {color:#d5dce1;border-color:rgba(177,187,197,.2);background:linear-gradient(145deg,#1a232c,#111820)}
+.app-shell .metric-card,.app-shell .surface-card {border-color:rgba(177,187,197,.14);background:linear-gradient(145deg,#151d25,#0f151c)}
+.app-shell .metric-icon.green,.app-shell .metric-icon.cyan {color:#e0ad77;background:rgba(213,138,74,.12)}
+.app-shell .status-ready,.app-shell .status-running,.app-shell .status-resolved,.app-shell .status-completed {color:#e0ad77;border-color:rgba(213,138,74,.25);background:rgba(213,138,74,.08)}
+.app-shell .battery-cell {background:linear-gradient(145deg,#e8b477,#a85e32);border-color:rgba(240,181,110,.45)}
+.app-shell .battery-leds i {background:#e7b66a;box-shadow:0 0 9px rgba(231,182,106,.7)}
+.app-shell .battery-row-icon {color:#e0ad77;background:rgba(213,138,74,.12)}
+.app-shell .battery-3d-id {color:#e0ad77}
+.app-shell .pulse-dot {background:#d58a4a;box-shadow:0 0 0 5px rgba(213,138,74,.1),0 0 12px rgba(213,138,74,.4)}
+.app-shell .mobile-nav {border-color:rgba(213,138,74,.2);background:rgba(10,15,21,.96);box-shadow:0 12px 40px rgba(0,0,0,.4),0 0 24px rgba(213,138,74,.04)}
+.app-shell .mobile-nav button {color:#a5afb8}
+.app-shell .mobile-nav button.active {color:#f0b56e;border-color:rgba(213,138,74,.35);background:linear-gradient(180deg,rgba(213,138,74,.15),rgba(213,138,74,.04));box-shadow:inset 0 -2px 0 #d58a4a}
+.app-shell .toast {border-color:rgba(213,138,74,.28);background:#171d23;color:#f0c18e}
+.app-shell .toast svg {color:#d58a4a}
+.app-shell .dashboard-telemetry-wave,.app-shell .cold-status-widget,.app-shell .machine-telemetry-badge {display:none!important}
+.app-shell .dashboard-shuttle-viewer,.app-shell .selected-asset-visual,.app-shell .shuttle-svg {display:none!important}
+.app-shell.light {
+  --bg:#f1eee9;--bg-2:#f8f6f2;--surface:#fffdfa;--surface-2:#f3efe9;--surface-3:#e9e2d8;
+  --line:rgba(92,75,58,.13);--line-strong:rgba(92,75,58,.22);--text:#282a2c;--muted:#60666b;--subtle:#81878c;
+  --copper:#a96131;--copper-2:#a96131;--green:#a96131;--cyan:#a96131;
+  background:linear-gradient(135deg,#f6f3ee,#eae5dd);
+}
+.app-shell.light .sidebar {background:linear-gradient(180deg,#fffdfa,#eee8df)}
+.app-shell.light .topbar {background:rgba(250,248,244,.94)}
+.app-shell.light .hero-panel {background:radial-gradient(ellipse at 22% 45%,rgba(169,97,49,.10),transparent 43%),linear-gradient(135deg,#fffdfa,#eee8df)}
+.app-shell.light .hero-machine,.app-shell.light .hero-gear-visual {background:radial-gradient(ellipse at center,rgba(169,97,49,.11),transparent 65%),repeating-linear-gradient(0deg,transparent 0 31px,rgba(169,97,49,.035) 32px),repeating-linear-gradient(90deg,transparent 0 31px,rgba(169,97,49,.035) 32px)}
+.app-shell.light .hero-copy h2 {color:#282a2c}
+.app-shell.light .hero-copy p {color:#62676b}
+.app-shell.light .equipment-state-panel {background:rgba(255,253,250,.92);color:#6e5138}
+.app-shell.light .surface-card,.app-shell.light .metric-card {background:linear-gradient(145deg,#fffdfa,#f4f0ea)}
+.app-shell.light .nav-button.active {color:#8b4c25;background:rgba(169,97,49,.1);border-color:rgba(169,97,49,.24)}
+.app-shell.light .btn-primary {color:#211307;background:linear-gradient(135deg,#efbd7a,#c7793c)}
+@media(max-width:700px) {
+  .app-shell .hero-machine,.app-shell .hero-gear-visual {min-height:215px;padding:14px}
+  .hero-gear-symbol {font-size:clamp(112px,34vw,160px)}
+}
