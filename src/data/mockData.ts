@@ -52,15 +52,15 @@ export const initialShuttles: Shuttle[] = [
   },
   {
     id: 'SC-02', manufacturer: 'Cassioli', ...unknownAssetFields,
-    model: 'ISAT Semi-Automatic',
+    model: 'Not recorded',
     faultHistory: [], maintenanceHistory: [],
-    notes: 'Installed product family and semi-automatic configuration confirmed by the user. Serial number, exact hardware revision, cold-store variant and telemetry remain unverified.'
+    notes: 'Manufacturer Cassioli is confirmed by the user. Exact model, serial number, hardware revision, configuration and telemetry are not recorded.'
   },
   {
     id: 'SC-03', manufacturer: 'Cassioli', ...unknownAssetFields,
-    model: 'ISAT Semi-Automatic',
+    model: 'Not recorded',
     faultHistory: [], maintenanceHistory: [],
-    notes: 'Installed product family and semi-automatic configuration confirmed by the user. Serial number, exact hardware revision, cold-store variant and telemetry remain unverified.'
+    notes: 'Manufacturer Cassioli is confirmed by the user. Exact model, serial number, hardware revision, configuration and telemetry are not recorded.'
   },
   {
     id: 'SC-04', manufacturer: 'Craftsman', ...unknownAssetFields,
