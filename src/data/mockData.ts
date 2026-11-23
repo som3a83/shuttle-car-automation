@@ -6,7 +6,6 @@ import type {
   Fault,
   MaintenanceJob,
   NotificationItem,
-  ReportSummary,
   Role,
   Shuttle,
   User
@@ -152,13 +151,6 @@ export const initialConnections: CommunicationEndpoint[] = [
     mode: 'UNKNOWN',
     notes: 'Not configured. No approved service adapter or pairing procedure is available.'
   }
-];
-
-export const initialReports: ReportSummary[] = [
-  { title: 'Registered shuttle cars', value: '5', detail: 'Three Cassioli, one Craftsman and one ACME — as reported.' },
-  { title: 'Verified live telemetry', value: '0', detail: 'No PLC or manufacturer gateway is connected.' },
-  { title: 'Open field reports', value: '0', detail: 'No active fault is registered.' },
-  { title: 'Verified battery readings', value: '0', detail: 'Historical ACME HMI report remains unverified; no live reading is available.' }
 ];
 
 export const defaultSettings = {
