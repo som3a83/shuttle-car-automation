@@ -28,6 +28,7 @@ import { canAccessRoute, canPerformAction, type Permission } from './security/pe
 import { listLocalAccountsAsync, readLocalSessionAsync } from './security/localAuth';
 import { OPERATIONAL_COLLECTIONS, persistOperationalSnapshot, readOperationalStorageIssues } from './security/operationalStorage';
 import { get, set, type StorageKey } from './storage';
+import { buildDailyReportCsv } from './data/dailyReportCsv';
 import type {
   AppSettings,
   Battery,
@@ -40,10 +41,11 @@ import type {
   Shuttle,
   ShuttleStatus,
   Theme,
-  ShiftRecord
+  ShiftRecord,
+  DailyReportSnapshot
 } from './types';
 
-type Tab = 'hub' | 'dashboard' | 'warehouse' | 'fleet' | 'shifts' | 'engineering' | 'batteries' | 'faults' | 'maintenance' | 'connections' | 'notifications' | 'users' | 'settings';
+type Tab = 'hub' | 'dashboard' | 'warehouse' | 'fleet' | 'shifts' | 'engineering' | 'batteries' | 'faults' | 'maintenance' | 'connections' | 'notifications' | 'reports' | 'users' | 'settings';
 type ModelView = 'iso' | 'side' | 'front' | 'top';
 type EngineeringPart = 'chassis' | 'drive' | 'wheels' | 'battery' | 'sensors';
 
@@ -56,6 +58,7 @@ const navItems: { id: Tab; en: string; ar: string; icon: string; group: string }
   { id: 'maintenance', en: 'Maintenance Management', ar: 'إدارة الصيانة', icon: 'wrench', group: 'ENGINEERING' },
   { id: 'connections', en: 'Device Connections', ar: 'اتصالات المعدات', icon: 'network', group: 'SYSTEM' },
   { id: 'notifications', en: 'Notifications', ar: 'الإشعارات', icon: 'bell', group: 'SYSTEM' },
+  { id: 'reports', en: 'Reports', ar: 'التقارير', icon: 'chart', group: 'SYSTEM' },
   { id: 'users', en: 'Users & Security', ar: 'المستخدمون والأمان', icon: 'users', group: 'ADMIN' },
   { id: 'settings', en: 'System Settings', ar: 'إعدادات النظام', icon: 'settings', group: 'ADMIN' }
 ];
@@ -1223,6 +1226,34 @@ function App({ initialData }: { initialData: AppInitialData }) {
     return t[key[status] as keyof typeof copy.en];
   };
 
+  const exportDailyReport = async () => {
+    if (!await authorize('dashboard.view', 'report', 'daily-status')) return;
+    const generatedAt = new Date().toISOString();
+    const activeShift = shifts.find(item => !item.endedAt);
+    const report: DailyReportSnapshot = {
+      id: 'RPT-' + generatedAt.replace(/[-:.TZ]/g, '').slice(0, 14),
+      reportDate: generatedAt.slice(0, 10),
+      generatedAt,
+      shuttleCount: activeShuttles.length,
+      runningCount: activeShuttles.filter(item => item.status === 'Running').length,
+      readyCount: activeShuttles.filter(item => item.status === 'Ready').length,
+      disconnectedCount: activeShuttles.filter(item => item.connectivity !== 'REAL').length,
+      openFaultCount: activeFaults.filter(item => item.status !== 'Resolved').length,
+      openMaintenanceCount: activeJobs.filter(item => item.status !== 'Completed').length,
+      batteryCount: activeBatteries.length,
+      faultedBatteryCount: activeBatteries.filter(item => item.status === 'Fault').length,
+      verifiedTelemetryCount: activeShuttles.filter(item => item.connectivity === 'REAL').length + activeBatteries.filter(item => item.connectionMode === 'REAL').length,
+      activeShift: activeShift ? { id: activeShift.id, shiftType: activeShift.shiftType, supervisor: activeShift.supervisor, startedAt: activeShift.startedAt } : null,
+      shuttles: activeShuttles.map(item => ({ id: item.id, manufacturer: item.manufacturer, status: item.status, connectivity: item.connectivity, warehouseZone: item.warehouseZone })),
+      batteries: activeBatteries.map(item => ({ id: item.id, manufacturer: item.manufacturer, status: item.status, assignment: item.assignment, soc: item.soc, connectionMode: item.connectionMode, movementHistory: item.movementHistory || [] }))
+    };
+    const blob = new Blob(['\\uFEFF', buildDailyReportCsv(report)], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a'); link.href = url; link.download = 'shuttle-daily-report-' + report.reportDate + '.csv'; link.click();
+    URL.revokeObjectURL(url);
+    recordAudit('DAILY_REPORT_EXPORTED', 'report', report.id);
+    showToast(language === 'ar' ? 'تم تصدير التقرير اليومي' : 'Daily report exported');
+  };
   const exportBackup = async () => {
     if (!await authorize('data.backup', 'backup', 'operational-data')) return;
     const data = { schemaVersion: 11, exportedAt: new Date().toISOString(), warning: 'Local demo/record data only. Not a live PLC telemetry export.', shuttles, batteries, faults, jobs, connections, notifications, settings, shifts };
@@ -1326,7 +1357,8 @@ function App({ initialData }: { initialData: AppInitialData }) {
         <button type="button" className={activeTab === 'dashboard' ? 'active' : ''} aria-current={activeTab === 'dashboard' ? 'page' : undefined} onClick={() => go('dashboard')}><Icon name="grid" size={16}/><span>{language === 'ar' ? 'الرئيسية' : 'Dashboard'}</span></button>
         <button type="button" className={activeTab === 'fleet' ? 'active' : ''} aria-current={activeTab === 'fleet' ? 'page' : undefined} onClick={() => go('fleet')}><Icon name="truck" size={16}/><span>{language === 'ar' ? 'الأجهزة' : 'Devices'}</span></button>
         <button type="button" className={activeTab === 'shifts' ? 'active' : ''} aria-current={activeTab === 'shifts' ? 'page' : undefined} onClick={() => go('shifts')}><Icon name="clock" size={16}/><span>{language === 'ar' ? 'الورديات' : 'Shifts'}</span></button>
-        <button type="button" className={activeTab === 'hub' ? 'active' : ''} aria-current={activeTab === 'hub' ? 'page' : undefined} onClick={() => go('hub')}><Icon name="grid" size={16}/><span>{language === 'ar' ? 'الأقسام' : 'Sections'}</span></button>
+        <button type="button" className={activeTab === 'reports' ? 'active' : ''} aria-current={activeTab === 'reports' ? 'page' : undefined} onClick={() => go('reports')}><Icon name="chart" size={16}/><span>{language === 'ar' ? 'التقارير' : 'Reports'}</span></button>
+        <button type="button" className={activeTab === 'settings' ? 'active' : ''} aria-current={activeTab === 'settings' ? 'page' : undefined} onClick={() => go('settings')}><Icon name="settings" size={16}/><span>{language === 'ar' ? 'الإعدادات' : 'Settings'}</span></button>
         <button type="button" className={activeTab === 'hub' ? 'active' : ''} aria-current={activeTab === 'hub' ? 'page' : undefined} onClick={() => go('hub')}><Icon name="grid" size={16}/><span>{language === 'ar' ? 'الأقسام' : 'Sections'}</span></button>
       </nav>
       {activeTab === 'hub' && <SectionsHub items={visibleNavigation} language={language} activeId={activeTab} onOpen={go} renderIcon={(name) => <Icon name={name} size={22}/>} />}
@@ -1361,12 +1393,9 @@ function App({ initialData }: { initialData: AppInitialData }) {
         <div className="dashboard-composition">
         {dashboardWidgets.some((widget) => widget.id === 'fleet-status') && <section className={`dashboard-fleet-widget ${dashboardWidgets.find((widget) => widget.id === 'fleet-status')?.size === 'wide' ? 'dashboard-widget-wide' : ''}`} style={{ order: dashboardWidgets.find((widget) => widget.id === 'fleet-status')?.order ?? 0 }}>
         <div className="metric-grid">
-          <Metric icon="truck" label={t.total} value={metrics.total} accent="blue" detail={language === 'ar' ? 'إجمالي السجلات' : 'Registered assets'}/>
-          <Metric icon="grid" label={t.running} value={metrics.running} accent="amber" detail={language === 'ar' ? 'لا توجد قراءة تشغيل مؤكدة' : 'No verified running signal'}/>
-          <Metric icon="settings" label={t.idle} value={metrics.idle} accent="amber" detail={language === 'ar' ? 'الحالة غير المسجلة مستثناة' : 'Unknown state not counted'}/>
-          <Metric icon="alert" label={t.faulted} value={metrics.faulted} accent="red" detail={language === 'ar' ? 'بلاغات مسجلة يدويًا' : 'Manually reported records'}/>
-          <Metric icon="network" label={t.disconnected} value={metrics.disconnected} accent="violet" detail={language === 'ar' ? 'لا يوجد مصدر بيانات حي' : 'No live data source configured'}/>
-          <Metric icon="battery" label={t.battery} value={metrics.verifiedSoc === 0 ? '—' : metrics.verifiedSoc} accent="cyan" detail={language === 'ar' ? 'قراءات بحاجة إلى تحقق' : 'Verified readings only'}/>
+          <Metric icon="truck" label={language === 'ar' ? 'عدد الأجهزة النشطة' : 'Active devices'} value={metrics.total} accent="blue" detail={language === 'ar' ? 'إجمالي الأجهزة المسجلة' : 'Registered fleet units'}/>
+          <Metric icon="battery" label={language === 'ar' ? 'البطاريات قيد الشحن' : 'Batteries charging'} value={activeBatteries.filter(item => item.status === 'Charging').length} accent="cyan" detail={language === 'ar' ? 'حالة مسجلة يدويًا' : 'Locally recorded status'}/>
+          <Metric icon="alert" label={language === 'ar' ? 'التنبيهات المعلقة' : 'Pending alerts'} value={notifications.length + activeFaults.filter(item => item.status !== 'Resolved').length} accent="red" detail={language === 'ar' ? 'إشعارات وأعطال مفتوحة' : 'Notifications and open faults'}/>
         </div>
         <div className="dashboard-grid">
           <div className="surface-card">
@@ -1759,6 +1788,30 @@ function App({ initialData }: { initialData: AppInitialData }) {
           {showArchivedConnections&&archivedConnections.map(item=><div className="archive-row" key={item.name}><div><strong>{item.name}</strong><small>{item.protocol} · {item.archivedAt}</small></div><button className="btn-secondary" onClick={()=>restoreConnection(item.name)}>{language==='ar'?'استعادة':'Restore'}</button></div>)}
         </div>
         <div className="notice-inline"><Icon name="alert"/>{language==='ar'?'هذه السجلات لا تفتح منفذًا ولا تختبر الشبكة ولا تثبت وجود اتصال حي. قبل أي تكامل: يلزم دليل المصنع، وخريطة العناوين، وبيانات الشبكة، وتصريح فني. البداية قراءة فقط ومن خلال بوابة OT معتمدة.':'These records do not open sockets, probe networks or prove a live connection. Obtain vendor manuals, approved address maps, network details and engineering authorization. Start read-only through an approved OT gateway.'}</div>
+      </section>}
+
+      {activeTab === 'reports' && <section className="page-content">
+        <PageIntro eyebrow="OPERATIONS / DAILY REPORT" title={language === 'ar' ? 'التقارير التشغيلية' : 'Operational reports'} subtitle={language === 'ar' ? 'ملخص يومي لحالة أسطول الشاتل والبطاريات والأعطال والصيانة والوردية الحالية.' : 'A daily snapshot of shuttle fleet, batteries, faults, maintenance and the active shift.'}/>
+        <div className="report-metrics">
+          <Metric icon="truck" label={language === 'ar' ? 'الأجهزة النشطة' : 'Active devices'} value={activeShuttles.length} accent="blue"/>
+          <Metric icon="battery" label={language === 'ar' ? 'البطاريات' : 'Batteries'} value={activeBatteries.length} accent="cyan"/>
+          <Metric icon="alert" label={language === 'ar' ? 'الأعطال المفتوحة' : 'Open faults'} value={activeFaults.filter(item => item.status !== 'Resolved').length} accent="red"/>
+          <Metric icon="wrench" label={language === 'ar' ? 'أوامر الصيانة المفتوحة' : 'Open work orders'} value={activeJobs.filter(item => item.status !== 'Completed').length} accent="amber"/>
+          <Metric icon="network" label={language === 'ar' ? 'مصادر اتصال مؤكدة' : 'Verified connections'} value={metrics.verifiedSoc + activeShuttles.filter(item => item.connectivity === 'REAL').length} accent="cyan"/>
+          <Metric icon="clock" label={language === 'ar' ? 'الورديات المسجلة' : 'Shift records'} value={shifts.length} accent="blue"/>
+        </div>
+        <div className="surface-card report-export-card">
+          <div><span className="eyebrow">CSV / DAILY SNAPSHOT</span><h3>{language === 'ar' ? 'تصدير التقرير اليومي' : 'Export daily report'}</h3><p className="muted-text">{language === 'ar' ? 'يشمل ملخص الأجهزة والبطاريات والأعطال والصيانة وحركات البطاريات. القيم غير المؤكدة تظل معلّمة كغير مؤكدة.' : 'Includes fleet, battery, fault, maintenance and battery movement details. Unverified values remain explicitly unverified.'}</p></div>
+          <button className="btn-primary" type="button" onClick={() => void exportDailyReport()}>{language === 'ar' ? 'تنزيل تقرير CSV' : 'Download CSV report'} <Icon name="download" size={16}/></button>
+        </div>
+        <div className="dashboard-grid">
+          <div className="surface-card"><div className="card-head"><div><span className="eyebrow">FLEET REGISTER</span><h3>{language === 'ar' ? 'الأجهزة المسجلة' : 'Registered devices'}</h3></div></div>
+            {activeShuttles.map(item => <div className="dashboard-record-row" key={item.id}><strong>{item.id}</strong><span>{item.manufacturer} · {item.warehouseZone}</span><StatusPill status={item.status} language={language}/></div>)}
+          </div>
+          <div className="surface-card"><div className="card-head"><div><span className="eyebrow">BATTERY REGISTER</span><h3>{language === 'ar' ? 'حالة البطاريات' : 'Battery status'}</h3></div></div>
+            {activeBatteries.map(item => <div className="dashboard-record-row" key={item.id}><strong>{item.id}</strong><span>{item.assignment}</span><StatusPill status={item.status} language={language}/></div>)}
+          </div>
+        </div>
       </section>}
 
       {activeTab === 'notifications' && <section className="page-content">
