@@ -1333,16 +1333,6 @@ function App({ initialData }: { initialData: AppInitialData }) {
               <div className="hero-footnote"><span className="pulse-dot"/> {language === 'ar' ? 'عدد الأجهزة النشطة: ' + metrics.total : metrics.total + ' active units in the local fleet register'}</div>
             </div>
           </div>
-          <div className="dashboard-telemetry-wave">
-            <div className="wave-heading"><div><span className="eyebrow">RF TELEMETRY / LOCAL SIGNAL PREVIEW</span><strong>{language === 'ar' ? 'موجة إشارة لاسلكية' : 'RF telemetry waveform'}</strong></div><span className="wave-frequency" dir="ltr">2.4 GHz · −54 dBm <i>{language === 'ar' ? 'قيمة توضيحية' : 'ILLUSTRATIVE'}</i></span></div>
-            <svg className="telemetry-wave-svg" viewBox="0 0 920 92" preserveAspectRatio="none" role="img" aria-label={language === 'ar' ? 'رسم توضيحي لموجة تردد لاسلكي غير متصلة' : 'Illustrative disconnected radio frequency waveform'}>
-              <defs><linearGradient id="rfWaveGlow" x1="0" x2="1"><stop stopColor="#2ceaa3" stopOpacity=".08"/><stop offset=".5" stopColor="#48dff0" stopOpacity=".95"/><stop offset="1" stopColor="#2ceaa3" stopOpacity=".12"/></linearGradient></defs>
-              <path className="wave-grid-lines" d="M0 16H920M0 46H920M0 76H920M115 0V92M230 0V92M345 0V92M460 0V92M575 0V92M690 0V92M805 0V92"/>
-              <path className="wave-trace wave-trace-muted" d="M0 46 C25 46 25 22 48 22 S72 70 95 70 S120 46 145 46 S170 14 195 14 S220 78 245 78 S270 46 295 46 S320 25 345 25 S370 66 395 66 S420 46 445 46 S470 9 495 9 S520 82 545 82 S570 46 595 46 S620 24 645 24 S670 68 695 68 S720 46 745 46 S770 13 795 13 S820 79 845 79 S870 46 895 46 H920"/>
-              <path className="wave-trace" d="M0 46 C25 46 25 22 48 22 S72 70 95 70 S120 46 145 46 S170 14 195 14 S220 78 245 78 S270 46 295 46 S320 25 345 25 S370 66 395 66 S420 46 445 46 S470 9 495 9 S520 82 545 82 S570 46 595 46 S620 24 645 24 S670 68 695 68 S720 46 745 46 S770 13 795 13 S820 79 845 79 S870 46 895 46 H920"/>
-            </svg>
-            <div className="wave-footnote"><span><i/> {language === 'ar' ? 'عرض محلي تجريبي — لا توجد حزمة RF مستقبلة' : 'LOCAL PREVIEW — NO RF PACKETS RECEIVED'}</span><span>2.4 GHz ISM BAND</span></div>
-          </div>
         </div>
         <div className="section-heading"><div><span className="eyebrow">FLEET TELEMETRY / LOCAL RECORDS</span><h2>{language === 'ar' ? 'مؤشرات الأسطول' : 'Fleet at a glance'}</h2></div><button className="text-button" onClick={() => go('fleet')}>{t.viewRegister}<Icon name="chevron" size={15}/></button></div>
         <div className="dashboard-composition">
