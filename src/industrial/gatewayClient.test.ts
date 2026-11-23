@@ -74,7 +74,7 @@ describe('read-only gateway HTTP client contract', () => {
     vi.stubGlobal('fetch', request);
     try {
       await expect(fetchGatewayStatus('https://gateway.example.test', 'read-only-token'))
-        .rejects.toThrow(/read-only/i);
+        .rejects.toThrow(/القراءة فقط/);
     } finally {
       vi.unstubAllGlobals();
     }
