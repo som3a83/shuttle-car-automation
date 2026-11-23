@@ -1,4 +1,4 @@
-name: Package Complete Project Source
+name: Package Complete Project Source V8
 
 on:
   push:
@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   source-archive:
-    name: Create complete source ZIP
+    name: Create complete V8 source ZIP
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -23,25 +23,31 @@ jobs:
           ref: main
           fetch-depth: 0
 
-      - name: Create source archive and checksum
+      - name: Create versioned source archive and checksum
         shell: bash
         run: |
           set -euo pipefail
+          VERSION="$(node -p "require('./package.json').version")"
+          test "$VERSION" = "8.0.0"
           REVISION="$(git rev-parse HEAD)"
           REVISION_SHORT="$(git rev-parse --short=12 HEAD)"
           mkdir -p release-files
-          git archive --format=zip --prefix="shuttle-car-automation-$REVISION_SHORT/" HEAD -o release-files/shuttle-car-automation-source.zip
+          ARCHIVE="shuttle-car-automation-v${VERSION}-source.zip"
+          git archive --format=zip --prefix="shuttle-car-automation-v${VERSION}-${REVISION_SHORT}/" HEAD -o "release-files/$ARCHIVE"
           cd release-files
-          sha256sum shuttle-car-automation-source.zip > shuttle-car-automation-source.zip.sha256
+          sha256sum "$ARCHIVE" > "$ARCHIVE.sha256"
           printf '%s\n' "$REVISION" > source-commit.txt
+          printf 'version=%s\ncommit=%s\n' "$VERSION" "$REVISION" > release-manifest.txt
+          ls -lh
 
-      - name: Publish complete source archive
+      - name: Publish complete V8 source archive
         uses: actions/upload-artifact@v7
         with:
-          name: shuttle-car-automation-complete-source
+          name: shuttle-car-automation-v8.0.0-complete-source
           path: |
-            release-files/shuttle-car-automation-source.zip
-            release-files/shuttle-car-automation-source.zip.sha256
+            release-files/shuttle-car-automation-v8.0.0-source.zip
+            release-files/shuttle-car-automation-v8.0.0-source.zip.sha256
             release-files/source-commit.txt
+            release-files/release-manifest.txt
           if-no-files-found: error
           retention-days: 30
