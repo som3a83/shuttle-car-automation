@@ -6,10 +6,8 @@ const viewports=[{name:'mobile-390x844',width:390,height:844},{name:'tablet-768x
 const routes=[
  {name:'sections-hub',path:'/#/hub'},
  {name:'dashboard',path:'/#/dashboard'},
- {name:'warehouse',path:'/#/warehouse'},
  {name:'fleet',path:'/#/fleet'},
  {name:'shift-operations',path:'/#/shifts'},
- {name:'shuttle-engineering',path:'/#/engineering'},
  {name:'battery-management',path:'/#/batteries'},
  {name:'fault-management',path:'/#/faults'},
  {name:'maintenance-management',path:'/#/maintenance'},
