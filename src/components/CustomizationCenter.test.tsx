@@ -22,10 +22,10 @@ async function renderReady(canManage = true) {
 describe('local application customization center', () => {
   it('disables a non-critical module and records the local change', async () => {
     await renderReady(true);
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Enable AI Technical Assistant' }));
-    await waitFor(() => expect(JSON.parse(localStorage.getItem(CUSTOMIZATION_STORAGE_KEY) || '{}').modules.find((item: { id: string }) => item.id === 'ai').enabled).toBe(false));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Enable Engineering Visualization' }));
+    await waitFor(() => expect(JSON.parse(localStorage.getItem(CUSTOMIZATION_STORAGE_KEY) || '{}').modules.find((item: { id: string }) => item.id === 'engineering').enabled).toBe(false));
     const saved = JSON.parse(localStorage.getItem(CUSTOMIZATION_STORAGE_KEY) || '{}');
-    expect(saved.modules.find((item: { id: string }) => item.id === 'ai').enabled).toBe(false);
+    expect(saved.modules.find((item: { id: string }) => item.id === 'engineering').enabled).toBe(false);
     expect(JSON.parse(localStorage.getItem(CUSTOMIZATION_AUDIT_KEY) || '[]')[0].action).toBe('DISABLE_MODULE');
   });
 
@@ -68,22 +68,22 @@ describe('local application customization center', () => {
   });
   it('preserves an individual hidden menu entry when its module is disabled and re-enabled', async () => {
     const preferences = JSON.parse(JSON.stringify(DEFAULT_CUSTOMIZATION)) as typeof DEFAULT_CUSTOMIZATION;
-    const aiEntry = preferences.navigation.find((item) => item.route === 'ai');
+    const aiEntry = preferences.navigation.find((item) => item.route === 'engineering');
     if (!aiEntry) throw new Error('Default AI navigation entry is missing.');
     aiEntry.visible = false;
     localStorage.setItem(CUSTOMIZATION_STORAGE_KEY, JSON.stringify(preferences));
 
     await renderReady(true);
-    const toggle = screen.getByRole('checkbox', { name: 'Enable AI Technical Assistant' });
+    const toggle = screen.getByRole('checkbox', { name: 'Enable Engineering Visualization' });
     fireEvent.click(toggle);
     await waitFor(() => expect(toggle).not.toBeChecked());
-    await waitFor(() => expect(JSON.parse(localStorage.getItem(CUSTOMIZATION_STORAGE_KEY) || '{}').modules.find((item: { id: string }) => item.id === 'ai').enabled).toBe(false));
+    await waitFor(() => expect(JSON.parse(localStorage.getItem(CUSTOMIZATION_STORAGE_KEY) || '{}').modules.find((item: { id: string }) => item.id === 'engineering').enabled).toBe(false));
     fireEvent.click(toggle);
     await waitFor(() => expect(toggle).toBeChecked());
-    await waitFor(() => expect(JSON.parse(localStorage.getItem(CUSTOMIZATION_STORAGE_KEY) || '{}').modules.find((item: { id: string }) => item.id === 'ai').enabled).toBe(true));
+    await waitFor(() => expect(JSON.parse(localStorage.getItem(CUSTOMIZATION_STORAGE_KEY) || '{}').modules.find((item: { id: string }) => item.id === 'engineering').enabled).toBe(true));
     const saved = JSON.parse(localStorage.getItem(CUSTOMIZATION_STORAGE_KEY) || '{}');
-    expect(saved.modules.find((item: { id: string }) => item.id === 'ai').enabled).toBe(true);
-    expect(saved.navigation.find((item: { id: string }) => item.id === 'ai').visible).toBe(false);
+    expect(saved.modules.find((item: { id: string }) => item.id === 'engineering').enabled).toBe(true);
+    expect(saved.navigation.find((item: { id: string }) => item.id === 'engineering').visible).toBe(false);
   });
 
 });
