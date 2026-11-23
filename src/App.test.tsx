@@ -193,25 +193,6 @@ beforeEach(async () => {
   });
 
 
-  it('navigates into the engineering workspace and changes drawing views', async () => {
-    const user = userEvent.setup();
-    renderApp();
-    await user.click(screen.getAllByRole('button', { name: /Engineering Visualization/i })[0]);
-    expect(await screen.findByText(/ISOMETRIC ASSEMBLY/i)).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: /^Top$/i }));
-    expect(await screen.findByText(/TOP PLAN/i)).toBeInTheDocument();
-    expect(await screen.findByText(/ASSEMBLY BREAKDOWN/i)).toBeInTheDocument();
-  });
-
-  it('provides direct access to editable parametric CAD source files', async () => {
-    const user = userEvent.setup();
-    renderApp();
-    await user.click(screen.getAllByRole('button', { name: /Engineering Visualization/i })[0]);
-    const sourceLink = await screen.findByRole('link', { name: /Open editable parametric CAD source/i });
-    expect(sourceLink).toHaveAttribute('href', 'https://github.com/som3a83/shuttle-car-automation/tree/main/cad');
-    expect(sourceLink).toHaveAttribute('target', '_blank');
-  });
-
   it('switches between fleet, battery, fault and maintenance workspaces', async () => {
     const user = userEvent.setup();
     renderApp();
@@ -231,38 +212,13 @@ beforeEach(async () => {
     await user.click(screen.getAllByRole('button', { name: /Fleet Control Center/i })[0]);
     expect(window.location.hash).toBe('#/fleet');
     expect(screen.getAllByRole('button', { name: /Fleet Control Center/i })[0]).toHaveAttribute('aria-current', 'page');
-    await user.click(screen.getAllByRole('button', { name: /Engineering Visualization/i })[0]);
-    expect(window.location.hash).toBe('#/engineering');
-    expect(screen.getByText(/ISOMETRIC ASSEMBLY/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Engineering Visualization/i })).not.toBeInTheDocument();
   });
 
   it('provides direct mobile destinations for the main operating workspaces', () => {
     renderApp();
     expect(screen.getByRole('navigation', { name: /Quick navigation/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /More/i })).toBeInTheDocument();
-  });
-
-  it('allows the operator to inspect individual engineering assemblies', async () => {
-    const user = userEvent.setup();
-    renderApp();
-    await user.click(screen.getAllByRole('button', { name: /Engineering Visualization/i })[0]);
-    await user.click(screen.getByRole('button', { name: /Traction wheels/i }));
-    expect(screen.getByText(/SELECTED COMPONENT INSPECTOR/i)).toBeInTheDocument();
-    expect(screen.getByText(/Check tread wear/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Orthographic zoom/i)).toBeInTheDocument();
-  });
-
-  it('shows a traceable manufacturer reference and does not invent the installed cold-room rating', async () => {
-    const user = userEvent.setup();
-    renderApp();
-    await user.click(screen.getAllByRole('button', { name: /Engineering Visualization/i })[0]);
-    expect(screen.getByText(/ISAT Semi-Automatic pallet shuttle — user-confirmed fleet model/i)).toBeInTheDocument();
-    expect(screen.getByText(/exact serial-specific hardware configuration still require documentary verification/i)).toBeInTheDocument();
-    expect(screen.getByText(/does not specify a cold-room temperature rating/i)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Open Cassioli product reference/i })).toHaveAttribute(
-      'href',
-      'https://www.cassioli.com/intralogistics-division/automated-warehouses/pallet-shuttle/'
-    );
   });
 
   it('opens the shift workspace and persists completed handover records in local storage', async () => {
@@ -298,7 +254,7 @@ beforeEach(async () => {
     const user = userEvent.setup();
     renderApp();
     await user.click(screen.getAllByRole('button', { name: /Fleet Control Center/i })[0]);
-    await user.click(screen.getAllByRole('button', { name: /Engineering Visualization/i })[0]);
+    await user.click(screen.getAllByRole('button', { name: /Battery Management/i })[0]);
     act(() => {
       window.history.replaceState({ tab: 'fleet' }, '', '#/fleet');
       window.dispatchEvent(new PopStateEvent('popstate'));
@@ -481,7 +437,6 @@ beforeEach(async () => {
       ['Dashboard', 'Dashboard'],
       ['Fleet Control Center', 'Fleet Control Center'],
       ['Shift Operations & Handover', 'Shift Operations & Handover'],
-      ['Engineering Visualization', 'Engineering Visualization'],
       ['Battery Management', 'Battery Management'],
       ['Fault & Diagnostics', 'Fault & Diagnostics'],
       ['Maintenance Management', 'Maintenance Management'],
@@ -602,7 +557,7 @@ beforeEach(async () => {
     const user = userEvent.setup();
     renderApp();
     await user.click(screen.getAllByRole('button', { name: /Fleet Control Center/i })[0]);
-    await user.click(screen.getAllByRole('button', { name: /Engineering Visualization/i })[0]);
+    await user.click(screen.getAllByRole('button', { name: /Battery Management/i })[0]);
     await user.click(screen.getByRole('button', { name: /Go back/i }));
     expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent('Fleet Control Center');
     await user.click(screen.getByRole('button', { name: /Home/i }));
@@ -642,15 +597,15 @@ beforeEach(async () => {
   it('removes disabled modules from navigation without deleting application records', async () => {
     renderApp();
     const customization = JSON.parse(JSON.stringify(DEFAULT_CUSTOMIZATION)) as typeof DEFAULT_CUSTOMIZATION;
-    const engineeringModule = customization.modules.find((item) => item.id === 'engineering');
-    if (!engineeringModule) throw new Error('Expected engineering module preference is missing.');
-    engineeringModule.enabled = false;
+    const shiftsModule = customization.modules.find((item) => item.id === 'shifts');
+    if (!shiftsModule) throw new Error('Expected shift module preference is missing.');
+    shiftsModule.enabled = false;
 
     act(() => {
       window.dispatchEvent(new CustomEvent('shuttle-customization-change', { detail: customization }));
     });
 
-    expect(screen.queryByRole('button', { name: 'Engineering Visualization' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Shift Operations & Handover' })).not.toBeInTheDocument();
     await waitFor(() => {
       expect(window.localStorage.getItem('shuttle-car-automation-v7:shuttles')).toBeTruthy();
     });
