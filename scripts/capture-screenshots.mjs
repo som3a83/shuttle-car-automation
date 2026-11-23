@@ -56,6 +56,6 @@ async function main(){
  }
  await browser.close();
  if(failures.length) throw new Error('Browser page errors: '+failures.join(' | '));
- console.log('Verified '+(routes.length*viewports.length+1)+' responsive screenshots in ''+OUT);
+ console.log('Verified ' + (routes.length * viewports.length + 1) + ' responsive screenshots in ' + OUT);
 }
 main().catch(error=>{console.error(error);process.exitCode=1;});
