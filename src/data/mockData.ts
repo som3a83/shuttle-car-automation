@@ -20,9 +20,9 @@ export const users: User[] = [
 
 export const rolePermissions: Record<Role, string[]> = {
   'Super Admin': ['dashboard', 'warehouse', 'fleet', 'engineering', 'batteries', 'faults', 'maintenance', 'connections', 'notifications', 'users', 'settings'],
-  Admin: ['dashboard', 'warehouse', 'fleet', 'engineering', 'batteries', 'faults', 'maintenance', 'ai', 'connections', 'reports', 'notifications', 'users', 'settings'],
-  Supervisor: ['dashboard', 'warehouse', 'fleet', 'engineering', 'batteries', 'faults', 'maintenance', 'reports', 'notifications'],
-  'Maintenance Engineer': ['dashboard', 'warehouse', 'fleet', 'engineering', 'batteries', 'faults', 'maintenance', 'reports', 'notifications'],
+  Admin: ['dashboard', 'warehouse', 'fleet', 'engineering', 'batteries', 'faults', 'maintenance', 'connections', 'notifications', 'users', 'settings'],
+  Supervisor: ['dashboard', 'warehouse', 'fleet', 'engineering', 'batteries', 'faults', 'maintenance', 'notifications'],
+  'Maintenance Engineer': ['dashboard', 'warehouse', 'fleet', 'engineering', 'batteries', 'faults', 'maintenance', 'notifications'],
   Technician: ['dashboard', 'warehouse', 'fleet', 'faults', 'maintenance', 'notifications'],
   Operator: ['dashboard', 'warehouse', 'fleet', 'notifications'],
   Viewer: ['dashboard', 'warehouse', 'fleet']
