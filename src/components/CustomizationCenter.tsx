@@ -29,7 +29,7 @@ export default function CustomizationCenter({
   const [draftLabel, setDraftLabel] = useState('');
   const [draftLabelAr, setDraftLabelAr] = useState('');
   const [draftGroup, setDraftGroup] = useState('CUSTOM');
-  const [newRoute, setNewRoute] = useState<CustomizableRoute>('reports');
+  const [newRoute, setNewRoute] = useState<CustomizableRoute>('fleet');
   const [audit, setAudit] = useState<Awaited<ReturnType<typeof readCustomizationAuditAsync>>>([]);
   const [ready, setReady] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
