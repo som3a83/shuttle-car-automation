@@ -71,28 +71,6 @@ jobs:
           npm run assets:render
           npm run build
 
-      - name: Capture every application screen at mobile, tablet and desktop sizes
-        run: |
-          set -euo pipefail
-          npx playwright install --with-deps chrome
-          npm run preview -- --host 127.0.0.1 > /tmp/shuttle-vite-preview.log 2>&1 &
-          PREVIEW_PID=$!
-          trap 'kill "$PREVIEW_PID" 2>/dev/null || true' EXIT
-          for attempt in $(seq 1 60); do
-            if curl --fail --silent http://127.0.0.1:4173/ >/dev/null; then break; fi
-            sleep 2
-          done
-          curl --fail --silent http://127.0.0.1:4173/ >/dev/null
-          npm run screenshots
-      - name: Upload responsive screen review
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: shuttle-v8-responsive-screen-review
-          path: artifacts/screenshots/
-          if-no-files-found: ignore
-          retention-days: 14
-
       - name: Generate Android project and branded assets
         run: |
           npx cap add android
