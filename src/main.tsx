@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import ReactDOM from 'react-dom/client';
 import App, { hydrateApplicationState, type AppInitialData } from './App';
-import CustomizationLauncher from './components/CustomizationLauncher';
 import StorageRecoveryGate from './components/StorageRecoveryGate';
 import './index.css';
 import './premium-industrial.css';
@@ -86,10 +85,7 @@ export function ApplicationBootstrap() {
     </section>
   </main>;
 
-  return <>
-    <App initialData={initialData} />
-    <CustomizationLauncher />
-  </>;
+  return <App initialData={initialData} />;
 }
 
 const root = document.getElementById('root');
