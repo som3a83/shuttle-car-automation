@@ -3,7 +3,7 @@
 **Effective date:** 17 November 2026
 
 ## 1. Purpose
-Shuttle Car Automation is an operational recordkeeping and engineering-visualization application for shuttle-car fleets, batteries, faults, maintenance, shift handovers and reports.
+Shuttle Car Automation is an operational recordkeeping and engineering-visualization application for shuttle-car fleets, batteries, faults, maintenance and shift handovers.
 
 ## 2. No machine control
 The current release is a local recordkeeping application. It does not directly connect to, command, stop, start, move, charge, or otherwise control any physical shuttle, PLC, battery management system, conveyor or warehouse automation equipment. An optional HTTPS client can read from a separately deployed and authorized OT gateway only after the plant commissions the approved read-only tags. No gateway is configured by default. Status values and readings remain manually entered, sample, simulated, unknown or unverified unless a separately validated source is explicitly identified.
