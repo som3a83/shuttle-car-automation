@@ -23,7 +23,7 @@
   <rect x="56" y="159" width="417" height="4" rx="2" fill="url(#copper)"/>
   <text x="56" y="207" font-family="Arial,sans-serif" font-size="22" font-weight="700" letter-spacing="1.5" fill="#e6a76d">INDUSTRIAL OPERATIONS</text>
   <text x="56" y="256" font-family="Arial,sans-serif" font-size="19" fill="#cad3da">Fleet · Battery · Maintenance</text>
-  <text x="56" y="292" font-family="Arial,sans-serif" font-size="19" fill="#cad3da">Shift handover · Reports · Engineering views</text>
+  <text x="56" y="292" font-family="Arial,sans-serif" font-size="19" fill="#cad3da">Shift handover · Faults · Engineering views</text>
   <text x="56" y="382" font-family="Arial,sans-serif" font-size="15" font-weight="700" letter-spacing="1.6" fill="#8da0ad">OFFLINE-FIRST · LOCAL RECORDS</text>
   <g transform="translate(560 94)">
     <path d="M0 316H430M18 347H405" stroke="#667987" stroke-width="10" stroke-linecap="round"/>
