@@ -201,7 +201,7 @@ beforeEach(async () => {
     await user.click(screen.getAllByRole('button', { name: /Battery Management/i })[0]);
     expect(screen.getByText(/Battery assets/i)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /Fault & Diagnostics/i }));
-    expect(screen.getByText(/No fault records\. Add an observation when a fault is reported\./i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Fault register/i })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /Maintenance Management/i }));
     expect(screen.getByText(/Create work order/i)).toBeInTheDocument();
   });
