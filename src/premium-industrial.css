@@ -1075,7 +1075,7 @@ body{background:#07111b}
 @media(max-width:700px){.mobile-nav{grid-template-columns:repeat(5,minmax(0,1fr))}.mobile-nav button{min-width:0}.mobile-nav button span{font-size:9px}}
 
 
-/* Precision CAD workstation refinement — V7.1 */
+/* Precision Industrial workstation refinement — V8.0.0 */
 .app-shell{--cad-grid:rgba(117,177,207,.10);--cad-edge:rgba(128,174,199,.28);--cad-glow:rgba(81,174,213,.13)}
 .workspace{min-width:0}.topbar{min-height:76px;border-bottom:1px solid var(--line-strong);background:linear-gradient(180deg,rgba(13,25,37,.96),rgba(9,17,27,.88));backdrop-filter:blur(18px)}
 .topbar-heading h1{letter-spacing:-.035em}.breadcrumb{font:700 9px/1.4 ui-monospace,monospace;letter-spacing:.12em}.sidebar{border-inline-end:1px solid var(--cad-edge)}
