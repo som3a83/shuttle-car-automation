@@ -1263,7 +1263,7 @@ function App({ initialData }: { initialData: AppInitialData }) {
     <aside className={'sidebar ' + (mobileNav ? 'mobile-open' : '')}>
       <div className="brand-block">
         <div className="brand-symbol gear-brand" aria-hidden="true">⚙</div>
-        <div className="brand-copy"><strong>SHUTTLE CAR</strong><small>AUTOMATION · ENGINEERING PLATFORM</small></div>
+        <div className="brand-copy"><strong>SHUTTLE CAR</strong><small>AUTOMATION · INDUSTRIAL OPERATIONS</small></div>
         <button className="sidebar-collapse" type="button" aria-label={sidebarCollapsed ? (language === 'ar' ? 'توسيع القائمة الجانبية' : 'Expand sidebar') : (language === 'ar' ? 'طي القائمة الجانبية' : 'Collapse sidebar')} title={sidebarCollapsed ? (language === 'ar' ? 'توسيع القائمة الجانبية' : 'Expand sidebar') : (language === 'ar' ? 'طي القائمة الجانبية' : 'Collapse sidebar')} aria-pressed={sidebarCollapsed} onClick={() => setSidebarCollapsed(value => !value)}><Icon name="chevron" size={15}/></button>
         <button className="mobile-close" onClick={() => setMobileNav(false)} aria-label="Close navigation">×</button>
       </div>
@@ -1282,11 +1282,6 @@ function App({ initialData }: { initialData: AppInitialData }) {
       <header className="topbar">
         <div className="topbar-heading"><button className="mobile-menu" onClick={() => setMobileNav(true)} aria-label="Open navigation"><Icon name="grid" size={20}/></button><div className="breadcrumb">SHUTTLE CAR AUTOMATION <span>/</span> {pageTitle}</div><h1>{pageTitle}</h1></div>
         <div className="topbar-actions">
-          <div className="cold-status-widget" aria-label={language === 'ar' ? 'مؤشرات تبريد مرجعية غير متصلة' : 'Reference cold storage indicators, offline'}>
-            <span className="cold-status-title">COLD STORAGE STATUS</span>
-            <span className="cold-status-reading" dir="ltr"><Icon name="snowflake" size={17}/><strong>−22°C</strong><i/><Icon name="droplet" size={16}/><strong>65%</strong></span>
-            <small>{language === 'ar' ? 'قيم مرجعية · غير متصلة' : 'REFERENCE VALUES · OFFLINE'}</small>
-          </div>
           <button className="topbar-route-button" type="button" onClick={goBack} disabled={!canGoBack} aria-label={language === 'ar' ? 'رجوع' : 'Go back'} title={language === 'ar' ? 'رجوع' : 'Go back'}><Icon name="chevron" size={17}/></button>
           <button className="topbar-route-button" type="button" onClick={() => go('dashboard')} aria-label={language === 'ar' ? 'الرئيسية' : 'Home'} title={language === 'ar' ? 'الرئيسية' : 'Home'}><Icon name="grid" size={17}/></button>
           {canAccessRoute(currentUser.role, 'settings') && <button className="topbar-route-button" type="button" onClick={() => go('settings')} aria-label={language === 'ar' ? 'الإعدادات' : 'Settings'} title={language === 'ar' ? 'الإعدادات' : 'Settings'}><Icon name="settings" size={17}/></button>}
@@ -1318,28 +1313,8 @@ function App({ initialData }: { initialData: AppInitialData }) {
       {activeTab === 'dashboard' && <section className="page-content">
         <div className="hero-panel">
           <div className="hero-main-row">
-            <div className="hero-machine">
-              <div className="machine-orbit orbit-one"/>
-              <div className="machine-orbit orbit-two"/>
-              <div className="machine-orbit orbit-three"/>
-              <div className="machine-telemetry-badge"><span className="pulse-dot"/> 3D TWIN · LOCAL REFERENCE</div>
-              <div className="dashboard-shuttle-viewer">
-                <Suspense fallback={<ShuttleModel shuttle={heroShuttle} view="iso" exploded={false} animated={false}/>}>
-                  <Shuttle3DViewer
-                    manufacturer={heroShuttle.manufacturer}
-                    shuttleId={heroShuttle.id}
-                    status={heroShuttle.status}
-                    view="iso"
-                    exploded={false}
-                    animated={false}
-                    selectedPart="chassis"
-                    zoom={1.12}
-                    resetKey={0}
-                    onSelectPart={() => undefined}
-                    fallback={<ShuttleModel shuttle={heroShuttle} view="iso" exploded={false} animated={false}/>}
-                  />
-                </Suspense>
-              </div>
+            <div className="hero-machine hero-gear-visual">
+              <div className="hero-gear-symbol" aria-hidden="true">⚙</div>
               <div className="equipment-state-panel">
                 <span>{language === 'ar' ? 'حالة سجل المعدة' : 'EQUIPMENT REGISTER STATE'}</span>
                 <strong><i/> {statusText(heroShuttle.status).toUpperCase()}</strong>
@@ -1348,12 +1323,12 @@ function App({ initialData }: { initialData: AppInitialData }) {
             </div>
             <div className="hero-copy">
               <div className="eyebrow"><span/> PRECISION INDUSTRIAL INTELLIGENCE</div>
-              <h2>{language === 'ar' ? 'المراقبة الهندسية لأسطول الشاتل' : 'Engineering intelligence for your shuttle fleet'}</h2>
-              <p>{language === 'ar' ? 'مركز موحد لمتابعة العربات والبطاريات والأعطال والصيانة، مع رسومات ميكانيكية تفاعلية.' : 'A unified control room for shuttle cars, batteries, faults and maintenance, with interactive mechanical engineering views.'}</p>
+              <h2>{language === 'ar' ? 'إدارة أسطول الشاتل والبطاريات' : 'Shuttle fleet and battery operations'}</h2>
+              <p>{language === 'ar' ? 'متابعة سجلات المعدات والبطاريات والأعطال والصيانة والورديات من واجهة صناعية موحدة.' : 'Manage equipment, battery, fault, maintenance and shift records from one industrial workspace.'}</p>
               <div className="hero-actions">
-                <button className="btn-primary" onClick={() => go('dashboard')}>{language === 'ar' ? 'استكشاف المخزن ثلاثي الأبعاد' : 'Explore 3D warehouse'}<Icon name="arrow" size={16}/></button>
-                <button className="btn-secondary" onClick={() => go('fleet')}>{language === 'ar' ? 'فتح التصور الهندسي' : 'Open engineering view'}</button>
-                <button className="btn-secondary" onClick={() => go('fleet')}>{language === 'ar' ? 'فتح سجل الأسطول' : 'Open fleet register'}</button>
+                <button className="btn-primary" onClick={() => go('fleet')}>{language === 'ar' ? 'فتح سجل الأسطول' : 'Open fleet register'}<Icon name="arrow" size={16}/></button>
+                <button className="btn-secondary" onClick={() => go('batteries')}>{language === 'ar' ? 'إدارة البطاريات' : 'Battery management'}</button>
+
               </div>
               <div className="hero-footnote"><span className="pulse-dot"/> {language === 'ar' ? 'عدد الأجهزة النشطة: ' + metrics.total : metrics.total + ' active units in the local fleet register'}</div>
             </div>
