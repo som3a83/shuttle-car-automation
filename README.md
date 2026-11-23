@@ -9,7 +9,7 @@ This application is dedicated to shuttle cars and their associated batteries. It
 ### Included workspaces
 
 - **Dashboard and fleet:** local fleet register, equipment identity, operating-state records, assignments and service history.
-- **Engineering visualization:** interactive 3D shuttle and battery reference assemblies, selectable components, orthographic views and exploded views. Geometry is illustrative, not OEM-certified.
+- **Visual identity:** gear-inspired industrial interface using graphite, titanium and copper/orange accents. The app does not display shuttle 3D models or engineering drawings.
 - **Battery lifecycle:** battery register, manual readings, assignment/removal, movement history, fault status, archive and restore. Unknown SOC, SOH, voltage, current, temperature and cycle counts remain null.
 - **Fault management:** operator-reported observations, severity, investigation notes, corrective-action records and resolution controls. A fault cannot be resolved without a documented corrective action.
 - **Maintenance:** scheduled and active work orders, technician assignment, completion notes and archive/restore rules. Unfinished work orders cannot be archived.
