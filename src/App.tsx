@@ -471,7 +471,7 @@ function App({ initialData }: { initialData: AppInitialData }) {
   }, []);
 
   const visibleNavigation = useMemo(() => customization.navigation
-    .filter((entry) => entry.visible && entry.route !== 'reports')
+    .filter((entry) => entry.visible)
     .filter((entry) => {
       const module = customization.modules.find((item) => item.id === entry.route);
       const identityEntry = entry.route === 'users';
