@@ -64,5 +64,5 @@ Until all relevant items are supplied and verified, keep each device uncommissio
 - Device-local records; no publisher-operated cloud database or cross-device sync.
 - No AI assistant or Excel/CSV/PDF reporting workspace in V8.
 - No physical shuttle is connected by default.
-- 3D/CAD models are illustrative references, not OEM-certified drawings.
+- No shuttle or warehouse 3D model is displayed in the personal-use interface.
 - The application is not a safety instrumented system.
