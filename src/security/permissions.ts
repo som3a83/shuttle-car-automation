@@ -9,8 +9,6 @@ export type Permission =
   | 'faults.view' | 'faults.create' | 'faults.update' | 'faults.resolve'
   | 'maintenance.view' | 'maintenance.create' | 'maintenance.update' | 'maintenance.complete'
   | 'connections.view' | 'connections.manage'
-  | 'ai.view'
-  | 'reports.view' | 'reports.export'
   | 'notifications.view' | 'notifications.manage'
   | 'users.view' | 'users.manage'
   | 'settings.view' | 'settings.manage'
@@ -24,7 +22,7 @@ const allPermissions: readonly Permission[] = [
   'dashboard.view', 'fleet.view', 'fleet.manage', 'engineering.view', 'shifts.view', 'shifts.manage',
   'batteries.view', 'batteries.manage', 'faults.view', 'faults.create', 'faults.update', 'faults.resolve',
   'maintenance.view', 'maintenance.create', 'maintenance.update', 'maintenance.complete',
-  'connections.view', 'connections.manage', 'ai.view', 'reports.view', 'reports.export',
+  'connections.view', 'connections.manage',
   'notifications.view', 'notifications.manage', 'users.view', 'users.manage', 'settings.view',
   'settings.manage', 'data.backup', 'data.restore', 'data.reset', 'storage.rollback'
 ];
@@ -36,7 +34,7 @@ const permissionMatrix: Record<Role, readonly Permission[]> = {
     'dashboard.view', 'fleet.view', 'engineering.view', 'shifts.view', 'shifts.manage',
     'batteries.view', 'faults.view', 'faults.create', 'faults.update', 'faults.resolve',
     'maintenance.view', 'maintenance.create', 'maintenance.update', 'maintenance.complete',
-    'reports.view', 'reports.export', 'notifications.view', 'notifications.manage', 'data.backup'
+'notifications.view', 'notifications.manage', 'data.backup'
   ],
   'Maintenance Engineer': [
     'dashboard.view', 'fleet.view', 'engineering.view', 'batteries.view', 'batteries.manage',
@@ -58,7 +56,7 @@ const permissionMatrix: Record<Role, readonly Permission[]> = {
   Viewer: [
     'dashboard.view', 'fleet.view', 'engineering.view', 'shifts.view',
     'batteries.view', 'faults.view', 'maintenance.view', 'connections.view',
-    'ai.view', 'reports.view', 'notifications.view'
+'notifications.view'
   ]
 };
 
