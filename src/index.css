@@ -686,7 +686,7 @@ td:first-child { color:var(--text); font-weight:700; }
 }
 
 
-/* V10 operations console: responsive controls, visible state changes and touch-safe forms. */
+/* V8 operations console: responsive controls, visible state changes and touch-safe forms. */
 .topbar-route-button {
   display:grid; place-items:center; flex:none; width:36px; height:36px;
   border:1px solid var(--line-strong); border-radius:8px;
