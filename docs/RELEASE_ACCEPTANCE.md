@@ -33,7 +33,7 @@ The exact model for every unit is currently **Not recorded**. Serial numbers, ha
 ## 4. Operational acceptance
 - Arabic RTL and English LTR navigation.
 - Responsive layout and route reachability across phone, tablet and desktop.
-- Shuttle and battery 3D reference views, with accessible fallback if WebGL is unavailable.
+- Gear-inspired graphite and copper interface; no shuttle model, warehouse 3D view or engineering drawing is displayed.
 - Battery assignment, removal, movement history, archive and restore.
 - Fault creation, investigation and resolution only with documented corrective action.
 - Maintenance work-order creation, scheduling, progress, completion notes, archive and restore.
