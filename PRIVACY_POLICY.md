@@ -27,7 +27,7 @@ https://github.com/som3a83/shuttle-car-automation/security/advisories/new
 قد يفتح التطبيق مواقع الشركات المصنعة أو صفحات GitHub عند اختيار المستخدم للرابط. تتعامل هذه المواقع مع بيانات الاتصال العادية وفق سياساتها الخاصة. لا يرسل التطبيق سجلات المعدات المحلية أو أسماء العاملين عند فتح الرابط.
 
 ### 6. النسخ الاحتياطي والتصدير
-يمكن للمستخدم تصدير بعض السجلات إلى ملفات JSON أو CSV أو XLSX وطباعتها أو حفظها كـ PDF من خلال وظيفة الطباعة في الجهاز. بعد التصدير تصبح نسخة الملف تحت سيطرة المستخدم، وقد تحتوي على أسماء وملاحظات وبيانات معدات. احفظها في مكان آمن ولا تشاركها إلا مع أشخاص مخولين.
+يمكن للمستخدم إنشاء نسخة احتياطية محلية بصيغة JSON واستعادتها. يظل ملف النسخة الاحتياطية تحت سيطرة المستخدم وقد يحتوي على أسماء وملاحظات وبيانات معدات. احفظه في مكان آمن ولا تشاركه إلا مع أشخاص مخولين.
 
 ### 7. الاحتفاظ والحذف
 تظل البيانات المحلية على الجهاز إلى أن يحذفها المستخدم أو يمسح بيانات التطبيق أو يزيل التطبيق. قد تعيد وظيفة إعادة الضبط سجلات البداية بدلًا من حذف كل المحتوى بصورة آمنة؛ لذلك استخدم إعدادات نظام Android لمسح بيانات التطبيق عند الرغبة في إزالة البيانات المحلية. لا توجد نسخة سحابية لدى ناشر التطبيق في هذا الإصدار.
@@ -48,7 +48,7 @@ https://github.com/som3a83/shuttle-car-automation/security/advisories/new
 This release keeps records only on the device; deletion is performed locally by clearing the app storage in Android settings. The publisher does not hold a server-side copy.
 
 ### 2. What this application does
-The application is a device-local tool for recording shuttle fleet, battery, fault, maintenance, shift and report information. It optionally connects over HTTPS to a separately operated, authorized OT edge gateway to read telemetry. The mobile app does not connect directly to PLCs and does not provide machine-control commands, user accounts on a server, or cloud synchronization.
+The application is a device-local tool for recording shuttle fleet, battery, fault, maintenance and shift information. It optionally connects over HTTPS to a separately operated, authorized OT edge gateway to read telemetry. The mobile app does not connect directly to PLCs and does not provide machine-control commands, user accounts on a server, or cloud synchronization.
 
 ### 3. Information entered by the user
 Local data may contain equipment identifiers, manufacturer/model/serial details entered by the user, operating zones, supervisor/operator/technician names, operating states, manually entered battery readings, fault and maintenance notes, shift records and preferences. Local account data includes a name, email, username and role, plus a random salt and derived password hash; the app does not store the original password.
@@ -64,7 +64,7 @@ This release does not provide application-level encryption for local records. Pr
 The app may open manufacturer websites or GitHub pages when the user selects an external link. Those sites process normal connection metadata under their own privacy policies. The app does not attach local equipment records or staff names when opening a link.
 
 ### 6. Backups and exports
-Users may export records to JSON, CSV or XLSX files, or use the device print function to save a PDF. Exported files are controlled by the user and may contain names, notes and equipment information. Store them securely and share them only with authorized people.
+Users may create and restore a local JSON backup. Backup files are controlled by the user and may contain names, notes and equipment information. Store them securely and share them only with authorized people.
 
 ### 7. Retention and deletion
 Local data remains on the device until the user deletes it, clears the application's storage, or uninstalls the application. The in-app reset function restores seed records and is not a secure-erasure function. To remove local data, use Android system settings to clear the application's storage. The publisher does not hold a cloud copy in this release.
