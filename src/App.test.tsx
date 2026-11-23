@@ -218,7 +218,7 @@ beforeEach(async () => {
   it('provides direct mobile destinations for the main operating workspaces', () => {
     renderApp();
     expect(screen.getByRole('navigation', { name: /Quick navigation/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Sections/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Reports/i })).toBeInTheDocument();
   });
 
   it('opens the shift workspace and persists completed handover records in local storage', async () => {
@@ -262,15 +262,12 @@ beforeEach(async () => {
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Fleet Control Center');
   });
 
-  it('opens device connections from the mobile More drawer and closes it after navigation', async () => {
+  it('opens the reports page from the fifth mobile navigation item', async () => {
     const user = userEvent.setup();
-    const { container } = renderApp();
-    await user.click(screen.getByRole('button', { name: /More/i }));
-    expect(container.querySelector('.sidebar')).toHaveClass('mobile-open');
-    await user.click(screen.getByRole('button', { name: /Device Connections/i }));
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Device Connections');
-    expect(container.querySelector('.sidebar')).not.toHaveClass('mobile-open');
-    expect(window.location.hash).toBe('#/connections');
+    renderApp();
+    await user.click(screen.getByRole('button', { name: /Reports/i }));
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Operational reports');
+    expect(window.location.hash).toBe('#/reports');
   });
 
   it('creates a local notification when a fault report is submitted', async () => {
@@ -755,13 +752,10 @@ beforeEach(async () => {
     });
   });
 
-  it('opens Device Connections from the dedicated mobile sections hub', async () => {
+  it('opens Device Connections from the sidebar navigation', async () => {
     const user = userEvent.setup();
     renderApp();
-    await user.click(screen.getByRole('button', { name: 'Sections' }));
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('All Sections');
-    const hub = screen.getByRole('region', { name: 'All sections' });
-    await user.click(within(hub).getByRole('button', { name: /Device Connections/i }));
+    await user.click(screen.getAllByRole('button', { name: /Device Connections/i })[0]);
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Device Connections');
     expect(window.location.hash).toBe('#/connections');
   });
