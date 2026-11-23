@@ -77,13 +77,13 @@ describe('local application customization center', () => {
     const toggle = screen.getByRole('checkbox', { name: 'Enable Shift Operations & Handover' });
     fireEvent.click(toggle);
     await waitFor(() => expect(toggle).not.toBeChecked());
-    await waitFor(() => expect(JSON.parse(localStorage.getItem(CUSTOMIZATION_STORAGE_KEY) || '{}').modules.find((item: { id: string }) => item.id === 'batteries').enabled).toBe(false));
+    await waitFor(() => expect(JSON.parse(localStorage.getItem(CUSTOMIZATION_STORAGE_KEY) || '{}').modules.find((item: { id: string }) => item.id === 'shifts').enabled).toBe(false));
     fireEvent.click(toggle);
     await waitFor(() => expect(toggle).toBeChecked());
-    await waitFor(() => expect(JSON.parse(localStorage.getItem(CUSTOMIZATION_STORAGE_KEY) || '{}').modules.find((item: { id: string }) => item.id === 'batteries').enabled).toBe(true));
+    await waitFor(() => expect(JSON.parse(localStorage.getItem(CUSTOMIZATION_STORAGE_KEY) || '{}').modules.find((item: { id: string }) => item.id === 'shifts').enabled).toBe(true));
     const saved = JSON.parse(localStorage.getItem(CUSTOMIZATION_STORAGE_KEY) || '{}');
-    expect(saved.modules.find((item: { id: string }) => item.id === 'batteries').enabled).toBe(true);
-    expect(saved.navigation.find((item: { id: string }) => item.id === 'batteries').visible).toBe(false);
+    expect(saved.modules.find((item: { id: string }) => item.id === 'shifts').enabled).toBe(true);
+    expect(saved.navigation.find((item: { id: string }) => item.id === 'shifts').visible).toBe(false);
   });
 
 });
