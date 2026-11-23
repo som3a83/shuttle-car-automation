@@ -1301,3 +1301,54 @@ body{background:#07111b}
 .app-shell .metric-icon.green,.app-shell .status-ready,.app-shell .status-running,.app-shell .status-resolved,.app-shell .status-completed,.app-shell .severity-minor,.app-shell .pulse-dot,.app-shell .equipment-state-panel strong i,.app-shell .gateway-state-ready { color: var(--cyan) !important; border-color: rgba(70,220,231,.32) !important; background-color: rgba(70,220,231,.12) !important; }
 .app-shell .pulse-dot,.app-shell .equipment-state-panel strong i { background: var(--cyan) !important; box-shadow: 0 0 10px rgba(70,220,231,.55) !important; }
 .app-shell .battery-cell { background: linear-gradient(145deg,#a5f3fc,#087f88 70%) !important; border-color: rgba(165,243,252,.35) !important; }
+
+
+/* User reference dashboard: navy / cyan / graphite, with no green accents. */
+.app-shell {
+  --bg:#0a1128;
+  --bg-2:#0d1733;
+  --surface:#121c3a;
+  --surface-2:#172447;
+  --surface-3:#1d2d52;
+  --line:rgba(74,101,151,.28);
+  --line-strong:#2c416e;
+  --text:#e0e6ed;
+  --muted:#8b9bb4;
+  --subtle:#7183a0;
+  --copper:#00c6d1;
+  --copper-2:#00f2ff;
+  --cyan:#00f2ff;
+  --blue:#55cfe5;
+  --green:#00f2ff;
+  background:radial-gradient(ellipse at 50% 110%,rgba(0,198,209,.09),transparent 48%),#0a1128;
+}
+.app-shell .sidebar { background:linear-gradient(180deg,#101a38,#0a1128); border-color:#2c416e; }
+.app-shell .brand-symbol { background:linear-gradient(145deg,#00f2ff,#087f88); }
+.app-shell .nav-button.active { color:#bafaff; border-color:rgba(0,242,255,.32); background:linear-gradient(90deg,rgba(0,242,255,.14),rgba(0,198,209,.035)); box-shadow:inset 3px 0 0 #00f2ff; }
+.app-shell .nav-button.active svg,.app-shell .nav-active-mark { color:#00f2ff; }
+.app-shell .nav-active-mark { background:#00f2ff; box-shadow:0 0 10px rgba(0,242,255,.65); }
+.app-shell .topbar { border-color:#2c416e; }
+.app-shell .hero-panel { border-color:rgba(0,242,255,.42); background:radial-gradient(ellipse at 22% 45%,rgba(0,242,255,.10),transparent 43%),linear-gradient(135deg,#121c3a,#0a1128 75%); }
+.app-shell .hero-gear-visual { background:radial-gradient(ellipse at center,rgba(0,242,255,.12),transparent 65%),repeating-linear-gradient(0deg,transparent 0 31px,rgba(44,65,110,.12) 32px),repeating-linear-gradient(90deg,transparent 0 31px,rgba(44,65,110,.12) 32px); }
+.app-shell .hero-gear-symbol { color:rgba(0,242,255,.22); text-shadow:0 0 34px rgba(0,242,255,.16); }
+.app-shell .hero-copy .eyebrow,.app-shell .equipment-state-panel strong i { color:#00f2ff; }
+.app-shell .hero-copy .btn-primary,.app-shell .btn-primary { color:#071426; border-color:#00f2ff; background:linear-gradient(135deg,#00f2ff,#00c6d1); box-shadow:0 5px 18px rgba(0,198,209,.18); }
+.app-shell .hero-copy .btn-secondary,.app-shell .btn-secondary { border-color:#2c416e; background:#172447; }
+.app-shell .metric-grid { grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; }
+.app-shell .metric-card { background:linear-gradient(150deg,#121c3a,#172447); border-color:#2c416e; }
+.app-shell .metric-card > strong { color:#00f2ff; }
+.app-shell .metric-icon.blue,.app-shell .metric-icon.cyan,.app-shell .metric-icon.green { color:#00f2ff; background:rgba(0,242,255,.10); }
+.app-shell .mobile-nav { background:rgba(12,22,49,.97); border-color:#2c416e; backdrop-filter:blur(16px); }
+.app-shell .mobile-nav button.active { color:#00f2ff; border-color:rgba(0,242,255,.35); background:rgba(0,242,255,.09); box-shadow:inset 0 -2px 0 #00f2ff; }
+.app-shell .report-export-card { display:flex; align-items:center; justify-content:space-between; gap:18px; margin-top:16px; }
+.app-shell .report-export-card h3 { margin:7px 0 5px; }
+.app-shell .equipment-state-panel { border-color:rgba(0,242,255,.24); }
+.app-shell .status-ready,.app-shell .status-running,.app-shell .status-resolved,.app-shell .status-completed,.app-shell .severity-minor { color:#00dbe7 !important; border-color:rgba(0,242,255,.3) !important; background:rgba(0,242,255,.09) !important; }
+.app-shell .pulse-dot,.app-shell .equipment-state-panel strong i { background:#00f2ff !important; box-shadow:0 0 10px rgba(0,242,255,.55) !important; }
+@media(max-width:700px) {
+  .app-shell .metric-grid { grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px; }
+  .app-shell .metric-card { padding:10px 8px; min-height:105px; }
+  .app-shell .metric-card > strong { font-size:23px; }
+  .app-shell .metric-card > span { font-size:9px; }
+  .app-shell .report-export-card { align-items:stretch; flex-direction:column; }
+}
