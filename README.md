@@ -46,7 +46,7 @@ No installed Cassioli, Craftsman or ACME shuttle is confirmed connected. Actual 
 - Manual, simulated, imported, derived, stale or incomplete values cannot be labelled LIVE.
 - The application is not a safety instrumented system and does not replace OEM procedures or qualified technical judgment.
 - Local accounts and records are stored on the device. There is no publisher-operated cloud database or cross-device synchronization.
-- 3D models are conceptual engineering references, not approved manufacturing or service drawings.
+- The user interface does not display shuttle models, warehouse 3D views or engineering drawings.
 
 ## Run and validate
 
