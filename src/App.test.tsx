@@ -218,7 +218,7 @@ beforeEach(async () => {
   it('provides direct mobile destinations for the main operating workspaces', () => {
     renderApp();
     expect(screen.getByRole('navigation', { name: /Quick navigation/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /More/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Sections/i })).toBeInTheDocument();
   });
 
   it('opens the shift workspace and persists completed handover records in local storage', async () => {
@@ -469,6 +469,16 @@ beforeEach(async () => {
     });
   });
 
+  it('permanently deletes a device after dependency checks and explicit confirmation', async () => {
+    const user = userEvent.setup();
+    window.confirm = vi.fn(() => true);
+    const unit = { ...initialShuttles[0], installedBattery: 'Not recorded' };
+    renderApp({ shuttles: [unit], batteries: [], faults: [], jobs: [] });
+    await user.click(screen.getAllByRole('button', { name: /Devices/i })[0]);
+    await user.click(screen.getByRole('button', { name: /Permanently delete device/i }));
+    expect(window.confirm).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(screen.queryByText(unit.id)).not.toBeInTheDocument());
+  });
   it('archives a shuttle without deleting its history and supports restoring it', async () => {
     const user = userEvent.setup();
     renderApp();
