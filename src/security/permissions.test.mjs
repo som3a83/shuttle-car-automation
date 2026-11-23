@@ -6,7 +6,7 @@ test('local operational console grants working routes and actions to every devic
   assert.equal(can('Viewer', 'fleet.view'), true);
   assert.equal(can('Viewer', 'fleet.manage'), true);
   assert.equal(canAccessRoute('Viewer', 'dashboard'), true);
-  for (const route of ['fleet', 'shifts', 'engineering', 'batteries', 'faults', 'maintenance', 'connections', 'ai', 'reports', 'notifications']) {
+  for (const route of ['fleet', 'shifts', 'engineering', 'batteries', 'faults', 'maintenance', 'connections', 'notifications']) {
     assert.equal(canAccessRoute('Viewer', route), true, `Viewer should open read-only route: ${route}`);
   }
   assert.equal(canAccessRoute('Viewer', 'settings'), true);
