@@ -1247,7 +1247,7 @@ function App({ initialData }: { initialData: AppInitialData }) {
       shuttles: activeShuttles.map(item => ({ id: item.id, manufacturer: item.manufacturer, status: item.status, connectivity: item.connectivity, warehouseZone: item.warehouseZone })),
       batteries: activeBatteries.map(item => ({ id: item.id, manufacturer: item.manufacturer, status: item.status, assignment: item.assignment, soc: item.soc, connectionMode: item.connectionMode, movementHistory: item.movementHistory || [] }))
     };
-    const blob = new Blob(['\\uFEFF', buildDailyReportCsv(report)], { type: 'text/csv;charset=utf-8' });
+    const blob = new Blob(['\uFEFF', buildDailyReportCsv(report)], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a'); link.href = url; link.download = 'shuttle-daily-report-' + report.reportDate + '.csv'; link.click();
     URL.revokeObjectURL(url);
@@ -1802,7 +1802,7 @@ function App({ initialData }: { initialData: AppInitialData }) {
         </div>
         <div className="surface-card report-export-card">
           <div><span className="eyebrow">CSV / DAILY SNAPSHOT</span><h3>{language === 'ar' ? 'تصدير التقرير اليومي' : 'Export daily report'}</h3><p className="muted-text">{language === 'ar' ? 'يشمل ملخص الأجهزة والبطاريات والأعطال والصيانة وحركات البطاريات. القيم غير المؤكدة تظل معلّمة كغير مؤكدة.' : 'Includes fleet, battery, fault, maintenance and battery movement details. Unverified values remain explicitly unverified.'}</p></div>
-          <button className="btn-primary" type="button" onClick={() => void exportDailyReport()}>{language === 'ar' ? 'تنزيل تقرير CSV' : 'Download CSV report'} <Icon name="download" size={16}/></button>
+          <button className="btn-primary" type="button" onClick={() => void exportDailyReport()}>{language === 'ar' ? 'تنزيل تقرير CSV' : 'Download CSV report'} <Icon name="arrow" size={16}/></button>
         </div>
         <div className="dashboard-grid">
           <div className="surface-card"><div className="card-head"><div><span className="eyebrow">FLEET REGISTER</span><h3>{language === 'ar' ? 'الأجهزة المسجلة' : 'Registered devices'}</h3></div></div>
