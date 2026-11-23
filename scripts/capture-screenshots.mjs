@@ -3,7 +3,21 @@ import fs from 'node:fs';
 const BASE=process.env.SCREENSHOT_BASE_URL||'http://127.0.0.1:4173';
 const OUT='./artifacts/screenshots';
 const viewports=[{name:'mobile-390x844',width:390,height:844},{name:'tablet-768x1024',width:768,height:1024},{name:'desktop-1440x900',width:1440,height:900}];
-const routes=[{name:'dashboard',path:'/#/dashboard'},{name:'sections-hub',path:'/#/hub'},{name:'shuttle-engineering',path:'/#/engineering'},{name:'battery-engineering',path:'/#/batteries'}];
+const routes=[
+ {name:'sections-hub',path:'/#/hub'},
+ {name:'dashboard',path:'/#/dashboard'},
+ {name:'warehouse',path:'/#/warehouse'},
+ {name:'fleet',path:'/#/fleet'},
+ {name:'shift-operations',path:'/#/shifts'},
+ {name:'shuttle-engineering',path:'/#/engineering'},
+ {name:'battery-management',path:'/#/batteries'},
+ {name:'fault-management',path:'/#/faults'},
+ {name:'maintenance-management',path:'/#/maintenance'},
+ {name:'device-connections',path:'/#/connections'},
+ {name:'notifications',path:'/#/notifications'},
+ {name:'users-security',path:'/#/users'},
+ {name:'system-settings',path:'/#/settings'}
+];
 async function main(){
  fs.mkdirSync(OUT,{recursive:true});
  const browser=await chromium.launch({headless:true,channel:'chrome'});
