@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { getGatewaySampleState, type GatewaySample } from './gatewayClient';
+import { fetchGatewayStatus, getGatewaySampleState, type GatewaySample } from './gatewayClient';
+import { vi } from 'vitest';
 const live: GatewaySample = {
   assetId: 'SC-01', tag: 'battery.soc', value: 71, unit: '%',
   sourceTimestamp: '2026-11-17T00:00:00.000Z', receivedAt: '2026-11-17T00:00:01.000Z',
@@ -25,5 +26,69 @@ describe('gateway telemetry provenance checks', () => {
   it('requires a vendor timestamp and adapter identity', () => {
     expect(getGatewaySampleState({ ...live, sourceTimestamp: null }, Date.parse('2026-11-17T00:00:02.000Z'))).toBe('UNVERIFIED');
     expect(getGatewaySampleState({ ...live, adapterId: null }, Date.parse('2026-11-17T00:00:02.000Z'))).toBe('UNVERIFIED');
+  });
+});
+
+
+describe('read-only gateway HTTP client contract', () => {
+  it('accepts only the expected read-only gateway status and sends a bearer read token', async () => {
+    const payload = {
+      service: 'shuttle-read-only-gateway',
+      version: '1.0.0',
+      readOnly: true,
+      controlRoutes: false,
+      assetCount: 1,
+      commissionedCount: 1,
+      assets: [{
+        id: 'SC-01', manufacturer: 'Cassioli', model: 'Not recorded', firmware: null,
+        adapterId: 'approved-ro-adapter', enabled: true, commissioned: true,
+        transports: ['ethernet'], protocols: ['modbus-tcp'], missing: []
+      }]
+    };
+    const request = vi.fn(async () => ({ ok: true, json: async () => payload }) as unknown as Response);
+    vi.stubGlobal('fetch', request);
+    try {
+      const result = await fetchGatewayStatus('https://gateway.example.test', 'read-only-token');
+      expect(result.readOnly).toBe(true);
+      expect(result.controlRoutes).toBe(false);
+      expect(result.assets[0]).toMatchObject({ id: 'SC-01', commissioned: true, adapterId: 'approved-ro-adapter' });
+      expect(request).toHaveBeenCalledWith('https://gateway.example.test/v1/status', expect.objectContaining({
+        method: 'GET',
+        headers: expect.objectContaining({ Authorization: 'Bearer read-only-token' }),
+        credentials: 'omit',
+        redirect: 'error'
+      }));
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('rejects any gateway response that advertises control routes', async () => {
+    const request = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({
+        service: 'shuttle-read-only-gateway', readOnly: true, controlRoutes: true,
+        assetCount: 0, commissionedCount: 0, assets: []
+      })
+    }) as unknown as Response);
+    vi.stubGlobal('fetch', request);
+    try {
+      await expect(fetchGatewayStatus('https://gateway.example.test', 'read-only-token'))
+        .rejects.toThrow(/read-only/i);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('rejects insecure non-local HTTP gateway URLs before making a request', async () => {
+    const request = vi.fn();
+    vi.stubGlobal('fetch', request);
+    try {
+      await expect(fetchGatewayStatus('http://192.168.1.20', 'read-only-token'))
+        .rejects.toThrow(/HTTPS/);
+      expect(request).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });
