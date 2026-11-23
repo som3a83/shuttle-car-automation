@@ -1403,7 +1403,6 @@ function App({ initialData }: { initialData: AppInitialData }) {
           </div>
           <div className="surface-card selected-asset-card">
              {selected ? <><div className="card-head"><div><span className="eyebrow">{t.selected}</span><h3>{selected.id}</h3></div><StatusPill status={selected.status} language={language}/></div>
-               <div className="selected-asset-visual"><ShuttleModel shuttle={selected} view="iso" exploded={false} animated={animated}/></div>
                {editingShuttle?.id === selected.id ? <form className="stack-form asset-edit-form" onSubmit={event => saveShuttleEdit(event, selected.id)}>
                  <label>{t.manufacturer}<select name="manufacturer" defaultValue={selected.manufacturer}><option>Cassioli</option><option>Craftsman</option><option>ACME</option><option>Other</option></select></label>
                  <label>{language==='ar'?'الموديل':'Model'}<input name="model" defaultValue={selected.model}/></label>
