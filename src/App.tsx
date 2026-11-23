@@ -49,10 +49,8 @@ type EngineeringPart = 'chassis' | 'drive' | 'wheels' | 'battery' | 'sensors';
 
 const navItems: { id: Tab; en: string; ar: string; icon: string; group: string }[] = [
   { id: 'dashboard', en: 'Dashboard', ar: 'لوحة القيادة', icon: 'grid', group: 'OPERATIONS' },
-  { id: 'warehouse', en: '3D Warehouse Experience', ar: 'المخزن ثلاثي الأبعاد', icon: 'warehouse', group: 'OPERATIONS' },
   { id: 'fleet', en: 'Fleet Control Center', ar: 'إدارة الأسطول', icon: 'truck', group: 'OPERATIONS' },
   { id: 'shifts', en: 'Shift Operations & Handover', ar: 'الورديات وتسليم التشغيل', icon: 'clock', group: 'OPERATIONS' },
-  { id: 'engineering', en: 'Engineering Visualization', ar: 'التصور الهندسي', icon: 'blueprint', group: 'ENGINEERING' },
   { id: 'batteries', en: 'Battery Management', ar: 'إدارة البطاريات', icon: 'battery', group: 'ENGINEERING' },
   { id: 'faults', en: 'Fault & Diagnostics', ar: 'الأعطال والتشخيص', icon: 'alert', group: 'ENGINEERING' },
   { id: 'maintenance', en: 'Maintenance Management', ar: 'إدارة الصيانة', icon: 'wrench', group: 'ENGINEERING' },
@@ -64,7 +62,7 @@ const navItems: { id: Tab; en: string; ar: string; icon: string; group: string }
 
 const copy = {
   en: {
-    appName: 'SHUTTLE CAR AUTOMATION', subtitle: 'Industrial shuttle operations & engineering suite',
+    appName: 'SHUTTLE CAR AUTOMATION', subtitle: 'Industrial shuttle operations platform',
     demo: 'DEMO MODE · LOCAL RECORDS', demoText: 'No live equipment connection: no shuttle is connected to live PLC or manufacturer telemetry. Values marked unverified are not machine readings.',
     total: 'Total shuttle cars', running: 'Running shuttles', idle: 'Idle / Ready', faulted: 'Fault records', disconnected: 'Offline / unknown', battery: 'Verified battery SOC',
     fleet: 'Fleet overview', fleetSub: 'Manage equipment identity, operating condition, assignment and service history.',
@@ -96,7 +94,7 @@ const copy = {
     done: 'Saved locally', removeFilters: 'Clear filters'
   },
   ar: {
-    appName: 'منظومة تشغيل الشاتل', subtitle: 'إدارة صناعية وتصميم هندسي',
+    appName: 'منظومة تشغيل الشاتل', subtitle: 'منظومة تشغيل صناعية',
     demo: 'وضع تجريبي / بيانات محلية', demoText: 'لا يوجد اتصال حي بوحدات التحكم أو بيانات الشركة المصنعة. أي قيمة غير مؤكدة ليست قراءة مباشرة من المعدة.',
     total: 'إجمالي عربات النقل', running: 'قيد التشغيل', idle: 'جاهز / متوقف', faulted: 'سجلات الأعطال', disconnected: 'غير متصل / غير معروف', battery: 'شحن بطارية مؤكد',
     fleet: 'ملخص الأسطول', fleetSub: 'إدارة بيانات المعدات وحالتها وتخصيصها وسجل الخدمة والصيانة.',
@@ -1264,7 +1262,7 @@ function App({ initialData }: { initialData: AppInitialData }) {
   return <div className={'app-shell ' + theme + (sidebarCollapsed ? ' sidebar-collapsed' : '')} dir={language === 'ar' ? 'rtl' : 'ltr'}>
     <aside className={'sidebar ' + (mobileNav ? 'mobile-open' : '')}>
       <div className="brand-block">
-        <div className="brand-symbol"><span/><span/><span/></div>
+        <div className="brand-symbol gear-brand" aria-hidden="true">⚙</div>
         <div className="brand-copy"><strong>SHUTTLE CAR</strong><small>AUTOMATION · ENGINEERING PLATFORM</small></div>
         <button className="sidebar-collapse" type="button" aria-label={sidebarCollapsed ? (language === 'ar' ? 'توسيع القائمة الجانبية' : 'Expand sidebar') : (language === 'ar' ? 'طي القائمة الجانبية' : 'Collapse sidebar')} title={sidebarCollapsed ? (language === 'ar' ? 'توسيع القائمة الجانبية' : 'Expand sidebar') : (language === 'ar' ? 'طي القائمة الجانبية' : 'Collapse sidebar')} aria-pressed={sidebarCollapsed} onClick={() => setSidebarCollapsed(value => !value)}><Icon name="chevron" size={15}/></button>
         <button className="mobile-close" onClick={() => setMobileNav(false)} aria-label="Close navigation">×</button>
@@ -1353,8 +1351,8 @@ function App({ initialData }: { initialData: AppInitialData }) {
               <h2>{language === 'ar' ? 'المراقبة الهندسية لأسطول الشاتل' : 'Engineering intelligence for your shuttle fleet'}</h2>
               <p>{language === 'ar' ? 'مركز موحد لمتابعة العربات والبطاريات والأعطال والصيانة، مع رسومات ميكانيكية تفاعلية.' : 'A unified control room for shuttle cars, batteries, faults and maintenance, with interactive mechanical engineering views.'}</p>
               <div className="hero-actions">
-                <button className="btn-primary" onClick={() => go('warehouse')}>{language === 'ar' ? 'استكشاف المخزن ثلاثي الأبعاد' : 'Explore 3D warehouse'}<Icon name="arrow" size={16}/></button>
-                <button className="btn-secondary" onClick={() => go('engineering')}>{language === 'ar' ? 'فتح التصور الهندسي' : 'Open engineering view'}</button>
+                <button className="btn-primary" onClick={() => go('dashboard')}>{language === 'ar' ? 'استكشاف المخزن ثلاثي الأبعاد' : 'Explore 3D warehouse'}<Icon name="arrow" size={16}/></button>
+                <button className="btn-secondary" onClick={() => go('fleet')}>{language === 'ar' ? 'فتح التصور الهندسي' : 'Open engineering view'}</button>
                 <button className="btn-secondary" onClick={() => go('fleet')}>{language === 'ar' ? 'فتح سجل الأسطول' : 'Open fleet register'}</button>
               </div>
               <div className="hero-footnote"><span className="pulse-dot"/> {language === 'ar' ? 'عدد الأجهزة النشطة: ' + metrics.total : metrics.total + ' active units in the local fleet register'}</div>
@@ -1376,7 +1374,7 @@ function App({ initialData }: { initialData: AppInitialData }) {
         {dashboardWidgets.some((widget) => widget.id === 'fleet-status') && <section className={`dashboard-fleet-widget ${dashboardWidgets.find((widget) => widget.id === 'fleet-status')?.size === 'wide' ? 'dashboard-widget-wide' : ''}`} style={{ order: dashboardWidgets.find((widget) => widget.id === 'fleet-status')?.order ?? 0 }}>
         <div className="metric-grid">
           <Metric icon="truck" label={t.total} value={metrics.total} accent="blue" detail={language === 'ar' ? 'إجمالي السجلات' : 'Registered assets'}/>
-          <Metric icon="grid" label={t.running} value={metrics.running} accent="green" detail={language === 'ar' ? 'لا توجد قراءة تشغيل مؤكدة' : 'No verified running signal'}/>
+          <Metric icon="grid" label={t.running} value={metrics.running} accent="amber" detail={language === 'ar' ? 'لا توجد قراءة تشغيل مؤكدة' : 'No verified running signal'}/>
           <Metric icon="settings" label={t.idle} value={metrics.idle} accent="amber" detail={language === 'ar' ? 'الحالة غير المسجلة مستثناة' : 'Unknown state not counted'}/>
           <Metric icon="alert" label={t.faulted} value={metrics.faulted} accent="red" detail={language === 'ar' ? 'بلاغات مسجلة يدويًا' : 'Manually reported records'}/>
           <Metric icon="network" label={t.disconnected} value={metrics.disconnected} accent="violet" detail={language === 'ar' ? 'لا يوجد مصدر بيانات حي' : 'No live data source configured'}/>
@@ -1385,7 +1383,7 @@ function App({ initialData }: { initialData: AppInitialData }) {
         <div className="dashboard-grid">
           <div className="surface-card">
             <div className="card-head"><div><span className="eyebrow">ASSET REGISTER</span><h3>{t.fleet}</h3></div><button className="icon-button" onClick={() => go('fleet')}><Icon name="arrow"/></button></div>
-            <div className="mini-fleet">{activeShuttles.map(s => <button className="mini-asset" key={s.id} onClick={() => {setSelectedId(s.id);go('engineering');}}><div className={'mini-machine mini-' + s.manufacturer.toLowerCase()}><Icon name="truck" size={20}/></div><div className="mini-asset-info"><strong>{s.id}</strong>{' '}<span>{s.manufacturer} · {s.model}</span></div><StatusPill status={s.status} language={language}/><Icon name="chevron" size={15}/></button>)}</div>
+            <div className="mini-fleet">{activeShuttles.map(s => <button className="mini-asset" key={s.id} onClick={() => {setSelectedId(s.id);go('fleet');}}><div className={'mini-machine mini-' + s.manufacturer.toLowerCase()}><Icon name="truck" size={20}/></div><div className="mini-asset-info"><strong>{s.id}</strong>{' '}<span>{s.manufacturer} · {s.model}</span></div><StatusPill status={s.status} language={language}/><Icon name="chevron" size={15}/></button>)}</div>
           </div>
           <div className="surface-card">
             <div className="card-head"><div><span className="eyebrow">SYSTEM HEALTH</span><h3>{t.systemState}</h3></div><span className="status-pill status-unknown">OFFLINE</span></div>
@@ -1444,7 +1442,7 @@ function App({ initialData }: { initialData: AppInitialData }) {
                  <div className="record-actions"><button className="btn-primary" type="submit">{language==='ar'?'حفظ التعديلات':'Save changes'}</button><button className="btn-secondary" type="button" onClick={()=>setEditingShuttle(null)}>{t.cancel}</button></div>
                </form> : <>
                  <div className="asset-detail-grid"><Detail label={t.manufacturer} value={selected.manufacturer}/><Detail label={t.model} value={selected.model}/><Detail label={t.serial} value={selected.serialNumber}/><Detail label={t.zone} value={selected.warehouseZone}/><Detail label={t.batteryPack} value={selected.installedBattery}/><Detail label={t.communication} value={selected.connectivity}/><Detail label={language==='ar'?'ساعات التشغيل':'Operating hours'} value={selected.operatingHours ?? t.unknown}/><Detail label={language==='ar'?'دورات التشغيل':'Operating cycles'} value={selected.operatingCycles ?? t.unknown}/></div>
-                 <div className="card-actions"><button className="btn-primary" onClick={() => go('engineering')}>{t.testView}<Icon name="arrow" size={15}/></button><button className="btn-secondary" onClick={()=>setEditingShuttle(selected)}>{language==='ar'?'تعديل بيانات الجهاز':'Edit equipment'}</button><select aria-label={language==='ar'?'حالة الجهاز':'Device status'} value={selected.status} onChange={e => updateShuttle(selected.id,{status:e.target.value as ShuttleStatus})}>{statusOptions.map(status => <option key={status} value={status}>{statusText(status)}</option>)}</select></div>
+                 <div className="card-actions"><button className="btn-primary" onClick={() => go('fleet')}>{t.testView}<Icon name="arrow" size={15}/></button><button className="btn-secondary" onClick={()=>setEditingShuttle(selected)}>{language==='ar'?'تعديل بيانات الجهاز':'Edit equipment'}</button><select aria-label={language==='ar'?'حالة الجهاز':'Device status'} value={selected.status} onChange={e => updateShuttle(selected.id,{status:e.target.value as ShuttleStatus})}>{statusOptions.map(status => <option key={status} value={status}>{statusText(status)}</option>)}</select></div>
                  {pendingShuttleArchive===selected.id ? <div className="archive-confirm"><strong>{language==='ar'?'تأكيد أرشفة الجهاز؟ سيظل سجل الأعطال والصيانة محفوظًا.':'Archive this unit? Fault and maintenance history will be retained.'}</strong><button className="btn-danger" onClick={()=>archiveShuttle(selected.id)}>{language==='ar'?'تأكيد الأرشفة':'Confirm archive'}</button><button className="btn-secondary" onClick={()=>setPendingShuttleArchive(null)}>{t.cancel}</button></div> : <button className="btn-danger" type="button" onClick={()=>setPendingShuttleArchive(selected.id)}>{language==='ar'?'أرشفة الجهاز':'Archive device'}</button>}
                </>}
                <p className="muted-text">{t.localChanges}</p></>
