@@ -132,13 +132,13 @@ button:disabled { cursor: not-allowed; opacity: .42; }
 .mini-asset-info strong { font-size:11px; }
 .mini-asset-info span { color:var(--muted); font-size:9px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .status-pill { display:inline-flex; justify-content:center; align-items:center; white-space:nowrap; border:1px solid var(--line-strong); border-radius:5px; padding:4px 7px; font-size:8px; font-weight:800; letter-spacing:.035em; color:var(--muted); background:rgba(150,165,180,.06); }
-.status-ready,.status-running { color:#7edbb0; border-color:rgba(213,138,74,.25); background:rgba(213,138,74,.08); }
+.status-ready,.status-running { color:#e0ad77; border-color:rgba(213,138,74,.25); background:rgba(213,138,74,.08); }
 .status-idle,.status-scheduled { color:#edc27e; border-color:rgba(231,182,106,.25); background:rgba(231,182,106,.08); }
 .status-charging,.status-available { color:#82c7ee; border-color:rgba(104,183,227,.25); background:rgba(104,183,227,.08); }
 .status-fault,.status-overdue { color:#ef9494; border-color:rgba(230,120,120,.27); background:rgba(230,120,120,.09); }
 .status-maintenance,.status-in-progress { color:#e3b17e; border-color:rgba(213,138,74,.28); background:rgba(213,138,74,.09); }
 .status-disconnected,.status-unknown,.status-unknown\/not-verified { color:#a5b1bc; }
-.status-resolved,.status-completed { color:#7edbb0; }
+.status-resolved,.status-completed { color:#e0ad77; }
 .system-health-graphic { position:relative; display:flex; align-items:center; justify-content:center; height:160px; margin:7px 0; background:radial-gradient(ellipse,rgba(104,183,227,.08),transparent 65%); }
 .system-health-graphic svg { position:absolute; width:100%; height:100%; color:var(--blue); }
 .hub-core { position:absolute; z-index:2; display:flex; align-items:center; flex-direction:column; justify-content:center; gap:4px; width:83px; height:83px; border-radius:50%; border:1px solid rgba(104,183,227,.5); background:var(--surface); box-shadow:0 0 0 10px rgba(104,183,227,.035),0 0 22px rgba(104,183,227,.1); color:var(--blue); }
