@@ -37,12 +37,12 @@ describe('async application customization backend', () => {
 
     const candidate = {
       ...defaults,
-      modules: defaults.modules.map((module) => module.id === 'engineering'
+      modules: defaults.modules.map((module) => module.id === 'batteries'
         ? { ...module, enabled: false }
         : module)
     };
     const normalized = validateCustomization(candidate);
-    expect(normalized.modules.find((module) => module.id === 'engineering')?.enabled).toBe(false);
+    expect(normalized.modules.find((module) => module.id === 'batteries')?.enabled).toBe(false);
 
     await saveCustomizationAsync(candidate);
     expect(JSON.parse(storage.getItem('shuttle-car-automation-v7:customization') || 'null')).toEqual(normalized);
@@ -52,7 +52,7 @@ describe('async application customization backend', () => {
   it('appends and reads customization audit records with the 500-entry limit', async () => {
     const first = await appendCustomizationAuditAsync({
       action: 'ASYNC_CUSTOMIZATION_TEST',
-      target: 'module:engineering',
+      target: 'module:batteries',
       detail: 'Async audit entry'
     }, new Date('2026-11-17T12:00:00.000Z'));
     expect(first.action).toBe('ASYNC_CUSTOMIZATION_TEST');
@@ -80,7 +80,7 @@ describe('async application customization backend', () => {
     try {
       const created = await appendCustomizationAuditAsync({
         action: 'ASYNC_RETRY_TEST',
-        target: 'module:engineering',
+        target: 'module:batteries',
         detail: 'Retry after conflict'
       });
       expect(conflicts).toBe(1);
