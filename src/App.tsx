@@ -1298,14 +1298,6 @@ function App({ initialData }: { initialData: AppInitialData }) {
         <button type="button" className={activeTab === 'hub' ? 'active' : ''} aria-current={activeTab === 'hub' ? 'page' : undefined} onClick={() => go('hub')}><Icon name="grid" size={16}/><span>{language === 'ar' ? 'الأقسام' : 'Sections'}</span></button>
         <button type="button" onClick={() => setMobileNav(true)} aria-label={language === 'ar' ? 'فتح قائمة التنقل الإضافية' : 'Open overflow navigation'} aria-expanded={mobileNav}><Icon name="more-horizontal" size={16}/><span>{language === 'ar' ? 'المزيد' : 'More'}</span></button>
       </nav>
-      {activeTab === 'dashboard' && <nav className="dashboard-tabs" aria-label={language === 'ar' ? 'أقسام لوحة القيادة' : 'Dashboard sections'}>
-        <button type="button" className="active" onClick={() => go('dashboard')}><Icon name="grid" size={15}/>{language === 'ar' ? 'لوحة القيادة' : 'Dashboard'}</button>
-        <button type="button" onClick={() => go('fleet')}><Icon name="truck" size={15}/>{language === 'ar' ? 'إدارة الأجهزة' : 'Device management'}</button>
-        <button type="button" onClick={() => go('shifts')}><Icon name="clock" size={15}/>{language === 'ar' ? 'الورديات والتسليم' : 'Shifts & handover'}</button>
-        <button type="button" onClick={() => go('hub')}><Icon name="layers" size={15}/>{language === 'ar' ? 'الأقسام' : 'Departments'}</button>
-        <button type="button" onClick={() => setMobileNav(true)}><Icon name="more-horizontal" size={15}/>{language === 'ar' ? 'المزيد' : 'More'}</button>
-      </nav>}
-
       {activeTab === 'hub' && <SectionsHub items={visibleNavigation} language={language} activeId={activeTab} onOpen={go} renderIcon={(name) => <Icon name={name} size={22}/>} />}
 
       {/* Telemetry remains explicitly unverified in its data fields; no global demo banner is shown. */}
