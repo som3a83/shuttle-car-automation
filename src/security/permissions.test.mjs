@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { can, canAccessRoute, canPerformAction, permissionsFor } from './permissions.ts';
+import { can, canAccessRoute, canPerformAction, isPermission, permissionsFor } from './permissions.ts';
 
 test('local operational console grants working routes and actions to every device user', () => {
   assert.equal(can('Viewer', 'fleet.view'), true);
@@ -24,6 +24,8 @@ test('super admin receives the full permission set and unknown roles fail closed
   assert.ok(permissionsFor('Super Admin').includes('data.reset'));
   assert.equal(can('Viewer', 'data.reset'), false);
   assert.equal(can('Super Admin', 'connections.manage'), true);
+  assert.equal(isPermission('ai.view'), false);
+  assert.equal(isPermission('reports.view'), false);
 });
 
 
