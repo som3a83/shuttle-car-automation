@@ -17,17 +17,27 @@ concurrency:
 
 jobs:
   build:
-    if: hashFiles('Shuttle-Car-Automation-V8.0.0-Source.zip') != ''
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
       - name: Check out main
         uses: actions/checkout@v4
 
+      - name: Verify source archive exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s Shuttle-Car-Automation-V8.0.0-Source.zip || {
+            echo "::error::Missing Shuttle-Car-Automation-V8.0.0-Source.zip in repository root"
+            exit 1
+          }
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "22.22.2"
+          cache: npm
+          cache-dependency-path: extracted/package-lock.json
 
       - name: Set up Java
         uses: actions/setup-java@v4
@@ -44,17 +54,17 @@ jobs:
           set -euo pipefail
           mkdir extracted
           unzip -q Shuttle-Car-Automation-V8.0.0-Source.zip -d extracted
-          test -f extracted/final_work/package.json
-          test -f extracted/final_work/package-lock.json
-          test -f extracted/final_work/capacitor.config.ts
-          test "$(node -p "require('./extracted/final_work/package.json').version")" = "8.0.0"
+          test -f extracted/package.json
+          test -f extracted/package-lock.json
+          test -f extracted/capacitor.config.ts
+          test "$(node -p "require('./extracted/package.json').version")" = "8.0.0"
 
       - name: Install dependencies
-        working-directory: extracted/final_work
+        working-directory: extracted
         run: npm ci --no-audit --no-fund
 
       - name: Run checks and build web app
-        working-directory: extracted/final_work
+        working-directory: extracted
         run: |
           npm run check
           npm test
@@ -68,14 +78,15 @@ jobs:
           sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
 
       - name: Generate Android project and app assets
-        working-directory: extracted/final_work
+        working-directory: extracted
         run: |
           npx cap add android
           npx capacitor-assets generate --android --iconBackgroundColor '#111820' --iconBackgroundColorDark '#111820' --splashBackgroundColor '#111820' --splashBackgroundColorDark '#111820'
           npx cap sync android
+          test -x android/gradlew
 
       - name: Stamp V8 build version
-        working-directory: extracted/final_work
+        working-directory: extracted
         shell: bash
         run: |
           set -euo pipefail
@@ -87,24 +98,24 @@ jobs:
           const versionCode = 8000000 + run;
           const file = 'android/app/build.gradle';
           let gradle = fs.readFileSync(file, 'utf8');
-          if (!/\bversionCode\s+\d+/.test(gradle) || !/\bversionName\s+['"][^'"]+['"]/.test(gradle)) {
+          if (!/\\bversionCode\\s+\\d+/.test(gradle) || !/\\bversionName\\s+['"][^'"]+['"]/.test(gradle)) {
             throw new Error('Android version fields missing from generated Gradle file');
           }
-          gradle = gradle.replace(/(\bversionCode\s+)\d+/, '$1' + versionCode);
-          gradle = gradle.replace(/(\bversionName\s+)['"][^'"]+['"]/, '$1"' + version + '"');
+          gradle = gradle.replace(/(\\bversionCode\\s+)\\d+/, '$1' + versionCode);
+          gradle = gradle.replace(/(\\bversionName\\s+)['"][^'"]+['"]/, '$1"' + version + '"');
           fs.writeFileSync(file, gradle);
           console.log('Stamped V' + version + ', versionCode ' + versionCode);
           NODE
 
       - name: Build debug APK
-        working-directory: extracted/final_work/android
+        working-directory: extracted/android
         run: ./gradlew --no-daemon --stacktrace assembleDebug
 
       - name: Verify APK and create checksum
         shell: bash
         run: |
           set -euo pipefail
-          APK="extracted/final_work/android/app/build/outputs/apk/debug/app-debug.apk"
+          APK="extracted/android/app/build/outputs/apk/debug/app-debug.apk"
           test -s "$APK"
           mkdir -p artifacts
           cp "$APK" artifacts/shuttle-car-automation-v8.0.0-debug.apk
