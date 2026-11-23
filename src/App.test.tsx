@@ -307,15 +307,15 @@ beforeEach(async () => {
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Fleet Control Center');
   });
 
-  it('opens remaining modules from the mobile More drawer and closes it after navigation', async () => {
+  it('opens device connections from the mobile More drawer and closes it after navigation', async () => {
     const user = userEvent.setup();
     const { container } = renderApp();
     await user.click(screen.getByRole('button', { name: /More/i }));
     expect(container.querySelector('.sidebar')).toHaveClass('mobile-open');
-    await user.click(screen.getByRole('button', { name: /AI Technical Assistant/i }));
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('AI Technical Assistant');
+    await user.click(screen.getByRole('button', { name: /Device Connections/i }));
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Device Connections');
     expect(container.querySelector('.sidebar')).not.toHaveClass('mobile-open');
-    expect(window.location.hash).toBe('#/ai');
+    expect(window.location.hash).toBe('#/connections');
   });
 
   it('creates a local notification when a fault report is submitted', async () => {
@@ -475,7 +475,7 @@ beforeEach(async () => {
     expect(saved[5]).toMatchObject({ id: 'SC-VERIFIED', operatingHours: 0, operatingCycles: 0 });
   });
 
-  it('keeps all thirteen named application destinations reachable from the main navigation', async () => {
+  it('keeps all active application destinations reachable from the main navigation', async () => {
     const user = userEvent.setup();
     renderApp();
     const destinations = [
@@ -487,7 +487,6 @@ beforeEach(async () => {
       ['Fault & Diagnostics', 'Fault & Diagnostics'],
       ['Maintenance Management', 'Maintenance Management'],
       ['Device Connections', 'Device Connections'],
-      ['AI Technical Assistant', 'AI Technical Assistant'],
       ['Notifications', 'Notifications'],
       ['Users & Security', 'Users & Security'],
       ['System Settings', 'System Settings']
@@ -644,15 +643,15 @@ beforeEach(async () => {
   it('removes disabled modules from navigation without deleting application records', async () => {
     renderApp();
     const customization = JSON.parse(JSON.stringify(DEFAULT_CUSTOMIZATION)) as typeof DEFAULT_CUSTOMIZATION;
-    const aiModule = customization.modules.find((item) => item.id === 'ai');
-    if (!aiModule) throw new Error('Expected AI module preference is missing.');
-    aiModule.enabled = false;
+    const engineeringModule = customization.modules.find((item) => item.id === 'engineering');
+    if (!engineeringModule) throw new Error('Expected engineering module preference is missing.');
+    engineeringModule.enabled = false;
 
     act(() => {
       window.dispatchEvent(new CustomEvent('shuttle-customization-change', { detail: customization }));
     });
 
-    expect(screen.queryByRole('button', { name: 'AI Technical Assistant' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Engineering Visualization' })).not.toBeInTheDocument();
     await waitFor(() => {
       expect(window.localStorage.getItem('shuttle-car-automation-v7:shuttles')).toBeTruthy();
     });
