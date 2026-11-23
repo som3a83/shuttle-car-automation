@@ -5,7 +5,6 @@ on:
     branches: [main]
     paths:
       - "Shuttle-Car-Automation-V8.0.0-Source.zip"
-      - ".github/workflows/build-v8-from-source-archive.yml"
   workflow_dispatch:
 
 permissions:
