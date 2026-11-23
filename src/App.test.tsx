@@ -108,7 +108,7 @@ beforeEach(async () => {
   it('allows an unauthenticated local operator to open all operational destinations', () => {
     window.sessionStorage.clear();
     renderApp();
-    for (const name of [/Fleet Control Center/i, /Battery Management/i, /Maintenance Management/i, /Fault & Diagnostics/i, /Device Connections/i, /AI Technical Assistant/i]) {
+    for (const name of [/Fleet Control Center/i, /Battery Management/i, /Maintenance Management/i, /Fault & Diagnostics/i, /Device Connections/i]) {
       expect(screen.getAllByRole('button', { name })[0]).toBeInTheDocument();
     }
     // Account administration remains protected, while local presentation settings are available on this device.
@@ -129,24 +129,24 @@ beforeEach(async () => {
     expect(screen.queryByText(/No live equipment connection|لا يوجد اتصال حي/i)).not.toBeInTheDocument();
   });
 
-  it('creates a formal fault record from the diagnostic workbench for an authorized user', async () => {
+  it('creates a formal manually observed fault record for an authorized user', async () => {
     const user = userEvent.setup();
     renderApp();
-    await user.click(screen.getAllByRole('button', { name: /AI Technical Assistant/i })[0]);
-    await user.selectOptions(screen.getByRole('combobox', { name: /Initial report severity/i }), 'Major');
-    await user.type(screen.getByRole('textbox', { name: /Field findings and measurements/i }), 'Sensor bracket was loose during inspection.');
-    await user.click(screen.getByRole('button', { name: /Create fault report/i }));
+    await user.click(screen.getAllByRole('button', { name: /Fault & Diagnostics/i })[0]);
+    await user.type(screen.getByLabelText(/Fault title/i), 'Sensor bracket inspection');
+    await user.type(screen.getByLabelText(/Observed symptom/i), 'Sensor bracket was loose during inspection.');
+    await user.click(screen.getByRole('button', { name: /Register fault/i }));
     await waitFor(() => expect(screen.getByText(/Sensor bracket was loose during inspection/i)).toBeInTheDocument());
-    expect(screen.getAllByText(/Wooden pallet not detected/i).length).toBeGreaterThan(0);
   });
 
-  it('allows local diagnostic fault creation without an account setup detour', async () => {
+  it('allows local manual fault creation without an account setup detour', async () => {
     const user = userEvent.setup();
     window.sessionStorage.clear();
     renderApp();
-    await user.click(screen.getAllByRole('button', { name: /AI Technical Assistant/i })[0]);
-    await user.selectOptions(screen.getByRole('combobox', { name: /Initial report severity/i }), 'Major');
-    expect(screen.getByRole('button', { name: /Create fault report/i })).toBeEnabled();
+    await user.click(screen.getAllByRole('button', { name: /Fault & Diagnostics/i })[0]);
+    await user.type(screen.getByLabelText(/Fault title/i), 'Manual inspection fault');
+    await user.type(screen.getByLabelText(/Observed symptom/i), 'A symptom recorded by the operator.');
+    expect(screen.getByRole('button', { name: /Register fault/i })).toBeEnabled();
   });
 
   it('persists the selected appearance across a reload', async () => {
