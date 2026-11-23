@@ -1,39 +1,42 @@
-# Final Handover Checklist
+# Final Handover — Shuttle Car Automation V8
 
-This document is a sign-off record, not a substitute for GitHub evidence. Complete it against the exact final `main` commit.
+This checklist is evidence-based. Mark an item complete only against the exact final `main` SHA.
 
-## Source control
-- [x] PR #56 merged and verified on `main`.
-- [x] PR #57 merged and verified on `main`.
-- [x] PR #58 merged and verified on `main`.
-- [x] PR #59 merged and verified on `main`.
-- [x] PR #60 merged and verified on `main` (final release closure).
-- [x] Earlier superseded PR #54 closed as superseded by PR #56.
-- [ ] No required implementation commit or release file remains only on an unmerged branch.
-- [ ] Final `main` working tree is the only release source.
+## Source and version
+- [ ] `main` contains the complete V8.0.0 source.
+- [ ] Package version and lockfile both identify 8.0.0.
+- [ ] Complete source ZIP, SHA-256 and source commit metadata are published.
+- [ ] No required implementation remains only on an unmerged branch.
 
-## CI and artifacts
-- [ ] TypeScript, automated tests and production build pass on the final SHA.
-- [ ] CodeQL, dependency review and secret scan pass on the final SHA.
-- [ ] Industrial gateway validation passes on the final SHA.
-- [ ] Android debug APK builds and the emulator installs and launches it.
-- [ ] The matching APK and emulator evidence artifacts are available.
-- [ ] Shuttle and battery CAD sources render successfully and the matching artifacts are available.
-- [ ] Store listing artwork is generated and genuine screenshots are captured from the tested app.
+## Automated verification
+- [ ] TypeScript, automated tests and production build pass on final SHA.
+- [ ] CodeQL and secret scanning pass on final SHA.
+- [ ] Gateway contract/safety tests pass on final SHA.
+- [ ] CAD validation passes on final SHA.
+- [ ] Responsive screenshots exist for all routes at mobile, tablet and desktop sizes.
+- [ ] Android APK builds and emulator install/launch/crash checks pass.
+- [ ] APK, checksum and emulator evidence artifacts match final SHA.
 
-## Product truth and safety
-- [ ] Fleet records match confirmed installed models and preserve unknown values as unknown.
-- [ ] ACME's reported 0% display remains a manual report; unverified SOC remains null.
-- [ ] The diagnostic workbench is described as rule-based, not connected AI.
-- [ ] Optional gateway access is described as read-only and not configured by default.
-- [ ] No physical machine-control capability or safety certification is claimed.
-- [ ] Privacy policy, terms, README, store listing and changelog match actual behavior.
+## Application behavior
+- [ ] Shuttle identities include only the five confirmed manufacturer records.
+- [ ] Unverified model names, serials, firmware, status and telemetry remain unknown.
+- [ ] ACME reported HMI 0% remains a manual note; unverified SOC remains null.
+- [ ] Battery lifecycle and assignment tests pass.
+- [ ] Faults cannot be resolved without documented corrective action.
+- [ ] Unfinished maintenance orders cannot be archived.
+- [ ] Arabic/English navigation, themes and responsive screens are reviewed.
+- [ ] Retired AI and reporting screens/permissions are absent.
+
+## Physical connectivity
+- [ ] OEM manuals, exact model/serials and approved communication maps are received.
+- [ ] Gateway/adapter configuration is approved by plant OT/IT.
+- [ ] Read-only telemetry is verified against physical HMI values and timestamps.
+- [ ] Physical-device acceptance is signed off by authorized maintenance/OT personnel.
+
+If OEM documentation or plant commissioning is unavailable, mark physical connectivity as **blocked by external commissioning dependency** and keep the app offline/uncommissioned. Do not claim live connectivity.
 
 ## Publishing
-- [ ] Publisher upload-keystore secrets are configured outside source control.
-- [ ] Signed AAB/APK signature verification and SHA-256 checks pass.
-- [ ] Version code is unique and increasing.
-- [ ] Google Play Data safety, content rating, target audience, app access and distribution forms are completed truthfully.
-- [ ] Physical-device acceptance is completed before production rollout.
-
-**Important:** A checkbox may be marked complete only after the corresponding evidence is inspected. Pending, skipped or cancelled workflows are not passes. If plant OEM documents or gateway commissioning are unavailable, keep the application in local/offline mode and record that as an external commissioning dependency, not as a completed integration.
+- [ ] Publisher signing secrets are configured outside source control.
+- [ ] Signed AAB/APK signature and SHA-256 checks pass.
+- [ ] Google Play declarations, privacy policy, content rating and app access are completed truthfully.
+- [ ] Physical Android device test is completed before rollout.
