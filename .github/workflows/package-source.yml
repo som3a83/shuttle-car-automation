@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - ".github/workflows/package-source.yml"
+      - ".github/workflows/**"
       - "package.json"
       - "package-lock.json"
       - "src/**"
