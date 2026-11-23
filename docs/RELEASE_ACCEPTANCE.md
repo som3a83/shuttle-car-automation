@@ -1,87 +1,68 @@
-# Release Acceptance — Shuttle Car Automation
+# Release Acceptance — Shuttle Car Automation V8
 
 ## 1. Release identity
-
 - Repository: `som3a83/shuttle-car-automation`
-- Application ID: `com.shuttlecar.automation`
-- Current source release label: verify against the application footer and Android package before tagging.
-- Release artifacts must be tied to one exact Git commit SHA.
+- Source version: `8.0.0`
+- Android application ID: `com.shuttlecar.automation`
+- Release artifacts must be tied to one exact `main` commit SHA.
 
-## 2. Automated merge gates
+## 2. Required automated gates
+A candidate is accepted only when the exact same SHA passes:
+- TypeScript project check.
+- Unit/component/security tests.
+- Production web build.
+- Android debug APK compilation.
+- Android emulator installation, launch, foreground-process and crash-log checks.
+- Responsive screenshots for all application routes at mobile, tablet and desktop dimensions.
+- CodeQL and secret scanning.
+- Industrial gateway contract/safety tests.
+- Shuttle and battery CAD source rendering.
 
-A release candidate is not accepted until all checks on the exact candidate SHA complete successfully:
-
-| Gate | Required evidence |
-|---|---|
-| TypeScript | `npm run check` passes |
-| Unit and component tests | `npm test` passes, including security tests |
-| Production build | `npm run build` passes |
-| Dependency security | Dependency Review and `npm audit --audit-level=high` pass |
-| Static analysis | CodeQL succeeds |
-| Secret scanning | Secret Leak Scan succeeds |
-| Gateway safety tests | Read-only gateway validation succeeds |
-| Android | Debug APK builds and the emulator smoke test installs and launches it |
-| CAD | OpenSCAD renders shuttle and battery reference models and publishes the editable source/STL artifact |
-| Store assets | Listing/PWA asset validation and generation succeed |
-
-A skipped, cancelled, pending or missing check is not a successful check. A successful APK compilation alone is not proof that the emulator launch succeeded.
+Pending, skipped, cancelled or missing checks are not passes.
 
 ## 3. Fleet data integrity
+The initial fleet contains five local records:
+- SC-01, SC-02 and SC-03 — manufacturer Cassioli.
+- SC-04 — manufacturer Craftsman.
+- SC-05 — manufacturer ACME.
 
-The installed fleet register must retain the confirmed five units:
+The exact model for every unit is currently **Not recorded**. Serial numbers, hardware/firmware revisions, controller details, installed options, operating states and live readings remain unknown until verified from physical labels, OEM documentation or a commissioned telemetry source.
 
-- SC-01, SC-02 and SC-03 — Cassioli ISAT Semi-Automatic.
-- SC-04 — Craftsman Standard Pallet Shuttle.
-- SC-05 — ACME Namla Polar Edition.
+`BAT-ACME-01` is a local application key, not an OEM battery serial number. The reported ACME HMI 0% display after repair remains a manual historical note. The battery SOC remains null until a verified source provides a reading.
 
-Unknown serial numbers, hardware revisions, firmware versions, OEM options and live device readings must remain unknown until verified from physical labels, approved OEM documentation or a commissioned telemetry source. The reported ACME 0% battery display is a manual report, not verified state-of-charge telemetry; the unverified SOC remains `null`.
+## 4. Operational acceptance
+- Arabic RTL and English LTR navigation.
+- Responsive layout and route reachability across phone, tablet and desktop.
+- Shuttle and battery 3D reference views, with accessible fallback if WebGL is unavailable.
+- Battery assignment, removal, movement history, archive and restore.
+- Fault creation, investigation and resolution only with documented corrective action.
+- Maintenance work-order creation, scheduling, progress, completion notes, archive and restore.
+- JSON backup validation and restore without corrupting current state.
+- Offline/local operation with no fabricated telemetry.
+- Role permissions do not expose retired AI or reporting modules.
 
-## 4. Operational and security acceptance
+## 5. Connectivity acceptance — external commissioning dependency
+The app includes generic BLE discovery/GATT inspection and an optional read-only HTTPS OT gateway client. These capabilities do not prove that an installed shuttle is discoverable or supported.
 
-- Arabic RTL and English LTR navigation work on phone, tablet and desktop layouts.
-- The unauthenticated Viewer can inspect permitted operational screens but cannot perform mutations.
-- Users & Security remains available for first-run account setup/sign-in; administrator actions require authentication and permissions.
-- Settings and other administrative destinations remain protected.
-- Faults cannot be resolved without a documented corrective action.
-- Diagnostic hypotheses are labeled as hypotheses requiring technical verification.
-- The diagnostic workbench cannot send commands to equipment and never bypasses safety interlocks.
-- Backup/restore validation rejects malformed or incompatible data before changing application state.
-- Offline/local operation is tested with network access unavailable.
+To commission a physical shuttle, obtain:
+1. Exact model and serial number for each shuttle and battery/controller.
+2. Manufacturer-approved communication manual and protocol details.
+3. Approved BLE service/characteristic UUIDs or gateway endpoint and payload contract.
+4. For Modbus, the OEM-approved register map, data types, scaling, units and read-only access.
+5. Plant OT/IT-approved network path, certificates and read-only credentials.
+6. A controlled verification procedure comparing telemetry with the physical HMI and authorized service technician findings.
 
-## 5. Android release boundary
+Until all relevant items are supplied and verified, keep each device uncommissioned and its telemetry unknown. Do not probe PLC networks, invent addresses/registers, or send movement, charging or write commands.
 
-- Debug APK is for controlled evaluation only; it is not a signed Play Store release.
-- A Play release requires publisher-controlled upload keystore secrets, a unique increasing version code, signed AAB/APK verification and SHA-256 checksums.
-- A successful signed artifact build does not mean the app has been uploaded to or approved by Google Play.
-- Capture genuine screenshots from the tested app. Do not present mockups or generated images as runtime evidence.
+## 6. Android release boundary
+- Debug APK is for controlled evaluation only.
+- Google Play release requires publisher-controlled signing keys, signed AAB/APK verification, unique increasing version code and SHA-256 checksums.
+- Physical-device acceptance is required before production rollout.
+- A successful emulator test is not a substitute for testing on the user's actual Android device.
 
-## 6. Required plant commissioning before live use
-
-The current project does not contain confirmed OEM PLC register maps, serial-specific hardware/firmware details, or a commissioned manufacturer API for the installed fleet. Therefore:
-
-1. Obtain model/serial-specific manuals and interface documents from each manufacturer.
-2. Confirm gateway network architecture, certificates, access controls and read-only service account with plant OT/IT.
-3. Map and validate each telemetry tag against the actual HMI and an approved test procedure.
-4. Start read-only; independently verify units, scaling, timestamps, stale-data behavior and quality flags.
-5. Conduct controlled physical-device acceptance with the manufacturer/authorized service technician.
-6. Do not enable motion, charging or safety-related control from this application without a separate, formally engineered and certified control-system project.
-
-## 7. Known product boundaries
-
-- Operational records and local accounts are device-local; there is no publisher-operated cloud database or cross-device synchronization.
-- The technical diagnostic workbench is rule-based local guidance; no AI provider is connected.
-- No physical shuttle is connected by default; live telemetry requires an independently deployed and commissioned OT gateway.
-- 3D/CAD models are reference assemblies, not OEM-certified manufacturing or service drawings.
-- The application is not a safety instrumented system or a substitute for OEM procedures and qualified technical judgment.
-
-## 8. Final sign-off checklist
-
-- [ ] All intended PRs are merged into `main`.
-- [ ] No required PR remains open or draft.
-- [ ] No feature branch contains unmerged release code.
-- [ ] No required workflow is pending, cancelled, skipped or failing on the final SHA.
-- [ ] Android emulator evidence and the matching debug APK artifact are available.
-- [ ] CAD source and rendered artifacts are available.
-- [ ] Privacy policy, terms, README and store listing match actual shipped behavior.
-- [ ] Publisher signing secrets are configured before requesting a signed Play artifact.
-- [ ] Plant commissioning is either completed and documented or the product remains explicitly in offline/local mode.
+## 7. Product boundaries
+- Device-local records; no publisher-operated cloud database or cross-device sync.
+- No AI assistant or Excel/CSV/PDF reporting workspace in V8.
+- No physical shuttle is connected by default.
+- 3D/CAD models are illustrative references, not OEM-certified drawings.
+- The application is not a safety instrumented system.
