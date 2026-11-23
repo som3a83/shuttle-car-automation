@@ -1,33 +1,31 @@
 # Changelog
 
-All notable application changes are documented here.
+## 8.0.0 — Precision Industrial V8
 
-## 1.0.0 — Release candidate
+### Application scope
+- Dedicated shuttle-car and battery operational application; no warehouse-management or ERP functions.
+- Arabic RTL / English LTR interface, dark/light themes and responsive phone, tablet and desktop layouts.
+- Fleet register seeded only with the five confirmed manufacturer identities; model, serial, firmware, state and live telemetry remain unknown unless verified.
+- Interactive shuttle and battery engineering reference visualizations.
+- Battery lifecycle, assignment journal, fault management and maintenance work orders.
+- Local shift operations, notifications, device-local security and JSON backup/restore.
+- Removed the AI assistant and reporting/export workspaces and retired their navigation and permission grants.
 
-### Application
-- Bilingual Arabic RTL / English LTR interface with dark and light appearance.
-- Local fleet, battery, shift, fault, maintenance, connection-register and reporting workspaces.
-- Viewer role can inspect operational pages without mutation permissions; administrator destinations remain protected.
-- Precision Industrial graphite, gunmetal and copper visual identity.
-- Interactive reference visualization for shuttle and battery assemblies.
-- Interactive rule-based diagnostic workbench with six symptom pathways, field findings and authorized creation of fault records.
-- JSON backup/restore and CSV/XLSX reporting.
+### Industrial connectivity
+- Native Bluetooth LE discovery and raw GATT read-only inspection.
+- Optional HTTPS client for an independently deployed read-only OT gateway.
+- Explicit telemetry provenance and quality validation; manual, simulated, imported, derived, stale or uncommissioned values are never presented as LIVE.
+- No motion, charging or PLC-write commands.
+- Physical shuttle connectivity remains subject to model-specific OEM documentation, approved tag maps, gateway access and plant commissioning.
 
-### Industrial integration boundary
-- Optional HTTPS client for an independently deployed, authorized read-only OT gateway.
-- No direct PLC connection or machine-control commands from the mobile application.
-- No OEM telemetry or serial-specific specifications are assumed without approved evidence.
-- 3D/CAD geometry remains illustrative reference material, not OEM-certified engineering data.
+### Verification
+- TypeScript, automated component/data/security tests and production build.
+- Android debug build and emulator install/launch smoke test.
+- Responsive screen capture across all app routes at mobile, tablet and desktop viewports.
+- CAD validation and secret scanning.
 
-### Platform and release
-- Capacitor Android application and debug APK workflow.
-- Android emulator smoke-test workflow.
-- OpenSCAD reference model validation.
-- CodeQL, dependency review, secret scanning and gateway validation workflows.
-- Signed Play AAB workflow requires publisher-controlled upload-key secrets and does not upload to Google Play automatically.
-
-### Known limitations
-- Operational records and local accounts remain on the current device; no publisher-operated cloud database or cross-device synchronization.
-- No AI provider is connected; the diagnostic workbench is rule-based local guidance.
-- Live telemetry requires plant-side gateway deployment, approved OEM tag mapping, authorization and commissioning.
-- Local role checks are not server-enforced security and the application is not a safety instrumented system.
+### Known boundaries
+- Local-only data; no cloud synchronization.
+- No confirmed physical shuttle connection or manufacturer-specific shuttle driver until commissioning.
+- 3D geometry is illustrative, not OEM-certified.
+- Debug APK is not a signed Google Play release.
