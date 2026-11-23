@@ -213,7 +213,6 @@ export interface AppInitialData {
   settings: AppSettings;
   sidebarCollapsed: boolean;
   storageIssues: string[];
-  dailyReports: DailyReportSnapshot[];
   shifts: ShiftRecord[];
 }
 
@@ -1273,7 +1272,6 @@ function App({ initialData }: { initialData: AppInitialData }) {
     setJobs(initialMaintenance);
     setConnections(initialConnections);
     setNotifications(initialNotifications);
-    setDailyReports([]);
     setShifts([]);
     recordAudit('LOCAL_DATA_RESET', 'data', 'operational-data');
     setSelectedId('SC-01');
