@@ -16,7 +16,6 @@ import ShiftOperations from './components/ShiftOperations';
 import SectionsHub from './components/SectionsHub';
 import LiveGatewayPanel from './components/LiveGatewayPanel';
 import BleReadOnlyExplorer from './components/BleReadOnlyExplorer';
-import DiagnosticWorkbench from './components/DiagnosticWorkbench';
 import ImmersiveWarehouse from './components/ImmersiveWarehouse';
 import { CONNECTION_OPTIONS, getConnectionOption } from './industrial/connectionCatalog';
 import SecurityCenter from './components/SecurityCenter';
@@ -48,7 +47,7 @@ import type {
   ShiftRecord
 } from './types';
 
-type Tab = 'hub' | 'dashboard' | 'warehouse' | 'fleet' | 'shifts' | 'engineering' | 'batteries' | 'faults' | 'maintenance' | 'connections' | 'ai' | 'reports' | 'notifications' | 'users' | 'settings';
+type Tab = 'hub' | 'dashboard' | 'warehouse' | 'fleet' | 'shifts' | 'engineering' | 'batteries' | 'faults' | 'maintenance' | 'connections' | 'notifications' | 'users' | 'settings';
 type ModelView = 'iso' | 'side' | 'front' | 'top';
 type EngineeringPart = 'chassis' | 'drive' | 'wheels' | 'battery' | 'sensors';
 
@@ -62,8 +61,6 @@ const navItems: { id: Tab; en: string; ar: string; icon: string; group: string }
   { id: 'faults', en: 'Fault & Diagnostics', ar: 'الأعطال والتشخيص', icon: 'alert', group: 'ENGINEERING' },
   { id: 'maintenance', en: 'Maintenance Management', ar: 'إدارة الصيانة', icon: 'wrench', group: 'ENGINEERING' },
   { id: 'connections', en: 'Device Connections', ar: 'اتصالات المعدات', icon: 'network', group: 'SYSTEM' },
-  { id: 'ai', en: 'AI Technical Assistant', ar: 'المساعد الفني', icon: 'spark', group: 'SYSTEM' },
-  { id: 'reports', en: 'Reports Center', ar: 'مركز التقارير', icon: 'chart', group: 'SYSTEM' },
   { id: 'notifications', en: 'Notifications', ar: 'الإشعارات', icon: 'bell', group: 'SYSTEM' },
   { id: 'users', en: 'Users & Security', ar: 'المستخدمون والأمان', icon: 'users', group: 'ADMIN' },
   { id: 'settings', en: 'System Settings', ar: 'إعدادات النظام', icon: 'settings', group: 'ADMIN' }
@@ -1901,60 +1898,6 @@ function App({ initialData }: { initialData: AppInitialData }) {
           {showArchivedConnections&&archivedConnections.map(item=><div className="archive-row" key={item.name}><div><strong>{item.name}</strong><small>{item.protocol} · {item.archivedAt}</small></div><button className="btn-secondary" onClick={()=>restoreConnection(item.name)}>{language==='ar'?'استعادة':'Restore'}</button></div>)}
         </div>
         <div className="notice-inline"><Icon name="alert"/>{language==='ar'?'هذه السجلات لا تفتح منفذًا ولا تختبر الشبكة ولا تثبت وجود اتصال حي. قبل أي تكامل: يلزم دليل المصنع، وخريطة العناوين، وبيانات الشبكة، وتصريح فني. البداية قراءة فقط ومن خلال بوابة OT معتمدة.':'These records do not open sockets, probe networks or prove a live connection. Obtain vendor manuals, approved address maps, network details and engineering authorization. Start read-only through an approved OT gateway.'}</div>
-      </section>}
-
-      {activeTab === 'ai' && <section className="page-content">
-        <PageIntro eyebrow="ENGINEERING SUPPORT / EVIDENCE-BASED INSPECTION" title={language==='ar'?'المساعد الفني ومساحة الفحص':'Technical assistant & diagnostic workbench'} subtitle={language==='ar'?'قوائم فحص تفاعلية مبنية على الأعراض المبلغ عنها. الفرضيات تحتاج تحققًا فنيًا ولا تمثل تشخيصًا آليًا.':'Interactive inspection checklists based on reported symptoms. Hypotheses require technical verification and are not automated diagnoses.'}/>
-        <DiagnosticWorkbench language={language} shuttles={activeShuttles} canCreateFault={canPerformAction(currentUser, 'faults.create')} onCreateFault={addFaultFromDiagnostic}/>
-      </section>}
-
-      {activeTab === 'reports' && <section className="page-content">
-        <PageIntro eyebrow="OPERATIONS INTELLIGENCE / DAILY MANAGEMENT" title={language==='ar'?'التقارير اليومية وحالة الأجهزة':'Daily operations and equipment reports'} subtitle={language==='ar'?'لقطة يومية لحالة كل جهاز وبطارية والأعطال وأوامر الصيانة، قابلة للتصدير والطباعة.':'A dated snapshot of every active shuttle and battery, faults and maintenance work, ready to export or print.'}/>
-        <div className="report-toolbar">
-          <button className="btn-primary" onClick={generateDailyReport}><Icon name="chart" size={16}/>{language==='ar'?'إصدار التقرير اليومي الآن':'Generate today’s report'}</button>
-          <button className="btn-secondary" onClick={exportCsv}>{t.exportCsv}</button>
-          <button className="btn-secondary" onClick={exportFullRegisterXlsx}>{language==='ar'?'تصدير سجل Excel كامل':'Export full Excel register'}</button>
-          <button className="btn-secondary" onClick={exportBackup}>{t.backup}</button>
-          <button className="btn-secondary" onClick={()=>window.print()}>{t.print}</button>
-        </div>
-        <div className="report-metrics">
-          <Metric icon="truck" label={language==='ar'?'الأجهزة النشطة':'Active shuttles'} value={activeShuttles.length} accent="blue"/>
-          <Metric icon="alert" label={language==='ar'?'الأعطال المفتوحة':'Open faults'} value={activeFaults.filter(f=>f.status!=='Resolved').length} accent="red"/>
-          <Metric icon="wrench" label={language==='ar'?'أوامر صيانة مفتوحة':'Open work orders'} value={activeJobs.filter(j=>j.status!=='Completed').length} accent="amber"/>
-          <Metric icon="battery" label={language==='ar'?'البطاريات النشطة':'Active batteries'} value={activeBatteries.length} accent="cyan"/>
-        </div>
-        {dailyReports[0] && <div className="surface-card latest-report-card">
-          <div className="card-head"><div><span className="eyebrow">{language==='ar'?'آخر تقرير محفوظ':'LATEST SAVED DAILY REPORT'}</span><h3>{dailyReports[0].reportDate} · {dailyReports[0].id}</h3></div><span className="status-pill status-unknown">LOCAL SNAPSHOT</span></div>
-          <div className="report-metrics compact-metrics">
-            <Metric icon="truck" label={language==='ar'?'الأجهزة':'Shuttles'} value={dailyReports[0].shuttleCount} accent="blue"/>
-            <Metric icon="grid" label={language==='ar'?'تعمل':'Running'} value={dailyReports[0].runningCount} accent="green"/>
-            <Metric icon="alert" label={language==='ar'?'أعطال مفتوحة':'Open faults'} value={dailyReports[0].openFaultCount} accent="red"/>
-            <Metric icon="battery" label={language==='ar'?'بطاريات بها عطل':'Faulted batteries'} value={dailyReports[0].faultedBatteryCount} accent="amber"/>
-          </div>
-          <p className="muted-text">{language==='ar'?'وقت الإصدار: ':'Generated: '}{formatNotificationTime(dailyReports[0].generatedAt)} · {language==='ar'?'مصادر القياس المؤكدة: ':'Verified telemetry sources: '}{dailyReports[0].verifiedTelemetryCount}</p>
-          <div className="report-export-actions">
-            <button className="btn-primary" onClick={()=>downloadDailyReport(dailyReports[0])}>{language==='ar'?'تنزيل التقرير CSV':'Download daily report CSV'}</button>
-            <button className="btn-secondary" onClick={()=>exportDailyReportXlsx(dailyReports[0])}>{language==='ar'?'تنزيل التقرير Excel':'Download daily report Excel'}</button>
-          </div>
-        </div>}
-        <div className="surface-card"><div className="card-head"><div><span className="eyebrow">CURRENT REGISTER / LIVE STATUS NOT AVAILABLE</span><h3>{language==='ar'?'حالة الأجهزة الحالية':'Current shuttle status register'}</h3></div><span className="status-pill status-unknown">LOCAL RECORDS</span></div>
-          <div className="table-wrap"><table><thead><tr><th>ID</th><th>{t.manufacturer}</th><th>{t.model}</th><th>{t.status}</th><th>{t.communication}</th><th>{t.zone}</th></tr></thead><tbody>{activeShuttles.map(item=><tr key={item.id}><td>{item.id}</td><td>{item.manufacturer}</td><td>{item.model}</td><td><StatusPill status={item.status} language={language}/></td><td>{item.connectivity}</td><td>{item.warehouseZone}</td></tr>)}</tbody></table></div>
-        </div>
-        <div className="surface-card"><div className="card-head"><div><span className="eyebrow">BATTERY REGISTER</span><h3>{language==='ar'?'حالة البطاريات الحالية':'Current battery register'}</h3></div></div>
-          <div className="table-wrap"><table><thead><tr><th>ID</th><th>{t.manufacturer}</th><th>{t.status}</th><th>{language==='ar'?'التخصيص':'Assignment'}</th><th>SOC</th><th>{t.communication}</th></tr></thead><tbody>{activeBatteries.map(item=><tr key={item.id}><td>{item.id}</td><td>{item.manufacturer}</td><td>{item.status}</td><td>{item.assignment}</td><td>{item.soc===null?t.unknown:item.soc+'%'}</td><td>{item.connectionMode}</td></tr>)}</tbody></table></div>
-        </div>
-        <div className="surface-card"><div className="card-head"><div><span className="eyebrow">REPORT ARCHIVE</span><h3>{language==='ar'?'أرشيف التقارير اليومية':'Daily report history'}</h3></div><span className="counter">{dailyReports.length}</span></div>
-          {dailyReports.length===0 ? <div className="empty-state">{language==='ar'?'لم يتم إصدار تقارير بعد. اضغط إصدار التقرير اليومي لإنشاء أول لقطة محفوظة.':'No reports yet. Generate today’s report to create the first saved snapshot.'}</div> :
-            dailyReports.map(report=><div className="archive-row report-history-row" key={report.id}>
-              <div><strong>{report.reportDate} · {report.id}</strong><small>{formatNotificationTime(report.generatedAt)} · {report.shuttleCount} units · {report.openFaultCount} open faults</small></div>
-              <div className="record-actions">
-                <button className="btn-secondary" onClick={()=>downloadDailyReport(report)}>{language==='ar'?'تنزيل CSV':'Download CSV'}</button>
-                <button className="btn-secondary" onClick={()=>exportDailyReportXlsx(report)}>{language==='ar'?'Excel':'Excel'}</button>
-                <button className="btn-danger" onClick={()=>deleteDailyReport(report.id)}>{language==='ar'?'حذف':'Delete'}</button>
-              </div>
-            </div>)}
-        </div>
-        <p className="muted-text">{language==='ar'?'كل تقرير لقطة محفوظة لحظة الإصدار ولا يتغير تلقائيًا بعد ذلك. القيم غير الموثقة تظل غير معروفة ولا تُستبدل بأرقام تقديرية.':'Each report is a frozen snapshot from its creation time. Unverified values remain unknown and are never replaced with estimates.'}</p>
       </section>}
 
       {activeTab === 'notifications' && <section className="page-content">
