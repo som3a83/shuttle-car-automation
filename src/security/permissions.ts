@@ -40,7 +40,7 @@ const permissionMatrix: Record<Role, readonly Permission[]> = {
     'dashboard.view', 'fleet.view', 'engineering.view', 'batteries.view', 'batteries.manage',
     'faults.view', 'faults.create', 'faults.update', 'faults.resolve',
     'maintenance.view', 'maintenance.create', 'maintenance.update', 'maintenance.complete',
-    'reports.view', 'reports.export', 'notifications.view'
+    'notifications.view'
   ],
   Technician: [
     'dashboard.view', 'fleet.view', 'engineering.view', 'shifts.view', 'batteries.view',
