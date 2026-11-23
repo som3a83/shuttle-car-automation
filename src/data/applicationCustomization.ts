@@ -1,6 +1,6 @@
 import type { Role } from '../types';
 
-export type CustomizableRoute = 'dashboard' | 'fleet' | 'shifts' | 'engineering' | 'batteries' | 'faults' | 'maintenance' | 'connections' | 'notifications' | 'users' | 'settings';
+export type CustomizableRoute = 'dashboard' | 'fleet' | 'shifts' | 'batteries' | 'faults' | 'maintenance' | 'connections' | 'notifications' | 'users' | 'settings';
 
 export interface ModulePreference {
   id: CustomizableRoute;
@@ -40,14 +40,13 @@ export interface AuditEntry {
 }
 
 const ROLES: readonly Role[] = ['Super Admin', 'Admin', 'Supervisor', 'Maintenance Engineer', 'Technician', 'Operator', 'Viewer'];
-const ROUTES: readonly CustomizableRoute[] = ['dashboard', 'fleet', 'shifts', 'engineering', 'batteries', 'faults', 'maintenance', 'connections', 'notifications', 'users', 'settings'];
+const ROUTES: readonly CustomizableRoute[] = ['dashboard', 'fleet', 'shifts', 'batteries', 'faults', 'maintenance', 'connections', 'notifications', 'users', 'settings'];
 
 export const DEFAULT_CUSTOMIZATION: CustomizationConfig = {
   modules: [
     ['dashboard', 'Dashboard', 'Fleet summary and local operational indicators.'],
     ['fleet', 'Fleet Control Center', 'Shuttle register and equipment records.'],
     ['shifts', 'Shift Operations & Handover', 'Local shift notes and handover records.'],
-    ['engineering', 'Engineering Visualization', 'Representative engineering illustrations.'],
     ['batteries', 'Battery Management', 'Battery records, assignment and lifecycle.'],
     ['faults', 'Fault & Diagnostics', 'Manually recorded fault reports.'],
     ['maintenance', 'Maintenance Management', 'Maintenance plans and work orders.'],
@@ -60,8 +59,7 @@ export const DEFAULT_CUSTOMIZATION: CustomizationConfig = {
     { id:'dashboard', route:'dashboard', label:'Dashboard', labelAr:'لوحة القيادة', group:'OPERATIONS', visible:true, order:0 },
     { id:'fleet', route:'fleet', label:'Fleet Control Center', labelAr:'إدارة الأسطول', group:'OPERATIONS', visible:true, order:1 },
     { id:'shifts', route:'shifts', label:'Shift Operations & Handover', labelAr:'الورديات وتسليم التشغيل', group:'OPERATIONS', visible:true, order:2 },
-    { id:'engineering', route:'engineering', label:'Engineering Visualization', labelAr:'التصور الهندسي', group:'ENGINEERING', visible:true, order:3 },
-    { id:'batteries', route:'batteries', label:'Battery Management', labelAr:'إدارة البطاريات', group:'ENGINEERING', visible:true, order:4 },
+    { id:'batteries', route:'batteries', label:'Battery Management', labelAr:'إدارة البطاريات', group:'ENGINEERING', visible:true, order:3 },
     { id:'faults', route:'faults', label:'Fault & Diagnostics', labelAr:'الأعطال والتشخيص', group:'ENGINEERING', visible:true, order:5 },
     { id:'maintenance', route:'maintenance', label:'Maintenance Management', labelAr:'إدارة الصيانة', group:'ENGINEERING', visible:true, order:6 },
     { id:'connections', route:'connections', label:'Device Connections', labelAr:'اتصالات المعدات', group:'SYSTEM', visible:true, order:7 },
