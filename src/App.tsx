@@ -793,6 +793,37 @@ function App({ initialData }: { initialData: AppInitialData }) {
     setSelectedId(id);
     pushNotification(language === 'ar' ? 'تم استعادة جهاز' : 'Shuttle restored', id);
   };
+  const deleteShuttle = async (id: string) => {
+    if (!await authorize('fleet.manage', 'shuttle', id)) return;
+    const unit = shuttles.find(item => item.id === id);
+    if (!unit) return;
+    const hasLinkedBattery = batteries.some(item => !item.archivedAt && item.assignment === id) ||
+      Boolean(unit.installedBattery && unit.installedBattery !== 'Not recorded');
+    if (hasLinkedBattery) {
+      showToast(language === 'ar' ? 'لا يمكن حذف الجهاز قبل فصل البطارية أو إعادة تخصيصها من صفحة البطاريات' : 'Detach or reassign the installed battery before deleting this device.');
+      return;
+    }
+    const linkedOpenFaults = faults.filter(item => item.shuttleId === id && !item.archivedAt && item.status !== 'Resolved');
+    const linkedOpenJobs = jobs.filter(item => item.shuttleId === id && !item.archivedAt && item.status !== 'Completed');
+    if (linkedOpenFaults.length || linkedOpenJobs.length) {
+      showToast(language === 'ar' ? 'لا يمكن حذف الجهاز قبل إغلاق أعطاله المفتوحة وإكمال أوامر صيانته' : 'Resolve open faults and complete work orders before deleting this device.');
+      return;
+    }
+    const linkedFaultCount = faults.filter(item => item.shuttleId === id).length;
+    const linkedJobCount = jobs.filter(item => item.shuttleId === id).length;
+    const message = language === 'ar'
+      ? 'حذف نهائي للجهاز ' + id + '؟ سيتم حذف سجل الجهاز وكل بلاغات الأعطال وأوامر الصيانة المرتبطة به (' + linkedFaultCount + ' عطل، ' + linkedJobCount + ' أمر صيانة). لا يمكن التراجع. هل تريد المتابعة؟'
+      : 'Permanently delete ' + id + ' and its linked fault/work-order history (' + linkedFaultCount + ' faults, ' + linkedJobCount + ' work orders)? This cannot be undone.';
+    if (!window.confirm(message)) return;
+    setShuttles(prev => prev.filter(item => item.id !== id));
+    setFaults(prev => prev.filter(item => item.shuttleId !== id));
+    setJobs(prev => prev.filter(item => item.shuttleId !== id));
+    recordAudit('SHUTTLE_DELETED', 'shuttle', id, 'Deleted ' + linkedFaultCount + ' linked fault records and ' + linkedJobCount + ' work orders after dependency checks.');
+    const next = activeShuttles.find(item => item.id !== id);
+    setSelectedId(next?.id || '');
+    setPendingShuttleArchive(null);
+    showToast(language === 'ar' ? 'تم حذف الجهاز وسجلاته المرتبطة نهائيًا' : 'Device and linked records permanently deleted');
+  };
 
   const saveShuttleEdit = async (event: React.FormEvent<HTMLFormElement>, id: string) => {
     event.preventDefault();
@@ -1296,7 +1327,7 @@ function App({ initialData }: { initialData: AppInitialData }) {
         <button type="button" className={activeTab === 'fleet' ? 'active' : ''} aria-current={activeTab === 'fleet' ? 'page' : undefined} onClick={() => go('fleet')}><Icon name="truck" size={16}/><span>{language === 'ar' ? 'الأجهزة' : 'Devices'}</span></button>
         <button type="button" className={activeTab === 'shifts' ? 'active' : ''} aria-current={activeTab === 'shifts' ? 'page' : undefined} onClick={() => go('shifts')}><Icon name="clock" size={16}/><span>{language === 'ar' ? 'الورديات' : 'Shifts'}</span></button>
         <button type="button" className={activeTab === 'hub' ? 'active' : ''} aria-current={activeTab === 'hub' ? 'page' : undefined} onClick={() => go('hub')}><Icon name="grid" size={16}/><span>{language === 'ar' ? 'الأقسام' : 'Sections'}</span></button>
-        <button type="button" onClick={() => setMobileNav(true)} aria-label={language === 'ar' ? 'فتح قائمة التنقل الإضافية' : 'More navigation options'} aria-expanded={mobileNav}><Icon name="more-horizontal" size={16}/><span>{language === 'ar' ? 'المزيد' : 'More'}</span></button>
+        <button type="button" className={activeTab === 'hub' ? 'active' : ''} aria-current={activeTab === 'hub' ? 'page' : undefined} onClick={() => go('hub')}><Icon name="grid" size={16}/><span>{language === 'ar' ? 'الأقسام' : 'Sections'}</span></button>
       </nav>
       {activeTab === 'hub' && <SectionsHub items={visibleNavigation} language={language} activeId={activeTab} onOpen={go} renderIcon={(name) => <Icon name={name} size={22}/>} />}
 
@@ -1399,7 +1430,10 @@ function App({ initialData }: { initialData: AppInitialData }) {
                </form> : <>
                  <div className="asset-detail-grid"><Detail label={t.manufacturer} value={selected.manufacturer}/><Detail label={t.model} value={selected.model}/><Detail label={t.serial} value={selected.serialNumber}/><Detail label={t.zone} value={selected.warehouseZone}/><Detail label={t.batteryPack} value={selected.installedBattery}/><Detail label={t.communication} value={selected.connectivity}/><Detail label={language==='ar'?'ساعات التشغيل':'Operating hours'} value={selected.operatingHours ?? t.unknown}/><Detail label={language==='ar'?'دورات التشغيل':'Operating cycles'} value={selected.operatingCycles ?? t.unknown}/></div>
                  <div className="card-actions"><button className="btn-secondary" onClick={()=>setEditingShuttle(selected)}>{language==='ar'?'تعديل بيانات الجهاز':'Edit equipment'}</button><select aria-label={language==='ar'?'حالة الجهاز':'Device status'} value={selected.status} onChange={e => updateShuttle(selected.id,{status:e.target.value as ShuttleStatus})}>{statusOptions.map(status => <option key={status} value={status}>{statusText(status)}</option>)}</select></div>
-                 {pendingShuttleArchive===selected.id ? <div className="archive-confirm"><strong>{language==='ar'?'تأكيد أرشفة الجهاز؟ سيظل سجل الأعطال والصيانة محفوظًا.':'Archive this unit? Fault and maintenance history will be retained.'}</strong><button className="btn-danger" onClick={()=>archiveShuttle(selected.id)}>{language==='ar'?'تأكيد الأرشفة':'Confirm archive'}</button><button className="btn-secondary" onClick={()=>setPendingShuttleArchive(null)}>{t.cancel}</button></div> : <button className="btn-danger" type="button" onClick={()=>setPendingShuttleArchive(selected.id)}>{language==='ar'?'أرشفة الجهاز':'Archive device'}</button>}
+                 <div className="record-actions">
+                   {pendingShuttleArchive===selected.id ? <div className="archive-confirm"><strong>{language==='ar'?'تأكيد أرشفة الجهاز؟ سيظل سجل الأعطال والصيانة محفوظًا.':'Archive this unit? Fault and maintenance history will be retained.'}</strong><button className="btn-danger" onClick={()=>archiveShuttle(selected.id)}>{language==='ar'?'تأكيد الأرشفة':'Confirm archive'}</button><button className="btn-secondary" onClick={()=>setPendingShuttleArchive(null)}>{t.cancel}</button></div> : <button className="btn-secondary" type="button" onClick={()=>setPendingShuttleArchive(selected.id)}>{language==='ar'?'أرشفة الجهاز':'Archive device'}</button>}
+                   <button className="btn-danger" type="button" onClick={()=>void deleteShuttle(selected.id)}>{language==='ar'?'حذف نهائي للجهاز':'Permanently delete device'}</button>
+                 </div>
                </>}
                <p className="muted-text">{t.localChanges}</p></>
                : <div className="empty-state">{language==='ar'?'لا توجد أجهزة نشطة. أعد جهازًا من الأرشيف أو سجل جهازًا جديدًا.':'No active units. Restore one from the archive or register a new unit.'}</div>}
@@ -1418,7 +1452,7 @@ function App({ initialData }: { initialData: AppInitialData }) {
             <button className="btn-primary" type="submit">{language==='ar'?'حفظ الجهاز الجديد':'Save new device'}</button>
           </form><p className="muted-text">{t.dataNotice}</p></div>
           <div className="archive-panel"><button className="text-button" type="button" onClick={()=>setShowArchived(value=>!value)}>{showArchived?(language==='ar'?'إخفاء الأرشيف':'Hide archive'):(language==='ar'?'عرض الأجهزة المؤرشفة':'Show archived devices')} · {archivedShuttles.length}</button>
-            {showArchived && archivedShuttles.map(item=><div className="archive-row" key={item.id}><div><strong>{item.id}</strong><small>{item.manufacturer} · {item.model}</small></div><button className="btn-secondary" onClick={()=>restoreShuttle(item.id)}>{language==='ar'?'استعادة':'Restore'}</button></div>)}
+            {showArchived && archivedShuttles.map(item=><div className="archive-row" key={item.id}><div><strong>{item.id}</strong><small>{item.manufacturer} · {item.model}</small></div><div className="record-actions"><button className="btn-secondary" onClick={()=>restoreShuttle(item.id)}>{language==='ar'?'استعادة':'Restore'}</button><button className="btn-danger" onClick={()=>void deleteShuttle(item.id)}>{language==='ar'?'حذف نهائي':'Delete permanently'}</button></div></div>)}
           </div>
           </section>}
 
