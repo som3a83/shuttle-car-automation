@@ -1,6 +1,6 @@
 # Shuttle Car Automation V8.0.0
 
-A bilingual Arabic/English, offline-first Android and web application for recording, inspecting and maintaining industrial shuttle-car fleets. Built with React, TypeScript, Vite, Capacitor 8 and Three.js.
+A bilingual Arabic/English, offline-first personal Android application for recording, inspecting and maintaining industrial shuttle-car fleets. Built with React, TypeScript, Vite and Capacitor 8.
 
 ## Product scope
 
@@ -69,14 +69,14 @@ npm run build
 
 The test suite covers TypeScript, component behavior, battery assignment/lifecycle, fault and work-order lifecycle, data validation, read-only gateway contracts, telemetry provenance, security and storage migration.
 
-## Android build and screen review
+## Personal Android installation and verification
 
 GitHub Actions on `main`:
 - **Build Android Debug APK:** validates the web app, captures Arabic RTL screenshots for all application routes at mobile (390×844), tablet (768×1024) and desktop (1440×900) viewports, builds the Android debug APK, installs and launches it in an Android emulator, verifies the foreground process and crash log, and uploads APK plus evidence.
 - **Package Android Debug APK:** creates a separately downloadable debug APK and SHA-256 checksum.
 - **Package Complete Project Source:** creates a ZIP of the exact `main` commit with SHA-256 and commit metadata.
 
-A debug APK is for controlled evaluation only. It is not a signed Google Play release. Play publishing requires publisher-controlled signing keys, signed AAB verification, physical-device acceptance and truthful Play Console declarations.
+The APK is intended for the owner's personal Android device. Public store publishing, Play Console setup and store signing are out of scope. Emulator success is not a substitute for testing on the owner's actual phone.
 
 ## Repository layout
 
@@ -87,6 +87,6 @@ A debug APK is for controlled evaluation only. It is not a signed Google Play re
 - `docs/RELEASE_ACCEPTANCE.md` — final release and plant-commissioning acceptance gates.
 - `docs/FINAL_HANDOVER.md` — evidence-based handover checklist.
 
-## Release rule
+## Personal-use handover rule
 
-The application version, APK, source ZIP, emulator evidence and screenshots must all refer to the same exact `main` commit SHA. A pending or skipped workflow is not a pass. Physical equipment connectivity is not considered complete until a vendor-specific adapter and approved read-only commissioning are verified on the actual installed shuttle.
+The application version, APK, source ZIP, emulator evidence and screenshots must all refer to the same exact `main` commit SHA. A pending or skipped workflow is not a pass. Physical equipment connectivity remains uncommissioned until a vendor-specific adapter and approved read-only commissioning are verified on the actual installed shuttle.
