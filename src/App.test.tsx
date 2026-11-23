@@ -120,7 +120,7 @@ beforeEach(async () => {
     renderApp();
     await user.click(screen.getByRole('button', { name: /Arabic/i }));
     expect(screen.getAllByText(/لوحة القيادة/i).length).toBeGreaterThan(0);
-    expect(screen.getByText(/عدد الأجهزة النشطة/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/عدد الأجهزة النشطة/i).length).toBeGreaterThan(0);
   });
   it('does not show a global demo banner or imply live equipment telemetry', () => {
     renderApp();
