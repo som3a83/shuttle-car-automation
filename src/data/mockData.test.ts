@@ -10,11 +10,8 @@ describe('Fleet seed data quality and provenance', () => {
     expect(initialShuttles.filter((item) => item.manufacturer === 'ACME')).toHaveLength(1);
   });
 
-  it('records the confirmed installed model families without inventing serials or telemetry', () => {
-    expect(initialShuttles.map((shuttle) => shuttle.model)).toEqual([
-      'ISAT Semi-Automatic', 'ISAT Semi-Automatic', 'ISAT Semi-Automatic',
-      'Pallet Shuttle (Standard)', 'Namla Polar Edition'
-    ]);
+  it('does not invent model names, serials or telemetry that were not supplied', () => {
+    expect(initialShuttles.map((shuttle) => shuttle.model)).toEqual(Array(5).fill('Not recorded'));
     for (const shuttle of initialShuttles) {
       expect(shuttle.serialNumber).toBe('Not recorded');
       expect(shuttle.hardwareVersion).toBe('Not recorded');
