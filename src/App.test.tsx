@@ -98,8 +98,8 @@ beforeEach(async () => {
 
   it('renders the industrial dashboard and current application release label', () => {
     renderApp();
-    expect(screen.getByText(/Total shuttle cars/i)).toBeInTheDocument();
-    expect(screen.getByText(/Running shuttles/i)).toBeInTheDocument();
+    expect(screen.getByText(/Active devices/i)).toBeInTheDocument();
+    expect(screen.getByText(/Batteries charging/i)).toBeInTheDocument();
     expect(screen.getByText(/System communication status/i)).toBeInTheDocument();
 
   });
@@ -120,7 +120,7 @@ beforeEach(async () => {
     renderApp();
     await user.click(screen.getByRole('button', { name: /Arabic/i }));
     expect(screen.getAllByText(/لوحة القيادة/i).length).toBeGreaterThan(0);
-    expect(screen.getByText(/إجمالي عربات النقل/i)).toBeInTheDocument();
+    expect(screen.getByText(/عدد الأجهزة النشطة/i)).toBeInTheDocument();
   });
   it('does not show a global demo banner or imply live equipment telemetry', () => {
     renderApp();
@@ -266,7 +266,7 @@ beforeEach(async () => {
     const user = userEvent.setup();
     renderApp();
     await user.click(screen.getByRole('button', { name: /Reports/i }));
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Operational reports');
+    expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent('Operational reports');
     expect(window.location.hash).toBe('#/reports');
   });
 
@@ -590,7 +590,7 @@ beforeEach(async () => {
   it('opens system settings directly from the fixed workspace controls', async () => {
     const user = userEvent.setup();
     renderApp();
-    await user.click(screen.getByRole('button', { name: /^Settings$/i }));
+    await user.click(screen.getAllByRole('button', { name: /^Settings$/i })[0]);
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('System Settings');
     expect(screen.getByText(/Backup and restore/i)).toBeInTheDocument();
     expect(screen.getByText(/Privacy & data handling/i)).toBeInTheDocument();
