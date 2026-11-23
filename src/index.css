@@ -1358,3 +1358,20 @@ button,select,input,textarea { touch-action:manipulation; }
 /* Keep legacy success/status tokens out of the visual palette. */
 .metric-icon.green,.pulse-dot,.severity-minor,.corrective-saved,.toast svg,.customization-message,.security-state-pill.is-authenticated,.integrity-indicator.valid,.security-integrity-card>strong { color:var(--copper-2); }
 .metric-icon.green,.pulse-dot,.severity-minor,.corrective-saved,.security-state-pill.is-authenticated,.integrity-indicator.valid { background-color:rgba(213,138,74,.12); }
+
+ 
+/* Personal V8 identity: gear motif only, without shuttle or warehouse rendering. */
+.hero-gear-visual {
+  display: grid;
+  place-items: center;
+  min-height: 300px;
+  padding: 28px;
+  background: radial-gradient(circle at 50% 42%, rgba(213,138,74,.16), transparent 58%);
+}
+.hero-gear-symbol {
+  color: #e59a55;
+  font-size: clamp(128px, 19vw, 220px);
+  line-height: 1;
+  text-shadow: 0 12px 44px rgba(213,138,74,.22), 0 2px 0 #6f3c22;
+  filter: drop-shadow(0 8px 22px rgba(0,0,0,.42));
+}
