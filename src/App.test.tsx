@@ -55,7 +55,6 @@ function getTestInitialData(): AppInitialData {
     settings: readTestValue('settings', defaultSettings),
     sidebarCollapsed: readTestValue('sidebarCollapsed', false),
     storageIssues: readOperationalStorageIssues(window.localStorage),
-    dailyReports: readTestValue('dailyReports', []),
     shifts: readTestValue('shifts', [])
   };
 }
@@ -70,7 +69,7 @@ function renderApp(overrides: Partial<AppInitialData> = {}) {
   return render(<App initialData={{ ...getTestInitialData(), ...overrides }} />);
 }
 
-describe('Shuttle Car Automation V10', () => {
+describe('Shuttle Car Automation V8', () => {
   afterEach(async () => {
   await flushApplicationPersistence();
   window.localStorage.clear();
