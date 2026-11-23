@@ -58,9 +58,9 @@ export default function LiveGatewayPanel({ language }: Props) {
 
   const label = (key: string) => {
     const dictionary: Record<string, [string, string]> = {
-      title: ['بوابة الاتصال الصناعي المباشر', 'Live industrial gateway'],
-      subtitle: ['اتصال قراءة فقط عبر بوابة OT معتمدة. بيانات الدخول تبقى في ذاكرة الشاشة ولا تُحفظ على الهاتف.', 'Read-only connection through an approved OT gateway. Credentials stay in this screen memory and are not saved on the device.'],
-      url: ['عنوان البوابة الآمن (HTTPS)', 'Secure gateway URL (HTTPS)'],
+      title: ['اتصال Wi-Fi / LAN عبر بوابة صناعية', 'Wi-Fi / LAN industrial gateway'],
+      subtitle: ['اتصل ببوابة الشاتل على شبكة Wi-Fi المحلية باستخدام عنوان IP أو اسم الشبكة. يلزم Gateway معتمد يدعم HTTPS وواجهة القراءة فقط؛ لا يتم فحص الشبكة تلقائيًا.', 'Connect to a shuttle gateway on the local Wi-Fi/LAN using its IP address or hostname. An approved HTTPS read-only gateway is required; the app does not scan the network.'],
+      url: ['عنوان بوابة Wi-Fi (HTTPS)', 'Wi-Fi gateway address (HTTPS)'],
       token: ['رمز القراءة', 'Read token'],
       connect: ['اختبار الاتصال وقراءة البيانات', 'Test connection & read telemetry'],
       checking: ['جارٍ الاتصال...', 'Connecting...'],
@@ -88,14 +88,14 @@ export default function LiveGatewayPanel({ language }: Props) {
   return <section className="gateway-panel" aria-labelledby="gateway-panel-title">
     <div className="gateway-panel-head">
       <div>
-        <span className="gateway-eyebrow">OT EDGE / READ-ONLY TELEMETRY</span>
+        <span className="gateway-eyebrow">WI-FI / LAN · OT EDGE · READ-ONLY TELEMETRY</span>
         <h2 id="gateway-panel-title">{label('title')}</h2>
         <p>{label('subtitle')}</p>
       </div>
       <span className="gateway-readonly">{label('readOnly')}</span>
     </div>
     <div className="gateway-connect-form">
-      <label><span>{label('url')}</span><input value={url} onChange={(event) => { setUrl(event.target.value); setStatus(null); setSamples({}); setLastChecked(null); setError(""); }} placeholder="https://ot-gateway.example" inputMode="url" autoComplete="url"/></label>
+      <label><span>{label('url')}</span><input value={url} onChange={(event) => { setUrl(event.target.value); setStatus(null); setSamples({}); setLastChecked(null); setError(""); }} placeholder="https://192.168.1.20" inputMode="url" autoComplete="url"/></label>
       <label><span>{label('token')}</span><input type="password" value={token} onChange={(event) => { setToken(event.target.value); setStatus(null); setSamples({}); setLastChecked(null); setError(""); }} placeholder={ar ? 'يُدخل يدويًا ولا يُحفظ' : 'Entered manually; never persisted'} autoComplete="off"/></label>
       <button type="button" className="gateway-connect-button" onClick={() => void refresh()} disabled={busy}>{busy ? label('checking') : label('connect')}</button>
       <label className="gateway-auto-toggle"><input type="checkbox" checked={autoRefresh} onChange={(event) => setAutoRefresh(event.target.checked)}/><span>{label('auto')}</span></label>
