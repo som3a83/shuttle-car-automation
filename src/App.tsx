@@ -145,7 +145,7 @@ async function readOperationalValue<T>(key: StorageKey, fallback: T): Promise<T>
   const stored = await get<T>(key);
   const value = stored ?? fallback;
 
-  // Preserve the established V7 normalization for unverified shuttle placeholders.
+  // Preserve legacy placeholder normalization for unverified shuttle placeholders.
   if (key === 'operational.shuttles' && Array.isArray(value)) {
     return value.map((entry) => {
       if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return entry;
@@ -955,32 +955,6 @@ function App({ initialData }: { initialData: AppInitialData }) {
       record.severity === 'Critical' || record.severity === 'Major' ? 'error' : 'warning'
     );
     formElement.reset(); showToast(t.done);
-  };
-
-  const addFaultFromDiagnostic = async (draft: { shuttleId: string; title: string; severity: Fault['severity']; description: string; probableCauses: string[]; diagnosticProcedure: string }) => {
-    if (!await authorize('faults.create', 'fault', 'new')) return;
-    const record: Fault = {
-      id: 'FLT-' + Date.now(),
-      shuttleId: draft.shuttleId,
-      title: draft.title,
-      severity: draft.severity,
-      status: 'Open',
-      timestamp: new Date().toISOString(),
-      description: draft.description,
-      probableCauses: draft.probableCauses,
-      diagnosticProcedure: draft.diagnosticProcedure,
-      correctiveAction: '',
-      assignedTechnician: currentUser.name || 'Not assigned'
-    };
-    setFaults(prev => [record, ...prev]);
-    recordAudit('FAULT_CREATED_FROM_DIAGNOSTIC', 'fault', record.id, record.title);
-    pushNotification(
-      language === 'ar' ? 'تم إنشاء بلاغ من مساحة الفحص' : 'Diagnostic inspection registered as a fault report',
-      `${record.id} · ${record.shuttleId} · ${record.title} · ${record.severity}`,
-      record.severity === 'Critical' || record.severity === 'Major' ? 'error' : 'warning'
-    );
-    showToast(language === 'ar' ? 'تم تسجيل البلاغ في سجل الأعطال' : 'Fault report added to the fault register');
-    go('faults');
   };
 
   const addJob = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -1832,7 +1806,7 @@ function App({ initialData }: { initialData: AppInitialData }) {
             {key:'communicationAlerts' as const,en:'Communication alerts',ar:'تنبيهات الاتصال',descEn:'Notify when a shuttle communication record changes.',descAr:'تنبيه عند تغيير سجل اتصال عربة الشاتل.'}
           ]).map(item=><label className="setting-toggle" key={item.key}><span><strong>{language==='ar'?item.ar:item.en}</strong><small>{language==='ar'?item.descAr:item.descEn}</small></span><input type="checkbox" checked={settings[item.key]} onChange={event=>setSettings(prev=>({...prev,[item.key]:event.target.checked}))}/></label>)}
         </div>
-        <div className="surface-card"><h3>{language==='ar'?'النسخ الاحتياطي واستعادة البيانات':'Backup and restore'}</h3><p className="muted-text">{language==='ar'?'صدّر كل سجلات الأجهزة والبطاريات والأعطال والصيانة والتقارير. يمكن استيراد ملف JSON صادر من التطبيق.':'Export shuttle, battery, fault, maintenance and daily report data. Restore a JSON backup previously exported by this app.'}</p><div className="settings-action-row"><button className="btn-primary" onClick={exportBackup}>{t.backup}</button><label className="file-import-button">{language==='ar'?'استعادة من ملف JSON':'Restore from JSON'}<input aria-label={language==='ar'?'استعادة نسخة احتياطية':'Restore backup'} type="file" accept="application/json,.json" onChange={importBackup}/></label></div></div>
+        <div className="surface-card"><h3>{language==='ar'?'النسخ الاحتياطي واستعادة البيانات':'Backup and restore'}</h3><p className="muted-text">{language==='ar'?'احفظ سجلات الأجهزة والبطاريات والأعطال والصيانة والورديات في نسخة JSON محلية. يمكن استيراد نسخة صادرة من التطبيق.':'Export local shuttle, battery, fault, maintenance and shift records as JSON. Restore a JSON backup previously exported by this app.'}</p><div className="settings-action-row"><button className="btn-primary" onClick={exportBackup}>{t.backup}</button><label className="file-import-button">{language==='ar'?'استعادة من ملف JSON':'Restore from JSON'}<input aria-label={language==='ar'?'استعادة نسخة احتياطية':'Restore backup'} type="file" accept="application/json,.json" onChange={importBackup}/></label></div></div>
         <div className="surface-card"><h3>{language==='ar'?'حالة قاعدة البيانات المحلية':'Local data store'}</h3><div className="spec-list"><Detail label={language==='ar'?'أجهزة نشطة':'Active shuttles'} value={activeShuttles.length}/><Detail label={language==='ar'?'أجهزة مؤرشفة':'Archived shuttles'} value={archivedShuttles.length}/><Detail label={language==='ar'?'بطاريات نشطة':'Active batteries'} value={activeBatteries.length}/><Detail label={language==='ar'?'مكان التخزين':'Storage'} value="This device · Local browser storage"/></div><p className="muted-text">{language==='ar'?'لا توجد مزامنة سحابية أو قاعدة بيانات مشتركة حاليًا. احتفظ بنسخة احتياطية على وسيط خارجي.':'There is no cloud sync or shared database yet. Keep a backup on a separate storage location.'}</p></div>
         <div className="surface-card privacy-policy-card"><h3>{language==='ar'?'الخصوصية والتعامل مع البيانات':'Privacy & data handling'}</h3><p>{language==='ar'?'يعمل الإصدار الحالي محليًا على هذا الجهاز. لا توجد حسابات أو مزامنة سحابية أو خادم للتطبيق، ولا يتم إرسال سجلات المعدات أو أسماء المشغلين أو الملاحظات إلى ناشر التطبيق.':'Local accounts and operational records are stored on this device. There is no cloud sync or centralized identity backend, and equipment records, operator names and notes are not sent to the publisher.'}</p><p>{language==='ar'?'قد تتضمن السجلات أسماء العاملين وبيانات تشغيلية. التخزين المحلي ليس تشفيرًا متخصصًا؛ لا تدخل كلمات مرور أو مفاتيح أو أسرارًا حساسة. ملفات النسخ الاحتياطي والتصدير تكون تحت سيطرتك وقد تحتوي على البيانات نفسها.':'Operational records and account metadata are stored locally. Passwords are stored as PBKDF2-SHA-256 derived hashes, but browser storage is not a server security boundary or full-disk encryption. Do not store production credentials or secrets. Exported backups remain under your control and may contain operational information.'}</p><p>{language==='ar'?'لحذف البيانات المحلية استخدم إعدادات Android لمسح بيانات التطبيق. زر إعادة الضبط هنا يعيد بيانات البداية ولا يضمن المسح الآمن.':'To remove local data, clear this app’s storage in Android settings. The reset button restores starter records and does not perform secure erasure.'}</p><p><a href="https://github.com/som3a83/shuttle-car-automation/blob/main/PRIVACY_POLICY.md" target="_blank" rel="noreferrer">{language==='ar'?'قراءة سياسة الخصوصية الكاملة':'Read the full privacy policy'}</a> · <a href="https://github.com/som3a83/shuttle-car-automation/blob/main/TERMS_OF_USE.md" target="_blank" rel="noreferrer">{language==='ar'?'شروط الاستخدام':'Terms of use'}</a></p></div>
         <div className="surface-card danger-settings"><h3>{language==='ar'?'إعادة بيانات التطبيق':'Reset local records'}</h3><p className="muted-text">{language==='ar'?'إعادة السجلات المحلية إلى بيانات البداية. لا يمكن التراجع عن ذلك دون نسخة احتياطية.':'Restore local records to the original seed data. This cannot be undone without a backup.'}</p><button className="btn-danger" onClick={resetLocalData}>{language==='ar'?'إعادة بيانات البداية':'Reset local records'}</button></div>
