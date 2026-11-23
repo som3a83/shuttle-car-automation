@@ -23,9 +23,6 @@ import { loadCustomizationAsync, validateCustomization, type CustomizationConfig
 import { archiveBatteryAndDetach, assignBatteryToShuttle, restoreBatteryRecord } from './data/batteryLifecycle';
 import { validateOperationalBackup } from './data/backupValidation';
 import { archiveCompletedWorkOrder, archiveFaultRecord, restoreFaultRecord, restoreWorkOrder } from './data/recordLifecycle';
-import { buildDailyReportSheets, buildRegisterSheets, downloadXlsx } from './data/excelExport';
-import { buildDailyReportCsv } from './data/dailyReportCsv';
-import { sanitizeSpreadsheetCell } from './data/csvSafety';
 import { appendAuditRecordAsync, readAllAuditRecordsAsync, verifyAuditLedgerAsync } from './security/auditLog';
 import { canAccessRoute, canPerformAction, type Permission } from './security/permissions';
 import { listLocalAccountsAsync, readLocalSessionAsync } from './security/localAuth';
@@ -43,7 +40,6 @@ import type {
   Shuttle,
   ShuttleStatus,
   Theme,
-  DailyReportSnapshot,
   ShiftRecord
 } from './types';
 
@@ -86,9 +82,7 @@ const copy = {
     faultTitle: 'Fault title', description: 'Observed symptom', severity: 'Severity', technician: 'Assigned technician', probableCause: 'Possible cause (unverified)', procedure: 'Inspection / test procedure', corrective: 'Document corrective action', registerFault: 'Register fault', saveAction: 'Save corrective action', investigate: 'Start investigation', resolve: 'Resolve fault',
     maintenance: 'Maintenance work orders', maintenanceSub: 'Plan inspections and record completed maintenance.', workTitle: 'Work order title', date: 'Scheduled date', createWork: 'Create work order', startWork: 'Start job', completeWork: 'Complete job',
     connectionSub: 'Protocol readiness is shown as architecture only. No endpoint, PLC address or vendor API has been configured.',
-    aiSub: 'Engineering support checklist. AI service is not connected, so no diagnosis is generated automatically.',
-    reportsSub: 'Export the current local register for review. Demonstration and unverified fields remain clearly marked.',
-    exportCsv: 'Export CSV', backup: 'Download JSON backup', print: 'Print / Save PDF',
+    backup: 'Download JSON backup',
     noNotifications: 'No new local notifications.', noUsers: 'Local device identity only; shared deployments require a trusted backend.',
     language: 'Language', theme: 'Appearance', dark: 'Dark', light: 'Light', role: 'Preview role', reset: 'Reset preview',
     statusReady: 'Ready', statusRunning: 'Running', statusIdle: 'Idle', statusCharging: 'Charging', statusMaintenance: 'Maintenance', statusFault: 'Fault', statusDisconnected: 'Disconnected', statusUnknown: 'Unknown',
@@ -120,9 +114,7 @@ const copy = {
     faultTitle: 'عنوان العطل', description: 'العَرَض المشاهد', severity: 'الأهمية', technician: 'الفني المسؤول', probableCause: 'سبب محتمل (غير مؤكد)', procedure: 'خطوات الفحص والاختبار', corrective: 'الإجراء التصحيحي المنفذ', registerFault: 'تسجيل العطل', saveAction: 'حفظ الإجراء', investigate: 'بدء الفحص', resolve: 'إغلاق العطل',
     maintenance: 'أوامر الصيانة', maintenanceSub: 'جدولة الفحوصات وتوثيق الصيانة المنفذة.', workTitle: 'عنوان أمر الصيانة', date: 'موعد التنفيذ', createWork: 'إنشاء أمر صيانة', startWork: 'بدء المهمة', completeWork: 'إتمام المهمة',
     connectionSub: 'حالة البروتوكولات تمثل تصورًا معماريًا فقط. لم يتم إعداد عنوان جهاز أو واجهة مصنع أو اتصال PLC.',
-    aiSub: 'قائمة مساعدة فنية. خدمة الذكاء الاصطناعي غير مربوطة، لذلك لا يتم توليد تشخيص تلقائي.',
-    reportsSub: 'تصدير السجلات المحلية للمراجعة مع توضيح البيانات التجريبية وغير المؤكدة.',
-    exportCsv: 'تصدير CSV', backup: 'تنزيل نسخة JSON', print: 'طباعة / حفظ PDF',
+    backup: 'تنزيل نسخة JSON',
     noNotifications: 'لا توجد إشعارات محلية جديدة.', noUsers: 'هوية محلية على الجهاز فقط؛ التشغيل المشترك يتطلب خادم هوية وصلاحيات.',
     language: 'اللغة', theme: 'المظهر', dark: 'داكن', light: 'فاتح', role: 'معاينة الدور', reset: 'إعادة المعاينة',
     statusReady: 'جاهز', statusRunning: 'يعمل', statusIdle: 'متوقف', statusCharging: 'يشحن', statusMaintenance: 'صيانة', statusFault: 'عطل', statusDisconnected: 'غير متصل', statusUnknown: 'غير معروف',
@@ -260,7 +252,7 @@ export async function hydrateApplicationState(): Promise<AppInitialData> {
 
   const [
     language, theme, shuttles, batteries, faults, jobs, connections, notifications,
-    settings, sidebarCollapsed, dailyReports, shifts
+    settings, sidebarCollapsed, shifts
   ] = await Promise.all([
     readOperationalValue<Language>('operational.language', defaultSettings.language),
     readOperationalValue<Theme>('operational.theme', 'dark'),
@@ -272,7 +264,6 @@ export async function hydrateApplicationState(): Promise<AppInitialData> {
     readOperationalValue('operational.notifications', initialNotifications),
     readOperationalValue('operational.settings', defaultSettings),
     readOperationalValue('operational.sidebarCollapsed', false),
-    readOperationalValue('operational.dailyReports', [] as DailyReportSnapshot[]),
     readOperationalValue('operational.shifts', [] as ShiftRecord[])
   ]);
 
@@ -285,7 +276,7 @@ export async function hydrateApplicationState(): Promise<AppInitialData> {
     faults: normalizedLegacyState.faults,
     jobs, connections, notifications, settings, sidebarCollapsed,
     storageIssues: readOperationalStorageIssues(),
-    dailyReports, shifts
+    shifts
   };
 }
 
@@ -456,7 +447,6 @@ function App({ initialData }: { initialData: AppInitialData }) {
   const [pendingShuttleArchive, setPendingShuttleArchive] = useState<string | null>(null);
   const [pendingBatteryArchive, setPendingBatteryArchive] = useState<string | null>(null);
   const [showArchived, setShowArchived] = useState(false);
-  const [dailyReports, setDailyReports] = useState<DailyReportSnapshot[]>(initialData.dailyReports);
   const [shifts, setShifts] = useState<ShiftRecord[]>(initialData.shifts);
   const routeStackRef = useRef<Tab[]>([tabFromLocation()]);
 
@@ -520,7 +510,6 @@ function App({ initialData }: { initialData: AppInitialData }) {
       { storageKey: 'operational.connections', collection: 'connections', value: connections },
       { storageKey: 'operational.notifications', collection: 'notifications', value: notifications },
       { storageKey: 'operational.settings', collection: 'settings', value: settings },
-      { storageKey: 'operational.dailyReports', collection: 'dailyReports', value: dailyReports },
       { storageKey: 'operational.shifts', collection: 'shifts', value: shifts }
     ];
 
@@ -544,7 +533,7 @@ function App({ initialData }: { initialData: AppInitialData }) {
     appPersistenceQueue = operation.catch(() => undefined);
 
     return () => { active = false; };
-  }, [language, theme, sidebarCollapsed, shuttles, batteries, faults, jobs, connections, notifications, settings, dailyReports, shifts]);
+  }, [language, theme, sidebarCollapsed, shuttles, batteries, faults, jobs, connections, notifications, settings, shifts]);
 
   const metrics = {
     total: activeShuttles.length,
@@ -932,58 +921,6 @@ function App({ initialData }: { initialData: AppInitialData }) {
     pushNotification(language === 'ar' ? 'تمت استعادة بطارية' : 'Battery restored', id);
   };
 
-  const generateDailyReport = async () => {
-    if (!await authorize('reports.export', 'report', 'daily')) return;
-    const now = new Date();
-    const reportDate = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
-    const report: DailyReportSnapshot = {
-      id: 'RPT-' + now.getTime(),
-      reportDate,
-      generatedAt: now.toISOString(),
-      shuttleCount: activeShuttles.length,
-      runningCount: activeShuttles.filter(item => item.status === 'Running').length,
-      readyCount: activeShuttles.filter(item => item.status === 'Ready').length,
-      disconnectedCount: activeShuttles.filter(item => item.connectivity !== 'REAL').length,
-      openFaultCount: activeFaults.filter(item => item.status !== 'Resolved').length,
-      openMaintenanceCount: activeJobs.filter(item => item.status !== 'Completed').length,
-      batteryCount: activeBatteries.length,
-      faultedBatteryCount: activeBatteries.filter(item => item.status === 'Fault').length,
-      verifiedTelemetryCount: activeShuttles.filter(item => item.connectivity === 'REAL').length + activeBatteries.filter(item => item.connectionMode === 'REAL').length,
-      activeShift: (() => { const current = shifts.find(item => !item.endedAt); return current ? { id: current.id, shiftType: current.shiftType, supervisor: current.supervisor, startedAt: current.startedAt } : null; })(),
-      shuttles: activeShuttles.map(item => ({ id: item.id, manufacturer: item.manufacturer, status: item.status, connectivity: item.connectivity, warehouseZone: item.warehouseZone })),
-      batteries: activeBatteries.map(item => ({ id: item.id, manufacturer: item.manufacturer, status: item.status, assignment: item.assignment, soc: item.soc, connectionMode: item.connectionMode, movementHistory: (item.movementHistory || []).map(move => ({ ...move })) }))
-    };
-    setDailyReports(prev => [report, ...prev].slice(0, 90));
-    recordAudit('DAILY_REPORT_GENERATED', 'report', report.id, report.reportDate);
-    pushNotification(language === 'ar' ? 'تم إصدار التقرير اليومي' : 'Daily report generated', `${report.id} · ${report.reportDate}`);
-    showToast(language === 'ar' ? 'تم حفظ التقرير اليومي' : 'Daily report saved locally');
-  };
-
-  const deleteDailyReport = async (id: string) => {
-    if (!await authorize('reports.export', 'report', id)) return;
-    const report = dailyReports.find(item => item.id === id);
-    if (!report) return;
-    const confirmed = window.confirm(language === 'ar'
-      ? 'حذف لقطة التقرير المحلية نهائيًا؟ لا يمكن استعادتها بعد الحذف.'
-      : 'Permanently delete this local report snapshot? This action cannot be undone.');
-    if (!confirmed) return;
-    setDailyReports(prev => prev.filter(item => item.id !== id));
-    recordAudit('DAILY_REPORT_DELETED', 'report', id);
-    pushNotification(language === 'ar' ? 'تم حذف لقطة تقرير' : 'Report snapshot deleted', id, 'warning');
-    showToast(language === 'ar' ? 'تم حذف التقرير المحلي' : 'Local report snapshot deleted');
-  };
-
-  const downloadDailyReport = async (report: DailyReportSnapshot) => {
-    if (!await authorize('reports.export', 'report', report.id)) return;
-    const csv = buildDailyReportCsv(report);
-    const url = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }));
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `shuttle-daily-report-${report.reportDate}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
-  };
-
   const assignSelectedBattery = async (shuttleId: string) => {
     if (!await authorize('batteries.manage', 'battery', selectedBattery?.id || 'selected')) return;
     if (!selectedBattery) return;
@@ -1284,44 +1221,9 @@ function App({ initialData }: { initialData: AppInitialData }) {
     return t[key[status] as keyof typeof copy.en];
   };
 
-  const exportCsv = async () => {
-    if (!await authorize('reports.export', 'report', 'register-csv')) return;
-    const rows = [['Type','ID','Manufacturer','State','Connectivity','Notes'],
-      ...shuttles.map(s => ['Shuttle',s.id,s.manufacturer,s.status,s.connectivity,s.notes]),
-      ...batteries.map(b => ['Battery',b.id,b.manufacturer,b.status,b.connectionMode,b.notes]),
-      ...faults.map(f => ['Fault',f.id,f.shuttleId,f.status,f.severity,f.description]),
-      ...jobs.map(j => ['Maintenance',j.id,j.shuttleId,j.status,j.type,j.notes]),
-      ...connections.map(endpoint => ['Connection',endpoint.name,endpoint.protocol,endpoint.mode,'Local register only',endpoint.notes])];
-    const csv = rows.map(row => row.map(value => {
-      const safeValue = sanitizeSpreadsheetCell(value);
-      return '"' + String(safeValue ?? '').replace(/"/g,'""') + '"';
-    }).join(',')).join('\r\n');
-    const url = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }));
-    const link = document.createElement('a'); link.href = url; link.download = 'shuttle-register.csv'; link.click(); URL.revokeObjectURL(url);
-  };
-  const exportFullRegisterXlsx = async () => {
-    if (!await authorize('reports.export', 'report', 'register-xlsx')) return;
-    try {
-      const sheets = buildRegisterSheets({ shuttles, batteries, faults, jobs, connections, shifts, dailyReports, notifications }, language);
-      await downloadXlsx(sheets, 'shuttle-operations-register.xlsx');
-      showToast(language === 'ar' ? 'تم تصدير سجل التشغيل بصيغة Excel' : 'Operational register exported as Excel');
-    } catch {
-      showToast(language === 'ar' ? 'تعذر إنشاء ملف Excel' : 'Could not create the Excel workbook');
-    }
-  };
-  const exportDailyReportXlsx = async (report: DailyReportSnapshot) => {
-    if (!await authorize('reports.export', 'report', report.id)) return;
-    try {
-      await downloadXlsx(buildDailyReportSheets(report, language), `shuttle-daily-report-${report.reportDate}.xlsx`);
-      showToast(language === 'ar' ? 'تم تصدير التقرير اليومي بصيغة Excel' : 'Daily report exported as Excel');
-    } catch {
-      showToast(language === 'ar' ? 'تعذر إنشاء ملف Excel' : 'Could not create the Excel workbook');
-    }
-  };
-
   const exportBackup = async () => {
     if (!await authorize('data.backup', 'backup', 'operational-data')) return;
-    const data = { schemaVersion: 11, exportedAt: new Date().toISOString(), warning: 'Local demo/record data only. Not a live PLC telemetry export.', shuttles, batteries, faults, jobs, connections, notifications, settings, dailyReports, shifts };
+    const data = { schemaVersion: 11, exportedAt: new Date().toISOString(), warning: 'Local demo/record data only. Not a live PLC telemetry export.', shuttles, batteries, faults, jobs, connections, notifications, settings, shifts };
     const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
     const link = document.createElement('a'); link.href = url; link.download = 'shuttle-local-backup.json'; link.click(); URL.revokeObjectURL(url);
   };
@@ -1348,7 +1250,6 @@ function App({ initialData }: { initialData: AppInitialData }) {
         setJobs(data.jobs);
         setConnections(data.connections.length ? data.connections : initialConnections);
         setNotifications(data.notifications);
-        setDailyReports(data.dailyReports);
         setShifts(data.shifts);
         recordAudit('BACKUP_RESTORED', 'backup', file.name, `Schema ${data.schemaVersion ?? 'legacy'}`);
         if (data.settings) setSettings(data.settings);
@@ -1921,7 +1822,7 @@ function App({ initialData }: { initialData: AppInitialData }) {
         <SecurityCenter language={language} currentUser={currentUser} onSessionChange={user => setCurrentUser(user || { id: 'local-guest', name: 'Local guest', role: 'Viewer', email: '', isAuthenticated: false })} beforeStorageOperation={flushApplicationPersistence} onStorageLockChange={setStorageMigrationLocked} onStorageMigrationComplete={() => setStorageMigrationComplete(true)}/>
       </section>}
 
-      {activeTab === 'settings' && <section className="page-content"><PageIntro eyebrow="APPLICATION / PREFERENCES" title={language==='ar'?'إعدادات النظام':'System settings'} subtitle={language==='ar'?'تخصيص العرض واللغة والتنبيهات المحلية وتصدير البيانات.':'Configure appearance, local alert preferences and local data exports.'}/><div className="settings-grid">
+      {activeTab === 'settings' && <section className="page-content"><PageIntro eyebrow="APPLICATION / PREFERENCES" title={language==='ar'?'إعدادات النظام':'System settings'} subtitle={language==='ar'?'تخصيص العرض واللغة والتنبيهات المحلية والنسخ الاحتياطي.':'Configure appearance, local alert preferences and JSON backup.'}/><div className="settings-grid">
         <div className="surface-card"><h3>{t.language}</h3><div className="choice-row"><button className={language==='en'?'selected':''} onClick={()=>setLanguage('en')}>English</button><button className={language==='ar'?'selected':''} onClick={()=>setLanguage('ar')}>العربية</button></div></div>
         <div className="surface-card"><h3>{t.theme}</h3><div className="choice-row"><button className={theme==='dark'?'selected':''} onClick={()=>setTheme('dark')}>{t.dark}</button><button className={theme==='light'?'selected':''} onClick={()=>setTheme('light')}>{t.light}</button></div></div>
         <div className="surface-card"><h3>{language==='ar'?'هوية المستخدم الحالي':'Current identity'}</h3>{currentUser.isAuthenticated ? <><strong>{currentUser.name}</strong><p className="muted-text">{currentUser.email} · {currentUser.role}</p><p className="muted-text">{language==='ar'?'الدور مثبت من حساب الجهاز المحلي. لإدارة الحسابات افتح المستخدمون والأمان.':'Role is derived from the local device account. Open Users & Security to manage accounts.'}</p></> : <p className="muted-text">{language==='ar'?'سجّل الدخول من مركز المستخدمين والأمان للوصول إلى إعدادات المسؤول.':'Sign in through Users & Security to access administrator settings.'}</p>}</div>
@@ -1934,12 +1835,12 @@ function App({ initialData }: { initialData: AppInitialData }) {
           ]).map(item=><label className="setting-toggle" key={item.key}><span><strong>{language==='ar'?item.ar:item.en}</strong><small>{language==='ar'?item.descAr:item.descEn}</small></span><input type="checkbox" checked={settings[item.key]} onChange={event=>setSettings(prev=>({...prev,[item.key]:event.target.checked}))}/></label>)}
         </div>
         <div className="surface-card"><h3>{language==='ar'?'النسخ الاحتياطي واستعادة البيانات':'Backup and restore'}</h3><p className="muted-text">{language==='ar'?'صدّر كل سجلات الأجهزة والبطاريات والأعطال والصيانة والتقارير. يمكن استيراد ملف JSON صادر من التطبيق.':'Export shuttle, battery, fault, maintenance and daily report data. Restore a JSON backup previously exported by this app.'}</p><div className="settings-action-row"><button className="btn-primary" onClick={exportBackup}>{t.backup}</button><label className="file-import-button">{language==='ar'?'استعادة من ملف JSON':'Restore from JSON'}<input aria-label={language==='ar'?'استعادة نسخة احتياطية':'Restore backup'} type="file" accept="application/json,.json" onChange={importBackup}/></label></div></div>
-        <div className="surface-card"><h3>{language==='ar'?'حالة قاعدة البيانات المحلية':'Local data store'}</h3><div className="spec-list"><Detail label={language==='ar'?'أجهزة نشطة':'Active shuttles'} value={activeShuttles.length}/><Detail label={language==='ar'?'أجهزة مؤرشفة':'Archived shuttles'} value={archivedShuttles.length}/><Detail label={language==='ar'?'بطاريات نشطة':'Active batteries'} value={activeBatteries.length}/><Detail label={language==='ar'?'تقارير يومية محفوظة':'Saved daily reports'} value={dailyReports.length}/><Detail label={language==='ar'?'مكان التخزين':'Storage'} value="This device · Local browser storage"/></div><p className="muted-text">{language==='ar'?'لا توجد مزامنة سحابية أو قاعدة بيانات مشتركة حاليًا. احتفظ بنسخة احتياطية على وسيط خارجي.':'There is no cloud sync or shared database yet. Keep a backup on a separate storage location.'}</p></div>
+        <div className="surface-card"><h3>{language==='ar'?'حالة قاعدة البيانات المحلية':'Local data store'}</h3><div className="spec-list"><Detail label={language==='ar'?'أجهزة نشطة':'Active shuttles'} value={activeShuttles.length}/><Detail label={language==='ar'?'أجهزة مؤرشفة':'Archived shuttles'} value={archivedShuttles.length}/><Detail label={language==='ar'?'بطاريات نشطة':'Active batteries'} value={activeBatteries.length}/><Detail label={language==='ar'?'مكان التخزين':'Storage'} value="This device · Local browser storage"/></div><p className="muted-text">{language==='ar'?'لا توجد مزامنة سحابية أو قاعدة بيانات مشتركة حاليًا. احتفظ بنسخة احتياطية على وسيط خارجي.':'There is no cloud sync or shared database yet. Keep a backup on a separate storage location.'}</p></div>
         <div className="surface-card privacy-policy-card"><h3>{language==='ar'?'الخصوصية والتعامل مع البيانات':'Privacy & data handling'}</h3><p>{language==='ar'?'يعمل الإصدار الحالي محليًا على هذا الجهاز. لا توجد حسابات أو مزامنة سحابية أو خادم للتطبيق، ولا يتم إرسال سجلات المعدات أو أسماء المشغلين أو الملاحظات إلى ناشر التطبيق.':'Local accounts and operational records are stored on this device. There is no cloud sync or centralized identity backend, and equipment records, operator names and notes are not sent to the publisher.'}</p><p>{language==='ar'?'قد تتضمن السجلات أسماء العاملين وبيانات تشغيلية. التخزين المحلي ليس تشفيرًا متخصصًا؛ لا تدخل كلمات مرور أو مفاتيح أو أسرارًا حساسة. ملفات النسخ الاحتياطي والتصدير تكون تحت سيطرتك وقد تحتوي على البيانات نفسها.':'Operational records and account metadata are stored locally. Passwords are stored as PBKDF2-SHA-256 derived hashes, but browser storage is not a server security boundary or full-disk encryption. Do not store production credentials or secrets. Exported backups remain under your control and may contain operational information.'}</p><p>{language==='ar'?'لحذف البيانات المحلية استخدم إعدادات Android لمسح بيانات التطبيق. زر إعادة الضبط هنا يعيد بيانات البداية ولا يضمن المسح الآمن.':'To remove local data, clear this app’s storage in Android settings. The reset button restores starter records and does not perform secure erasure.'}</p><p><a href="https://github.com/som3a83/shuttle-car-automation/blob/main/PRIVACY_POLICY.md" target="_blank" rel="noreferrer">{language==='ar'?'قراءة سياسة الخصوصية الكاملة':'Read the full privacy policy'}</a> · <a href="https://github.com/som3a83/shuttle-car-automation/blob/main/TERMS_OF_USE.md" target="_blank" rel="noreferrer">{language==='ar'?'شروط الاستخدام':'Terms of use'}</a></p></div>
         <div className="surface-card danger-settings"><h3>{language==='ar'?'إعادة بيانات التطبيق':'Reset local records'}</h3><p className="muted-text">{language==='ar'?'إعادة السجلات المحلية إلى بيانات البداية. لا يمكن التراجع عن ذلك دون نسخة احتياطية.':'Restore local records to the original seed data. This cannot be undone without a backup.'}</p><button className="btn-danger" onClick={resetLocalData}>{language==='ar'?'إعادة بيانات البداية':'Reset local records'}</button></div>
       </div></section>}
 
-      <footer className="app-footer"><span>SHUTTLE CAR AUTOMATION · V7.1 CAD</span><span>{t.dataNotice}</span></footer>
+      <footer className="app-footer"><span>SHUTTLE CAR AUTOMATION · V8.0.0</span><span>{t.dataNotice}</span></footer>
     </main>
     {mobileNav && <button className="nav-scrim" onClick={()=>setMobileNav(false)} aria-label="Close navigation overlay"/>}
     {toast && <div className="toast"><Icon name="check"/>{toast}</div>}
