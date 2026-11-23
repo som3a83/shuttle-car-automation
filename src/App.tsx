@@ -1777,7 +1777,7 @@ function App({ initialData }: { initialData: AppInitialData }) {
           <div className="card-head"><div><span className="eyebrow">REGISTER INTERFACE / NEW</span><h3>{language==='ar'?'إضافة سجل اتصال':'Add connection record'}</h3></div><Icon name="plus" size={20}/></div>
           <form className="form-grid" onSubmit={addConnection}>
             <label>{language==='ar'?'اسم نقطة الاتصال':'Connection name'}<input name="name" required placeholder="Approved vendor gateway / PLC interface"/></label>
-            <label>{language==='ar'?'وسيلة الاتصال':'Transport'}<select name="transport" defaultValue="ethernet">{CONNECTION_OPTIONS.filter(option=>option.family==='transport').map(option=><option key={option.id} value={option.id}>{language==='ar'?option.nameAr:option.name}</option>)}</select></label>
+            <label>{language==='ar'?'وسيلة الاتصال':'Transport'}<select name="transport" defaultValue="wifi">{CONNECTION_OPTIONS.filter(option=>option.family==='transport').map(option=><option key={option.id} value={option.id}>{language==='ar'?option.nameAr:option.name}</option>)}</select></label>
             <label>{language==='ar'?'البروتوكول':'Protocol'}<select name="protocol" defaultValue="modbus-tcp">{CONNECTION_OPTIONS.filter(option=>option.family==='protocol').map(option=><option key={option.id} value={option.id}>{language==='ar'?option.nameAr:option.name}</option>)}</select></label>
             <label>{t.notes}<input name="notes" placeholder={language==='ar'?'الموديل، الواجهة المعتمدة، مرجع المستند':'Exact model, approved interface and document reference'}/></label>
             <button className="btn-primary" type="submit">{language==='ar'?'حفظ سجل الاتصال':'Save connection record'}</button>
