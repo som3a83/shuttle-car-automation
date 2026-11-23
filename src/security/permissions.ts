@@ -18,7 +18,7 @@ export type Permission =
 
 export type ApplicationRoute =
   | 'hub' | 'dashboard' | 'warehouse' | 'fleet' | 'shifts' | 'engineering' | 'batteries' | 'faults'
-  | 'maintenance' | 'connections' | 'ai' | 'reports' | 'notifications' | 'users' | 'settings';
+  | 'maintenance' | 'connections' | 'notifications' | 'users' | 'settings';
 
 const allPermissions: readonly Permission[] = [
   'dashboard.view', 'fleet.view', 'fleet.manage', 'engineering.view', 'shifts.view', 'shifts.manage',
@@ -65,8 +65,8 @@ const permissionMatrix: Record<Role, readonly Permission[]> = {
 const routePermission: Record<ApplicationRoute, Permission> = {
   hub: 'dashboard.view', dashboard: 'dashboard.view', warehouse: 'dashboard.view', fleet: 'fleet.view', shifts: 'shifts.view',
   engineering: 'engineering.view', batteries: 'batteries.view', faults: 'faults.view',
-  maintenance: 'maintenance.view', connections: 'connections.view', ai: 'ai.view',
-  reports: 'reports.view', notifications: 'notifications.view', users: 'users.view', settings: 'settings.view'
+  maintenance: 'maintenance.view', connections: 'connections.view',
+  notifications: 'notifications.view', users: 'users.view', settings: 'settings.view'
 };
 
 export function can(role: Role, permission: Permission): boolean {
