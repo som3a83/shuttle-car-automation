@@ -25,12 +25,18 @@ if (!fs.existsSync(iconSource) || !fs.existsSync(graphicSource)) {
   throw new Error('Store artwork source SVG files are missing.');
 }
 
+// Capacitor Assets reads assets/icon.png to generate native Android launcher resources.
+const androidIcon = render(iconSource, path.join(root, 'assets', 'icon.png'), 1024, 1024);
+if (androidIcon.width !== 1024 || androidIcon.height !== 1024) {
+  throw new Error('Android launcher source icon must be exactly 1024x1024 pixels.');
+}
+
 const icon512 = render(iconSource, path.join(output, 'icon-512.png'), 512, 512);
 const icon192 = render(iconSource, path.join(root, 'public', 'shuttle-icon-192.png'), 192, 192);
-const graphic = render(graphicSource, path.join(output, 'feature-graphic-1024x500.png'), 1024, 1024);
+const graphic = render(graphicSource, path.join(output, 'feature-graphic-1024x500.png'), 1024, 500);
 if (graphic.width !== 1024 || graphic.height !== 500) {
   throw new Error('Feature graphic must be exactly 1024x500 pixels; got ' + graphic.width + 'x' + graphic.height);
 }
 const icon = render(iconSource, path.join(root, 'public', 'shuttle-icon-512.png'), 512, 512);
 if (icon.width !== 512 || icon.height !== 512) throw new Error('PWA icon must be 512x512.');
-console.log(JSON.stringify({ icon512, icon192, icon512Pwa: icon, featureGraphic: graphic }, null, 2));
+console.log(JSON.stringify({ androidIcon, icon512, icon192, icon512Pwa: icon, featureGraphic: graphic }, null, 2));
