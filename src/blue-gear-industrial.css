@@ -1,0 +1,76 @@
+/* Blue Gear Industrial identity — visual layer only. No shuttle illustrations. */
+:root {
+  --copper: #168ee8;
+  --copper-2: #72c7ff;
+  --blue: #39a9ff;
+  --green: #39a9ff;
+  --cyan: #36c9f5;
+  --success: #39a9ff;
+  --shadow: 0 22px 58px rgba(0, 0, 0, .32);
+}
+.app-shell {
+  --copper: #168ee8;
+  --copper-2: #72c7ff;
+  --blue: #39a9ff;
+  --green: #39a9ff;
+  --cyan: #36c9f5;
+  background:
+    radial-gradient(ellipse at 84% 0%, rgba(20, 133, 226, .17), transparent 37%),
+    radial-gradient(ellipse at 16% 100%, rgba(16, 92, 170, .11), transparent 42%),
+    #071321;
+}
+.app-shell::after {
+  content: "";
+  position: fixed;
+  z-index: -1;
+  pointer-events: none;
+  inset: 0 0 0 auto;
+  width: min(54vw, 760px);
+  opacity: .075;
+  background: url('/gear-mark.svg') no-repeat right 8% center / min(54vw, 680px);
+}
+.app-shell.light {
+  --copper: #087bc8;
+  --copper-2: #075f9c;
+  --blue: #087bc8;
+  --green: #087bc8;
+  --cyan: #0a9fc8;
+  background: #edf5fb;
+}
+.brand-symbol {
+  border: 1px solid rgba(87, 190, 255, .36) !important;
+  border-radius: 13px !important;
+  background: rgba(12, 80, 132, .38) url('/gear-mark.svg') center / 78% no-repeat !important;
+  box-shadow: 0 8px 26px rgba(22, 142, 232, .2), inset 0 1px 0 rgba(255,255,255,.12) !important;
+}
+.brand-symbol span { display: none !important; }
+.brand-copy strong span { color: var(--copper-2) !important; }
+.nav-button.active {
+  color: #c5eaff !important;
+  border-color: rgba(54, 174, 255, .26) !important;
+  background: linear-gradient(100deg, rgba(22, 142, 232, .19), rgba(22, 142, 232, .045)) !important;
+  box-shadow: inset 3px 0 0 #39a9ff, 0 5px 18px rgba(0,0,0,.08) !important;
+}
+.app-shell[dir="rtl"] .nav-button.active { box-shadow: inset -3px 0 0 #39a9ff, 0 5px 18px rgba(0,0,0,.08) !important; }
+.nav-button.active svg, .nav-active-mark { color: #72c7ff !important; background-color: #72c7ff !important; }
+.eyebrow > span, .breadcrumb span { color: #72c7ff !important; background-color: #39a9ff !important; }
+.btn-primary {
+  color: #031321 !important;
+  border-color: #68c4ff !important;
+  background: linear-gradient(135deg, #8bd4ff, #168ee8) !important;
+  box-shadow: 0 5px 18px rgba(22, 142, 232, .22) !important;
+}
+.demo-banner {
+  border-color: rgba(22, 142, 232, .27) !important;
+  background: linear-gradient(100deg, rgba(22, 142, 232, .12), rgba(22, 142, 232, .035)) !important;
+}
+.demo-banner strong, .demo-tag { color: #72c7ff !important; }
+.demo-tag { border-color: rgba(22, 142, 232, .28) !important; }
+.system-chip { border-color: rgba(22, 142, 232, .22) !important; }
+.system-chip i { background: #39a9ff !important; box-shadow: 0 0 0 4px rgba(57,169,255,.13) !important; }
+.connection-indicator i { background: #39a9ff !important; box-shadow: 0 0 0 4px rgba(57,169,255,.13) !important; }
+.avatar { color: #031321 !important; background: linear-gradient(145deg, #a8e0ff, #168ee8) !important; }
+.status-running, .status-online, .status-success, .badge-success, .text-success { color: #72c7ff !important; }
+@media (max-width: 760px) {
+  .app-shell::after { width: 100vw; opacity: .045; background-position: right 5% bottom 10%; background-size: 88vw; }
+}
