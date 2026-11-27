@@ -52,6 +52,7 @@ jobs:
       - name: Generate Android project and branded assets
         run: |
           npx cap add android
+          node scripts/install-android-network-inspector.mjs
           npx capacitor-assets generate --android --iconBackgroundColor '#111820' --iconBackgroundColorDark '#111820' --splashBackgroundColor '#111820' --splashBackgroundColorDark '#111820'
 
       - name: Stamp V8 development version
