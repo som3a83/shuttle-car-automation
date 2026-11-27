@@ -74,3 +74,20 @@
 @media (max-width: 760px) {
   .app-shell::after { width: 100vw; opacity: .045; background-position: right 5% bottom 10%; background-size: 88vw; }
 }
+
+.battery-visual-placeholder {
+  min-height: 190px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin: 18px 0;
+  border: 1px solid rgba(114, 199, 255, .18);
+  border-radius: 18px;
+  color: #72c7ff;
+  background: radial-gradient(circle at center, rgba(22, 142, 232, .13), rgba(7, 19, 33, .18) 68%);
+  text-align: center;
+}
+.battery-visual-placeholder strong { color: #c5eaff; letter-spacing: .12em; font-size: 12px; }
+.battery-visual-placeholder span { color: #8da9bf; font-size: 11px; }
