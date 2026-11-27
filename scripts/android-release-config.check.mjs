@@ -82,3 +82,30 @@ test('rejects non-numeric Android version codes', () => {
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
+
+
+test('prepares an unsigned personal release without keystore secrets', () => {
+  const root = createFixture();
+  const personalScript = path.join(path.dirname(fileURLToPath(import.meta.url)), 'prepare-android-personal-release.mjs');
+  try {
+    const result = spawnSync(process.execPath, [personalScript], {
+      cwd: root,
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        APP_VERSION_INPUT: '8.0.0',
+        APP_VERSION_CODE_INPUT: '8000042'
+      }
+    });
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+    const variables = fs.readFileSync(path.join(root, 'android', 'variables.gradle'), 'utf8');
+    const gradle = fs.readFileSync(path.join(root, 'android', 'app', 'build.gradle'), 'utf8');
+    assert.match(variables, /compileSdkVersion\\s*=\\s*36/);
+    assert.match(variables, /targetSdkVersion\\s*=\\s*36/);
+    assert.match(gradle, /versionCode\\s+8000042/);
+    assert.match(gradle, /versionName\\s+"8\\.0\\.0"/);
+    assert.doesNotMatch(gradle, /signingConfig\\s+signingConfigs\\.release/);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
