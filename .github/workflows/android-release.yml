@@ -13,9 +13,6 @@ on:
         required: true
         default: "8000000"
         type: string
-  push:
-    tags:
-      - "v*"
 
 permissions:
   contents: write
@@ -97,9 +94,3 @@ jobs:
           if-no-files-found: error
           retention-days: 90
 
-      - name: Publish GitHub release for version tag
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v3
-        with:
-          files: artifacts/personal-release/*
-          generate_release_notes: true
