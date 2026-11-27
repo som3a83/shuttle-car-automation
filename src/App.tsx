@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   defaultSettings,
   initialBatteries,
@@ -9,15 +9,11 @@ import {
   initialShuttles,
   users
 } from './data/mockData';
-const Shuttle3DViewer = lazy(() => import('./components/Shuttle3DViewer'));
-const Battery3DViewer = lazy(() => import('./components/Battery3DViewer'));
-import { getManufacturerReference } from './data/manufacturerReferences';
 import ShiftOperations from './components/ShiftOperations';
 import SectionsHub from './components/SectionsHub';
 import LiveGatewayPanel from './components/LiveGatewayPanel';
 import BleReadOnlyExplorer from './components/BleReadOnlyExplorer';
 import NetworkDiscovery from './components/NetworkDiscovery';
-import ImmersiveWarehouse from './components/ImmersiveWarehouse';
 import { CONNECTION_OPTIONS, getConnectionOption } from './industrial/connectionCatalog';
 import SecurityCenter from './components/SecurityCenter';
 import { loadCustomizationAsync, validateCustomization, type CustomizationConfig } from './data/applicationCustomization';
@@ -29,7 +25,6 @@ import { canAccessRoute, canPerformAction, type Permission } from './security/pe
 import { listLocalAccountsAsync, readLocalSessionAsync } from './security/localAuth';
 import { OPERATIONAL_COLLECTIONS, persistOperationalSnapshot, readOperationalStorageIssues } from './security/operationalStorage';
 import { get, set, type StorageKey } from './storage';
-import { buildDailyReportCsv } from './data/dailyReportCsv';
 import type {
   AppSettings,
   Battery,
@@ -42,13 +37,10 @@ import type {
   Shuttle,
   ShuttleStatus,
   Theme,
-  ShiftRecord,
-  DailyReportSnapshot
+  ShiftRecord
 } from './types';
 
-type Tab = 'hub' | 'dashboard' | 'warehouse' | 'fleet' | 'shifts' | 'engineering' | 'batteries' | 'faults' | 'maintenance' | 'connections' | 'notifications' | 'reports' | 'users' | 'settings';
-type ModelView = 'iso' | 'side' | 'front' | 'top';
-type EngineeringPart = 'chassis' | 'drive' | 'wheels' | 'battery' | 'sensors';
+type Tab = 'hub' | 'dashboard' | 'fleet' | 'shifts' | 'batteries' | 'faults' | 'maintenance' | 'connections' | 'notifications' | 'users' | 'settings';
 
 const navItems: { id: Tab; en: string; ar: string; icon: string; group: string }[] = [
   { id: 'dashboard', en: 'Dashboard', ar: 'لوحة القيادة', icon: 'grid', group: 'OPERATIONS' },
@@ -59,7 +51,6 @@ const navItems: { id: Tab; en: string; ar: string; icon: string; group: string }
   { id: 'maintenance', en: 'Maintenance Management', ar: 'إدارة الصيانة', icon: 'wrench', group: 'ENGINEERING' },
   { id: 'connections', en: 'Device Connections', ar: 'اتصالات المعدات', icon: 'network', group: 'SYSTEM' },
   { id: 'notifications', en: 'Notifications', ar: 'الإشعارات', icon: 'bell', group: 'SYSTEM' },
-  { id: 'reports', en: 'Reports', ar: 'التقارير', icon: 'chart', group: 'SYSTEM' },
   { id: 'users', en: 'Users & Security', ar: 'المستخدمون والأمان', icon: 'users', group: 'ADMIN' },
   { id: 'settings', en: 'System Settings', ar: 'إعدادات النظام', icon: 'settings', group: 'ADMIN' }
 ];
@@ -314,98 +305,6 @@ function StatusPill({ status, language }: { status: ShuttleStatus | string; lang
   return <span className={'status-pill status-' + String(status).toLowerCase().replace(/ /g, '-')}>{map[status] || status}</span>;
 }
 
-function ShuttleModel({ shuttle, view, exploded, animated }: { shuttle: Shuttle; view: ModelView; exploded: boolean; animated: boolean }) {
-  const accent = shuttle.manufacturer === 'Cassioli' ? '#d28b4b' : shuttle.manufacturer === 'Craftsman' ? '#45b8d2' : '#a58af5';
-  const moving = animated && shuttle.status === 'Running';
-  const wheelClass = moving ? 'model-wheel spinning' : 'model-wheel';
-  if (view === 'side') return <svg className="shuttle-svg" viewBox="0 0 760 390" role="img" aria-label="Side engineering illustration of shuttle car">
-    <defs><linearGradient id="sideMetal" x1="0" y1="0" x2="0" y2="1"><stop stopColor="#667687"/><stop offset="1" stopColor="#202a35"/></linearGradient><linearGradient id="sideDeck"><stop stopColor="#8d9aa6"/><stop offset="1" stopColor="#3b4857"/></linearGradient></defs>
-    <path className="floor-grid" d="M30 325H730M70 350H690M120 300l-70 50M250 300l-70 50M380 300l-70 50M510 300l-70 50M640 300l-70 50"/>
-    <rect x="118" y="155" width="520" height="140" rx="24" fill="url(#sideMetal)" stroke="#9baabb" strokeWidth="3"/>
-    <path d="M145 165h465v22H145z" fill={accent} opacity=".9"/><path d="M150 205h450v60H150z" fill="#1d2935" stroke="#708092" strokeWidth="2"/>
-    <rect x={exploded ? 340 : 315} y={exploded ? 66 : 193} width="160" height="70" rx="12" fill="#9ba9b4" stroke="#d3dde5" strokeWidth="3"/>
-    <rect x="335" y="205" width="118" height="45" rx="8" fill="#293744" stroke={accent} strokeWidth="3"/>
-    {Array.from({length:6}).map((_,i)=><rect key={i} x={344+i*17} y="213" width="10" height="28" rx="3" fill={accent} opacity=".9"/>)}
-    <rect x="170" y="193" width="88" height="54" rx="12" fill="#17232f" stroke="#8192a2" strokeWidth="3"/><circle cx="214" cy="220" r="21" fill="#d18a43"/><circle cx="214" cy="220" r="10" fill="#283542"/>
-    <rect x="502" y="193" width="88" height="54" rx="12" fill="#17232f" stroke="#8192a2" strokeWidth="3"/><circle cx="546" cy="220" r="21" fill="#d18a43"/><circle cx="546" cy="220" r="10" fill="#283542"/>
-    <g className={wheelClass}><circle cx="198" cy="294" r="42" fill="#101820" stroke="#8695a5" strokeWidth="8"/><circle cx="198" cy="294" r="17" fill="#445363" stroke="#b7c3cd" strokeWidth="3"/><path d="M198 260v68M164 294h68M174 270l48 48M222 270l-48 48" stroke="#8797a7" strokeWidth="4"/></g>
-    <g className={wheelClass}><circle cx="560" cy="294" r="42" fill="#101820" stroke="#8695a5" strokeWidth="8"/><circle cx="560" cy="294" r="17" fill="#445363" stroke="#b7c3cd" strokeWidth="3"/><path d="M560 260v68M526 294h68M536 270l48 48M584 270l-48 48" stroke="#8797a7" strokeWidth="4"/></g>
-    <rect x="270" y="143" width="220" height="15" rx="5" fill={accent}/><rect x="130" y="126" width="45" height="22" rx="7" fill="#f1b657"/><rect x="580" y="126" width="45" height="22" rx="7" fill="#f1b657"/>
-    {exploded && <g className="callout"><path d="M410 65V30h130" /><text x="548" y="34">REMOVABLE BATTERY</text><path d="M215 220V90H80"/><text x="80" y="80">DRIVE MOTOR</text></g>}
-    <text x="32" y="370" className="svg-caption">{shuttle.manufacturer.toUpperCase()} · SIDE ELEVATION</text>
-  </svg>;
-  if (view === 'front') return <svg className="shuttle-svg" viewBox="0 0 760 390" role="img" aria-label="Front engineering illustration of shuttle car">
-    <path className="floor-grid" d="M40 325H720M80 350H680M150 300l-60 50M300 300l-60 50M450 300l-60 50M600 300l-60 50"/>
-    <rect x="190" y="104" width="380" height="190" rx="22" fill="#344353" stroke="#9aaabb" strokeWidth="4"/>
-    <path d="M215 118h330v24H215z" fill={accent}/><rect x="260" y="160" width="240" height="82" rx="15" fill="#1b2733" stroke="#8293a4" strokeWidth="3"/>
-    <rect x="285" y="177" width="190" height="45" rx="8" fill="#455565"/><rect x="302" y="185" width="156" height="8" rx="4" fill={accent}/>
-    <rect x="235" y="246" width="80" height="34" rx="12" fill="#18222d"/><rect x="445" y="246" width="80" height="34" rx="12" fill="#18222d"/>
-    <g className={wheelClass}><circle cx="235" cy="294" r="45" fill="#0e1720" stroke="#8a9aaa" strokeWidth="8"/><circle cx="235" cy="294" r="18" fill="#566777"/><path d="M235 260v68M201 294h68" stroke="#aebdca" strokeWidth="4"/></g>
-    <g className={wheelClass}><circle cx="525" cy="294" r="45" fill="#0e1720" stroke="#8a9aaa" strokeWidth="8"/><circle cx="525" cy="294" r="18" fill="#566777"/><path d="M525 260v68M491 294h68" stroke="#aebdca" strokeWidth="4"/></g>
-    <circle cx="380" cy="153" r="9" fill="#75d6ff"/><circle cx="380" cy="153" r="17" fill="none" stroke="#75d6ff" opacity=".4"/>
-    {exploded && <g className="callout"><path d="M380 153V55h130"/><text x="520" y="60">SAFETY SENSOR</text></g>}
-    <text x="32" y="370" className="svg-caption">{shuttle.manufacturer.toUpperCase()} · FRONT ELEVATION</text>
-  </svg>;
-  if (view === 'top') return <svg className="shuttle-svg" viewBox="0 0 760 390" role="img" aria-label="Top engineering illustration of shuttle car">
-    <path className="floor-grid" d="M30 325H730M80 350H680M140 40v290M290 40v290M440 40v290M590 40v290"/>
-    <rect x="180" y="34" width="400" height="286" rx="30" fill="#344353" stroke="#a2b0bd" strokeWidth="4"/>
-    <rect x="205" y="58" width="350" height="42" rx="12" fill={accent}/><rect x="226" y="122" width="308" height="125" rx="18" fill="#18232f" stroke="#8595a5" strokeWidth="3"/>
-    <rect x="270" y="147" width="220" height="75" rx="10" fill="#8795a1" stroke="#d2dce5" strokeWidth="3"/>
-    {Array.from({length:8}).map((_,i)=><rect key={i} x={280+i*26} y="157" width="16" height="55" rx="4" fill={accent}/>)}
-    <rect x="138" y="83" width="42" height="76" rx="10" fill="#101923" stroke="#8c9baa" strokeWidth="3"/><rect x="580" y="83" width="42" height="76" rx="10" fill="#101923" stroke="#8c9baa" strokeWidth="3"/>
-    <rect x="138" y="213" width="42" height="76" rx="10" fill="#101923" stroke="#8c9baa" strokeWidth="3"/><rect x="580" y="213" width="42" height="76" rx="10" fill="#101923" stroke="#8c9baa" strokeWidth="3"/>
-    {exploded && <g className="callout"><path d="M380 180V16h135"/><text x="520" y="20">BATTERY MODULE</text></g>}
-    <text x="32" y="370" className="svg-caption">{shuttle.manufacturer.toUpperCase()} · TOP PLAN</text>
-  </svg>;
-  return <svg className="shuttle-svg" viewBox="0 0 760 390" role="img" aria-label="Isometric engineering illustration of shuttle car">
-    <defs>
-      <linearGradient id="bodyTop" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#9caab5"/><stop offset="1" stopColor="#455361"/></linearGradient>
-      <linearGradient id="bodySide" x1="0" y1="0" x2="0" y2="1"><stop stopColor="#5b6a78"/><stop offset="1" stopColor="#1a2632"/></linearGradient>
-      <linearGradient id="batterySteel" x1="0" y1="0" x2="0" y2="1"><stop stopColor="#c2cbd2"/><stop offset="1" stopColor="#586878"/></linearGradient>
-    </defs>
-    <path className="floor-grid" d="M30 320H730M75 350H685M140 295l-65 55M280 295l-65 55M420 295l-65 55M560 295l-65 55M700 295l-65 55"/>
-    <g className={exploded ? 'chassis exploded-chassis' : 'chassis'}>
-      <path d="M150 166 385 75 628 160 390 259z" fill="url(#bodyTop)" stroke="#c2cbd3" strokeWidth="3"/>
-      <path d="M150 166 390 259v73L150 236z" fill="url(#bodySide)" stroke="#8a9aa8" strokeWidth="3"/>
-      <path d="M390 259 628 160v74l-238 98z" fill="#263441" stroke="#8192a2" strokeWidth="3"/>
-      <path d="M176 172 385 92 595 164 389 247z" fill="#1d2935" stroke={accent} strokeWidth="4"/>
-      <path d="M198 174 385 104 566 166 389 232z" fill="#354554"/>
-      <path d="M220 174 386 111 540 165 388 222z" fill="#1a2632" stroke="#718394" strokeWidth="2"/>
-    </g>
-    <g className={exploded ? 'battery-module battery-raised' : 'battery-module'}>
-      <path d="M286 144 388 103 488 139 386 181z" fill="url(#batterySteel)" stroke="#e0e6ea" strokeWidth="3"/>
-      <path d="M286 144 386 181v47l-100-40z" fill="#4b5e6e" stroke="#c2ccd5" strokeWidth="2"/>
-      <path d="M386 181 488 139v47l-102 42z" fill="#293947" stroke="#a1aeb9" strokeWidth="2"/>
-      {Array.from({length:6}).map((_,i)=><g key={i}><path d={'M'+(305+i*14)+' '+(142-i*5.5)+' l0 39'} stroke={accent} strokeWidth="7" opacity=".95"/><path d={'M'+(310+i*14)+' '+(139-i*5.5)+' l0 40'} stroke="#e0e6eb" strokeWidth="2" opacity=".65"/></g>)}
-      <rect x="358" y="113" width="52" height="10" rx="3" fill="#141e28" transform="rotate(-21 358 113)"/>
-    </g>
-    <g>
-      <path d="M170 214 226 235v43l-56-22z" fill="#111b24" stroke="#a4b2bf" strokeWidth="3"/><circle cx="199" cy="255" r="31" fill="#0b131b" stroke="#718394" strokeWidth="8"/><circle cx="199" cy="255" r="12" fill="#a1afba" stroke="#293743" strokeWidth="4"/>
-      <path d="M550 165 609 146v43l-59 24z" fill="#111b24" stroke="#a4b2bf" strokeWidth="3"/><circle cx="580" cy="187" r="31" fill="#0b131b" stroke="#718394" strokeWidth="8"/><circle cx="580" cy="187" r="12" fill="#a1afba" stroke="#293743" strokeWidth="4"/>
-      <path d="M342 281 398 304v43l-56-22z" fill="#111b24" stroke="#a4b2bf" strokeWidth="3"/><circle cx="371" cy="324" r="27" fill="#0b131b" stroke="#718394" strokeWidth="7"/><circle cx="371" cy="324" r="10" fill="#a1afba"/>
-      <path d="M462 234 520 211v43l-58 23z" fill="#111b24" stroke="#a4b2bf" strokeWidth="3"/><circle cx="491" cy="254" r="27" fill="#0b131b" stroke="#718394" strokeWidth="7"/><circle cx="491" cy="254" r="10" fill="#a1afba"/>
-    </g>
-    <g className={wheelClass}><circle cx="199" cy="255" r="8" fill={accent}/><circle cx="580" cy="187" r="8" fill={accent}/><circle cx="371" cy="324" r="7" fill={accent}/><circle cx="491" cy="254" r="7" fill={accent}/></g>
-    <g><rect x="215" y="151" width="50" height="20" rx="5" fill="#dca052" stroke="#f9d59e" strokeWidth="2"/><rect x="514" y="128" width="48" height="20" rx="5" fill="#dca052" stroke="#f9d59e" strokeWidth="2"/><circle cx="244" cy="158" r="6" fill="#76d4ff"/><circle cx="541" cy="135" r="6" fill="#76d4ff"/></g>
-    <path d="M151 166 385 75 628 160" fill="none" stroke={accent} strokeWidth="5"/>
-    {exploded && <g className="callout"><path d="M386 110V35h120"/><text x="515" y="40">BATTERY MODULE</text><path d="M199 255 116 286H60"/><text x="60" y="278">DRIVE WHEEL</text><path d="M541 135V72h110"/><text x="656" y="76">SAFETY SENSOR</text></g>}
-    <text x="32" y="370" className="svg-caption">{shuttle.manufacturer.toUpperCase()} · ISOMETRIC ASSEMBLY</text>
-  </svg>;
-}
-
-function BatteryPack({ battery }: { battery?: Battery }) {
-  const soc = battery?.soc;
-  return <div className="battery-render">
-    <div className="battery-cap"><span/><span/></div>
-    <div className="battery-case">
-      <div className="battery-handle"/>
-      <div className="battery-cells">{Array.from({length:12}).map((_,i)=><div key={i} className="battery-cell" style={{opacity: soc == null ? .27 : i < Math.round(soc / 100 * 12) ? 1 : .2}}/>)}</div>
-      <div className="battery-leds"><i/><i/><i/></div>
-    </div>
-    <div className="battery-render-label">{battery?.model || 'BATTERY MODULE'} · {soc == null ? 'SOC NOT VERIFIED' : soc + '% REPORTED'}</div>
-  </div>;
-}
-
 function App({ initialData }: { initialData: AppInitialData }) {
   const [language, setLanguage] = useState<Language>(initialData.language);
   const [theme, setTheme] = useState<Theme>(initialData.theme);
@@ -421,12 +320,6 @@ function App({ initialData }: { initialData: AppInitialData }) {
   const [settings, setSettings] = useState<AppSettings>(initialData.settings);
   const [selectedId, setSelectedId] = useState('SC-01');
   const [selectedBatteryId, setSelectedBatteryId] = useState('BAT-ACME-01');
-  const [modelView, setModelView] = useState<ModelView>('iso');
-  const [modelZoom, setModelZoom] = useState(1);
-  const [viewResetKey, setViewResetKey] = useState(0);
-  const [selectedPart, setSelectedPart] = useState<EngineeringPart>('chassis');
-  const [exploded, setExploded] = useState(false);
-  const [animated, setAnimated] = useState(false);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [mobileNav, setMobileNav] = useState(false);
@@ -491,7 +384,6 @@ function App({ initialData }: { initialData: AppInitialData }) {
   const archivedConnections = connections.filter(c => Boolean(c.archivedAt));
   const selected = activeShuttles.find(s => s.id === selectedId) || activeShuttles[0] || null;
   const selectedBattery = activeBatteries.find(b => b.id === selectedBatteryId) || activeBatteries[0] || null;
-  const selectedManufacturerReference = selected ? getManufacturerReference(selected.manufacturer) : null;
   const filteredShuttles = useMemo(() => activeShuttles.filter(s => {
     const q = search.toLowerCase();
     const matchText = [s.id, s.manufacturer, s.warehouseZone].some(v => v.toLowerCase().includes(q));
@@ -1227,34 +1119,6 @@ function App({ initialData }: { initialData: AppInitialData }) {
     return t[key[status] as keyof typeof copy.en];
   };
 
-  const exportDailyReport = async () => {
-    if (!await authorize('dashboard.view', 'report', 'daily-status')) return;
-    const generatedAt = new Date().toISOString();
-    const activeShift = shifts.find(item => !item.endedAt);
-    const report: DailyReportSnapshot = {
-      id: 'RPT-' + generatedAt.replace(/[-:.TZ]/g, '').slice(0, 14),
-      reportDate: generatedAt.slice(0, 10),
-      generatedAt,
-      shuttleCount: activeShuttles.length,
-      runningCount: activeShuttles.filter(item => item.status === 'Running').length,
-      readyCount: activeShuttles.filter(item => item.status === 'Ready').length,
-      disconnectedCount: activeShuttles.filter(item => item.connectivity !== 'REAL').length,
-      openFaultCount: activeFaults.filter(item => item.status !== 'Resolved').length,
-      openMaintenanceCount: activeJobs.filter(item => item.status !== 'Completed').length,
-      batteryCount: activeBatteries.length,
-      faultedBatteryCount: activeBatteries.filter(item => item.status === 'Fault').length,
-      verifiedTelemetryCount: activeShuttles.filter(item => item.connectivity === 'REAL').length + activeBatteries.filter(item => item.connectionMode === 'REAL').length,
-      activeShift: activeShift ? { id: activeShift.id, shiftType: activeShift.shiftType, supervisor: activeShift.supervisor, startedAt: activeShift.startedAt } : null,
-      shuttles: activeShuttles.map(item => ({ id: item.id, manufacturer: item.manufacturer, status: item.status, connectivity: item.connectivity, warehouseZone: item.warehouseZone })),
-      batteries: activeBatteries.map(item => ({ id: item.id, manufacturer: item.manufacturer, status: item.status, assignment: item.assignment, soc: item.soc, connectionMode: item.connectionMode, movementHistory: item.movementHistory || [] }))
-    };
-    const blob = new Blob(['\uFEFF', buildDailyReportCsv(report)], { type: 'text/csv;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a'); link.href = url; link.download = 'shuttle-daily-report-' + report.reportDate + '.csv'; link.click();
-    URL.revokeObjectURL(url);
-    recordAudit('DAILY_REPORT_EXPORTED', 'report', report.id);
-    showToast(language === 'ar' ? 'تم تصدير التقرير اليومي' : 'Daily report exported');
-  };
   const exportBackup = async () => {
     if (!await authorize('data.backup', 'backup', 'operational-data')) return;
     const data = { schemaVersion: 11, exportedAt: new Date().toISOString(), warning: 'Local demo/record data only. Not a live PLC telemetry export.', shuttles, batteries, faults, jobs, connections, notifications, settings, shifts };
@@ -1358,7 +1222,6 @@ function App({ initialData }: { initialData: AppInitialData }) {
         <button type="button" className={activeTab === 'dashboard' ? 'active' : ''} aria-current={activeTab === 'dashboard' ? 'page' : undefined} onClick={() => go('dashboard')}><Icon name="grid" size={16}/><span>{language === 'ar' ? 'الرئيسية' : 'Dashboard'}</span></button>
         <button type="button" className={activeTab === 'fleet' ? 'active' : ''} aria-current={activeTab === 'fleet' ? 'page' : undefined} onClick={() => go('fleet')}><Icon name="truck" size={16}/><span>{language === 'ar' ? 'الأجهزة' : 'Devices'}</span></button>
         <button type="button" className={activeTab === 'shifts' ? 'active' : ''} aria-current={activeTab === 'shifts' ? 'page' : undefined} onClick={() => go('shifts')}><Icon name="clock" size={16}/><span>{language === 'ar' ? 'الورديات' : 'Shifts'}</span></button>
-        <button type="button" className={activeTab === 'reports' ? 'active' : ''} aria-current={activeTab === 'reports' ? 'page' : undefined} onClick={() => go('reports')}><Icon name="chart" size={16}/><span>{language === 'ar' ? 'التقارير' : 'Reports'}</span></button>
         <button type="button" className={activeTab === 'settings' ? 'active' : ''} aria-current={activeTab === 'settings' ? 'page' : undefined} onClick={() => go('settings')}><Icon name="settings" size={16}/><span>{language === 'ar' ? 'الإعدادات' : 'Settings'}</span></button>
         <button type="button" className={activeTab === 'hub' ? 'active' : ''} aria-current={activeTab === 'hub' ? 'page' : undefined} onClick={() => go('hub')}><Icon name="grid" size={16}/><span>{language === 'ar' ? 'الأقسام' : 'Sections'}</span></button>
       </nav>
@@ -1433,7 +1296,6 @@ function App({ initialData }: { initialData: AppInitialData }) {
         </div>
       </section>}
 
-      {activeTab === 'warehouse' && <ImmersiveWarehouse shuttles={activeShuttles} language={language}/>}
 
       {activeTab === 'fleet' && <section className="page-content">
         <PageIntro eyebrow="ASSET MANAGEMENT / REGISTER" title={t.fleet} subtitle={t.fleetSub}/>
@@ -1488,80 +1350,13 @@ function App({ initialData }: { initialData: AppInitialData }) {
 
       {activeTab === 'shifts' && <ShiftOperations language={language} shifts={shifts} shuttles={shuttles} faults={faults} jobs={jobs} onChange={async next => { if (!await authorize('shifts.manage', 'shift', 'shift-register')) return; const action = next[0]?.endedAt ? 'SHIFT_CLOSED' : 'SHIFT_OPENED'; setShifts(next); recordAudit(action, 'shift', next[0]?.id || 'shift-register'); }} />}
 
-      {activeTab === 'engineering' && selected && <section className="page-content">
-        <PageIntro eyebrow="MECHANICAL INTELLIGENCE / DIGITAL SCHEMATIC" title={t.engineering} subtitle={t.engineeringSub}/>
-        <div className="engineering-workspace">
-          <div className="surface-card model-stage">
-            <div className="model-toolbar"><div className="asset-select"><label>{t.selectAsset}</label><select value={selectedId} onChange={e=>setSelectedId(e.target.value)}>{activeShuttles.map(s=><option key={s.id} value={s.id}>{s.id} — {s.manufacturer}</option>)}</select></div><div className="model-tools"><button className={exploded?'tool-active':''} onClick={()=>setExploded(!exploded)}><Icon name="settings" size={15}/>{t.exploded}</button><button className={selected.status === 'Running' && animated ? 'tool-active' : ''} disabled={selected.status !== 'Running'} title={selected.status !== 'Running' ? (language === 'ar' ? 'المحاكاة متاحة فقط عندما تكون الحالة المسجلة قيد التشغيل' : 'Motion simulation is available only when the recorded state is Running') : (language === 'ar' ? 'محاكاة بصرية فقط — لا تتحكم في المعدة' : 'Visual simulation only — does not control the equipment')} onClick={()=>setAnimated(!animated)}><Icon name="grid" size={15}/>{selected.status !== 'Running' ? (language === 'ar' ? 'الحركة متوقفة للحالة الحالية' : 'Motion locked · not Running') : animated?t.stop:t.animate}</button><button onClick={()=>{setModelView('iso');setModelZoom(1);setViewResetKey(value=>value+1);}}>{language==='ar'?'إعادة ضبط المنظور':'Reset view'}</button></div></div>
-            <div className="view-tabs">{(['iso','side','front','top'] as ModelView[]).map(v=><button key={v} className={modelView===v?'active':''} onClick={()=>setModelView(v)}>{t[v]}</button>)}</div>
-            <div className="model-canvas three-model-canvas">
-               <div className="canvas-topline"><span>ORTHOGRAPHIC 3D REFERENCE: {selected.manufacturer.toUpperCase()} / {selected.id}</span><span>REFERENCE GEOMETRY · NOT OEM CAD</span></div>
-               <Suspense fallback={<div className="viewer-loading" role="status">{language==='ar'?'جارٍ تحميل النموذج الهندسي ثلاثي الأبعاد…':'Loading 3D engineering model…'}</div>}>
-                 <Shuttle3DViewer manufacturer={selected.manufacturer} shuttleId={selected.id} status={selected.status} view={modelView} exploded={exploded} animated={animated} selectedPart={selectedPart} zoom={modelZoom} resetKey={viewResetKey} onSelectPart={setSelectedPart} fallback={<ShuttleModel shuttle={selected} view={modelView} exploded={exploded} animated={animated && selected.status === 'Running'}/>}/>
-               </Suspense>
-               <div className="canvas-bottomline"><span><i className="legend-dot" style={{background:selected.manufacturer==='Cassioli'?'#d28b4b':selected.manufacturer==='Craftsman'?'#45b8d2':'#a58af5'}}/>{selected.manufacturer}</span><span><i className="legend-dot" style={{background:'#75d6ff'}}/>Sensors</span><span><i className="legend-dot" style={{background:'#d58a4a'}}/>Battery module</span></div>
-             </div>
-             <div className="model-zoom-control"><label htmlFor="model-zoom">{language==='ar'?'تكبير الرسم':'Orthographic zoom'}</label><input id="model-zoom" type="range" min="0.75" max="1.25" step="0.05" value={modelZoom} onChange={event=>setModelZoom(Number(event.target.value))}/><output>{Math.round(modelZoom*100)}%</output></div>
-            <p className="disclaimer">{t.modelDisclaimer}</p>
-            <a
-              className="cad-source-link"
-              style={{ display: 'inline-flex', marginTop: 10, color: 'var(--copper-2)', fontSize: 10, fontWeight: 800, textDecoration: 'none', borderBottom: '1px solid var(--line-strong)', paddingBottom: 3 }}
-              href="https://github.com/som3a83/shuttle-car-automation/tree/main/cad"
-              target="_blank"
-              rel="noreferrer"
-              aria-label={language === 'ar' ? 'فتح ملفات التصميم الهندسي البارامترية' : 'Open editable parametric CAD source'}
-            >
-              {language === 'ar' ? 'فتح ملفات CAD القابلة للتعديل' : 'Open editable parametric CAD source'}
-            </a>
-          </div>
-          <div className="engineering-side">
-            <div className="surface-card"><div className="card-head"><div><span className="eyebrow">ASSET IDENTITY</span><h3>{selected.id}</h3></div><StatusPill status={selected.status} language={language}/></div><div className="spec-list"><Detail label={t.manufacturer} value={selected.manufacturer}/><Detail label={t.model} value={selected.model}/><Detail label={t.serial} value={selected.serialNumber}/><Detail label="Hardware / firmware" value={selected.hardwareVersion + ' / ' + selected.firmwareVersion}/><Detail label={t.batteryPack} value={selected.installedBattery}/><Detail label={t.lastSeen} value={selected.lastCommunication}/></div></div>
-            <div className="surface-card"><div className="card-head"><div><span className="eyebrow">ASSEMBLY BREAKDOWN</span><h3>{t.componentLegend}</h3></div></div><div className="component-list">
-                {([
-                  {id:'chassis' as const,n:'01',title:t.chassis,desc:language==='ar'?'الهيكل الحامل وسطح تحميل الطبالي':'Structural frame and load deck'},
-                  {id:'drive' as const,n:'02',title:t.drive,desc:language==='ar'?'منظومة الدفع وبيت المحرك':'Drive train and motor housing'},
-                  {id:'wheels' as const,n:'03',title:t.wheel,desc:language==='ar'?'عجلات الجر والتوجيه':'Traction and guide wheel sets'},
-                  {id:'battery' as const,n:'04',title:t.batteryComp,desc:language==='ar'?'حاوية الطاقة القابلة للفك':'Removable energy module'},
-                  {id:'sensors' as const,n:'05',title:t.sensors,desc:language==='ar'?'نقاط الاستشعار والحماية':'Detection and protection points'}
-                ]).map(part=><button type="button" key={part.id} className={'component-select-row '+(selectedPart===part.id?'selected':'')} aria-pressed={selectedPart===part.id} onClick={()=>setSelectedPart(part.id)}><ComponentRow n={part.n} title={part.title} desc={part.desc}/></button>)}
-              </div>
-              <div className="part-inspector">
-                <span className="eyebrow">{language==='ar'?'فحص المكوّن المحدد':'SELECTED COMPONENT INSPECTOR'}</span>
-                <h4>{({chassis:t.chassis,drive:t.drive,wheels:t.wheel,battery:t.batteryComp,sensors:t.sensors})[selectedPart]}</h4>
-                <p>{({
-                  chassis:language==='ar'?'افحص الاستقامة واللحامات ونقاط تثبيت سطح التحميل. لا توجد أبعاد مصنع موثقة داخل هذا النموذج.':'Inspect frame alignment, welds and load-deck mounting points. No vendor dimensions are verified in this model.',
-                  drive:language==='ar'?'راجع تثبيت المحرك وعلبة التروس والكابلات وفق دليل الشركة المصنعة قبل أي تدخل.':'Inspect motor and gearbox mounting and cabling against the manufacturer manual before intervention.',
-                  wheels:language==='ar'?'تحقق من التآكل والمحامل والالتصاق بالأرضية وخلو مسار الحركة من الثلج أو الملوثات.':'Check tread wear, bearings, floor grip and any ice or contamination on the travel path.',
-                  battery:language==='ar'?'تحقق من آلية القفل والموصلات وبيانات البطارية الفعلية على شاشة المعدة.':'Verify the retention mechanism, connectors and actual battery readings on the equipment HMI.',
-                  sensors:language==='ar'?'افحص نظافة العدسات والمحاذاة ومجال الكشف وسجل الإنذارات دون تجاوز دوائر الأمان.':'Inspect lens cleanliness, alignment, detection field and alarm history without bypassing safety circuits.'
-                })[selectedPart]}</p>
-                <small>{language==='ar'?'معلومات فحص إرشادية فقط — يلزم الرجوع إلى دليل المعدة المعتمد.':'Guidance only — consult the approved equipment service documentation.'}</small>
-              </div>
-            </div>
-          </div>
-          {selectedManufacturerReference && <div className="surface-card vendor-reference-card">
-            <div className="card-head">
-              <div><span className="eyebrow">{language==='ar'?'مرجع الشركة المصنعة':'MANUFACTURER SOURCE REFERENCE'}</span><h3>{selectedManufacturerReference.productFamily[language]}</h3></div>
-              <span className="reference-tag">{selectedManufacturerReference.manufacturer}</span>
-            </div>
-            <p className="vendor-reference-scope">{selectedManufacturerReference.scopeLabel[language]}</p>
-            <p className="vendor-reference-description">{selectedManufacturerReference.description[language]}</p>
-            <ul className="vendor-reference-facts">{selectedManufacturerReference.facts.map((fact,index)=><li key={index}>{fact[language]}</li>)}</ul>
-            <div className="cold-store-reference-note"><strong>{language==='ar'?'ملاحظة التخزين البارد':'COLD-STORE VERIFICATION'}</strong><p>{selectedManufacturerReference.coldStoreNote[language]}</p></div>
-            <a className="vendor-source-link" href={selectedManufacturerReference.sourceUrl} target="_blank" rel="noreferrer">{selectedManufacturerReference.sourceLabel[language]} ↗</a>
-          </div>}
-        </div>
-      </section>}
-
       {activeTab === 'batteries' && <section className="page-content">
         <PageIntro eyebrow="ENERGY SYSTEMS / BATTERY REGISTER" title={language==='ar'?'منظومة البطاريات':'Battery systems'} subtitle={language==='ar'?'إدارة سجل البطاريات وتخصيصها وحالتها وبيانات القياس المسجلة.':'Manage battery records, assignment, status and recorded readings.'}/>
         <div className="battery-layout">
           <div className="surface-card battery-stage">
             {selectedBattery ? <>
               <div className="card-head"><div><span className="eyebrow">BATTERY MODULE / {selectedBattery.id}</span><h3>{t.batteryIllustration}</h3></div><StatusPill status={selectedBattery.status} language={language}/></div>
-              <Suspense fallback={<div className="viewer-loading" role="status">{language==='ar'?'جارٍ تحميل رسم البطارية…':'Loading battery assembly…'}</div>}>
-                <Battery3DViewer battery={selectedBattery} language={language} fallback={<BatteryPack battery={selectedBattery}/>} />
-              </Suspense>
+              <div className="battery-visual-placeholder" role="img" aria-label={language==='ar'?'رمز وحدة البطارية':'Battery module symbol'}><Icon name="battery" size={64}/><strong>{language==='ar'?'وحدة البطارية':'BATTERY MODULE'}</strong><span>{language==='ar'?'عرض بيانات السجل فقط — لا يوجد نموذج ثلاثي الأبعاد':'Record view only — no 3D equipment model'}</span></div>
               <div className="battery-stat-grid">
                 <Detail label={t.charge} value={selectedBattery.soc === null ? t.unknown : selectedBattery.soc + '% (manual / reported)'}/>
                 <Detail label={t.health} value={selectedBattery.soh === null ? t.noData : selectedBattery.soh + '% (manual)'}/>
@@ -1792,30 +1587,6 @@ function App({ initialData }: { initialData: AppInitialData }) {
         <div className="notice-inline"><Icon name="alert"/>{language==='ar'?'هذه السجلات لا تفتح منفذًا ولا تختبر الشبكة ولا تثبت وجود اتصال حي. قبل أي تكامل: يلزم دليل المصنع، وخريطة العناوين، وبيانات الشبكة، وتصريح فني. البداية قراءة فقط ومن خلال بوابة OT معتمدة.':'These records do not open sockets, probe networks or prove a live connection. Obtain vendor manuals, approved address maps, network details and engineering authorization. Start read-only through an approved OT gateway.'}</div>
       </section>}
 
-      {activeTab === 'reports' && <section className="page-content">
-        <PageIntro eyebrow="OPERATIONS / DAILY REPORT" title={language === 'ar' ? 'التقارير التشغيلية' : 'Operational reports'} subtitle={language === 'ar' ? 'ملخص يومي لحالة أسطول الشاتل والبطاريات والأعطال والصيانة والوردية الحالية.' : 'A daily snapshot of shuttle fleet, batteries, faults, maintenance and the active shift.'}/>
-        <div className="report-metrics">
-          <Metric icon="truck" label={language === 'ar' ? 'الأجهزة النشطة' : 'Active devices'} value={activeShuttles.length} accent="blue"/>
-          <Metric icon="battery" label={language === 'ar' ? 'البطاريات' : 'Batteries'} value={activeBatteries.length} accent="cyan"/>
-          <Metric icon="alert" label={language === 'ar' ? 'الأعطال المفتوحة' : 'Open faults'} value={activeFaults.filter(item => item.status !== 'Resolved').length} accent="red"/>
-          <Metric icon="wrench" label={language === 'ar' ? 'أوامر الصيانة المفتوحة' : 'Open work orders'} value={activeJobs.filter(item => item.status !== 'Completed').length} accent="amber"/>
-          <Metric icon="network" label={language === 'ar' ? 'مصادر اتصال مؤكدة' : 'Verified connections'} value={metrics.verifiedSoc + activeShuttles.filter(item => item.connectivity === 'REAL').length} accent="cyan"/>
-          <Metric icon="clock" label={language === 'ar' ? 'الورديات المسجلة' : 'Shift records'} value={shifts.length} accent="blue"/>
-        </div>
-        <div className="surface-card report-export-card">
-          <div><span className="eyebrow">CSV / DAILY SNAPSHOT</span><h3>{language === 'ar' ? 'تصدير التقرير اليومي' : 'Export daily report'}</h3><p className="muted-text">{language === 'ar' ? 'يشمل ملخص الأجهزة والبطاريات والأعطال والصيانة وحركات البطاريات. القيم غير المؤكدة تظل معلّمة كغير مؤكدة.' : 'Includes fleet, battery, fault, maintenance and battery movement details. Unverified values remain explicitly unverified.'}</p></div>
-          <button className="btn-primary" type="button" onClick={() => void exportDailyReport()}>{language === 'ar' ? 'تنزيل تقرير CSV' : 'Download CSV report'} <Icon name="arrow" size={16}/></button>
-        </div>
-        <div className="dashboard-grid">
-          <div className="surface-card"><div className="card-head"><div><span className="eyebrow">FLEET REGISTER</span><h3>{language === 'ar' ? 'الأجهزة المسجلة' : 'Registered devices'}</h3></div></div>
-            {activeShuttles.map(item => <div className="dashboard-record-row" key={item.id}><strong>{item.id}</strong><span>{item.manufacturer} · {item.warehouseZone}</span><StatusPill status={item.status} language={language}/></div>)}
-          </div>
-          <div className="surface-card"><div className="card-head"><div><span className="eyebrow">BATTERY REGISTER</span><h3>{language === 'ar' ? 'حالة البطاريات' : 'Battery status'}</h3></div></div>
-            {activeBatteries.map(item => <div className="dashboard-record-row" key={item.id}><strong>{item.id}</strong><span>{item.assignment}</span><StatusPill status={item.status} language={language}/></div>)}
-          </div>
-        </div>
-      </section>}
-
       {activeTab === 'notifications' && <section className="page-content">
         <PageIntro eyebrow="EVENT CENTER / ALERTS" title={language==='ar'?'مركز الإشعارات':'Notifications center'} subtitle={language==='ar'?'تنبيهات محلية من بلاغات الأعطال والبطاريات وأوامر الصيانة.':'Local alerts created by fault, battery and maintenance record changes.'}/>
         <div className="notification-toolbar">
@@ -1878,8 +1649,5 @@ function PageIntro({ eyebrow, title, subtitle }: { eyebrow: string; title: strin
 }
 function Detail({ label, value }: { label: string; value: React.ReactNode }) {
   return <div className="detail-item"><span>{label}</span><strong>{value || 'Not recorded'}</strong></div>;
-}
-function ComponentRow({ n, title, desc }: { n: string; title: string; desc: string }) {
-  return <div className="component-row"><span>{n}</span><div><strong>{title}</strong><small>{desc}</small></div><Icon name="chevron" size={15}/></div>;
 }
 export default App;
