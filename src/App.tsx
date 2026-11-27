@@ -165,13 +165,24 @@ async function readOperationalValue<T>(key: StorageKey, fallback: T): Promise<T>
  * Remove only the exact historical demo records that shipped in earlier builds.
  * User-created faults and unrelated battery states are preserved.
  */
-function normalizeLegacyDemoFaults(faults: Fault[], shuttles: Shuttle[], batteries: Battery[]) {
+function normalizeLegacyDemoFaults(faults: Fault[], shuttles: Shuttle[], batteries: Battery[], connections: CommunicationEndpoint[]) {
   const legacyFaultId = 'FLT-CRAFTSMAN-01';
   const normalizedFaults = faults.filter((fault) => fault?.id !== legacyFaultId);
   const hadLegacyAcmeDemoBattery = batteries.some((battery) =>
     battery.id === 'BAT-ACME-01' && battery.soc == null && battery.connectionMode === 'UNKNOWN' && battery.status === 'Fault'
   );
-  const normalizedShuttles = shuttles.map((shuttle) => ({
+  const seedShuttleIds = new Set(['SC-01', 'SC-02', 'SC-03', 'SC-04', 'SC-05']);
+  const normalizedShuttles = shuttles.filter((shuttle) => {
+    const isExactStarterPlaceholder =
+      seedShuttleIds.has(shuttle.id) &&
+      shuttle.model === 'Not recorded' &&
+      shuttle.serialNumber === 'Not recorded' &&
+      shuttle.connectivity === 'UNKNOWN' &&
+      shuttle.status === 'Unknown' &&
+      shuttle.notes.includes('Manufacturer ') &&
+      shuttle.notes.includes(' is confirmed by the user.');
+    return !isExactStarterPlaceholder;
+  }).map((shuttle) => ({
     ...shuttle,
     installedBattery: hadLegacyAcmeDemoBattery && shuttle.id === 'SC-05' && shuttle.installedBattery === 'Not recorded'
       ? 'BAT-ACME-01'
@@ -181,7 +192,13 @@ function normalizeLegacyDemoFaults(faults: Fault[], shuttles: Shuttle[], batteri
       entry !== 'Battery HMI reportedly displayed 0% after repair'
     )
   }));
-  const normalizedBatteries = batteries.map((battery) => {
+  const normalizedBatteries = batteries.filter((battery) => !(
+    battery.id === 'BAT-ACME-01' &&
+    battery.soc == null &&
+    battery.connectionMode === 'UNKNOWN' &&
+    battery.status === 'Installed' &&
+    battery.notes.startsWith('Local application record key only;')
+  )).map((battery) => {
     const isLegacyAcmeDemoBattery =
       battery.id === 'BAT-ACME-01' &&
       battery.soc == null &&
@@ -189,7 +206,13 @@ function normalizeLegacyDemoFaults(faults: Fault[], shuttles: Shuttle[], batteri
       battery.status === 'Fault';
     return isLegacyAcmeDemoBattery ? { ...battery, status: 'Installed' as const } : battery;
   });
-  return { faults: normalizedFaults, shuttles: normalizedShuttles, batteries: normalizedBatteries };
+  const starterConnectionNames = new Set(['Shuttle PLC interface', 'Industrial controller interface', 'Telemetry message bus', 'Manufacturer / gateway API', 'Tablet bridge', 'Local service interface']);
+  const normalizedConnections = connections.filter((connection) => !(
+    starterConnectionNames.has(connection.name) &&
+    connection.mode === 'UNKNOWN' &&
+    connection.notes.startsWith('Not configured.')
+  ));
+  return { faults: normalizedFaults, shuttles: normalizedShuttles, batteries: normalizedBatteries, connections: normalizedConnections };
 }
 
 export interface AppInitialData {
@@ -259,14 +282,14 @@ export async function hydrateApplicationState(): Promise<AppInitialData> {
     readOperationalValue('operational.shifts', [] as ShiftRecord[])
   ]);
 
-  const normalizedLegacyState = normalizeLegacyDemoFaults(faults, shuttles, batteries);
+  const normalizedLegacyState = normalizeLegacyDemoFaults(faults, shuttles, batteries, connections);
 
   return {
     language, theme, customization, currentUser,
     shuttles: normalizedLegacyState.shuttles,
     batteries: normalizedLegacyState.batteries,
     faults: normalizedLegacyState.faults,
-    jobs, connections, notifications, settings, sidebarCollapsed,
+    jobs, connections: normalizedLegacyState.connections, notifications, settings, sidebarCollapsed,
     storageIssues: readOperationalStorageIssues(),
     shifts
   };
@@ -318,8 +341,8 @@ function App({ initialData }: { initialData: AppInitialData }) {
   const [connections, setConnections] = useState<CommunicationEndpoint[]>(initialData.connections);
   const [notifications, setNotifications] = useState(initialData.notifications);
   const [settings, setSettings] = useState<AppSettings>(initialData.settings);
-  const [selectedId, setSelectedId] = useState('SC-01');
-  const [selectedBatteryId, setSelectedBatteryId] = useState('BAT-ACME-01');
+  const [selectedId, setSelectedId] = useState('');
+  const [selectedBatteryId, setSelectedBatteryId] = useState('');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [mobileNav, setMobileNav] = useState(false);
@@ -1173,12 +1196,11 @@ function App({ initialData }: { initialData: AppInitialData }) {
     setNotifications(initialNotifications);
     setShifts([]);
     recordAudit('LOCAL_DATA_RESET', 'data', 'operational-data');
-    setSelectedId('SC-01');
-    setSelectedBatteryId('BAT-ACME-01');
+    setSelectedId('');
+    setSelectedBatteryId('');
     showToast(language === 'ar' ? 'تمت إعادة بيانات البداية' : 'Seed data restored');
   };
 
-  const heroShuttle = selected || initialShuttles[0];
   const header = navItems.find(n => n.id === activeTab);
   const headerPreference = visibleNavigation.find(item => item.id === activeTab);
   const pageTitle = activeTab === 'hub'
@@ -1236,7 +1258,7 @@ function App({ initialData }: { initialData: AppInitialData }) {
               <div className="hero-gear-symbol" aria-hidden="true">⚙</div>
               <div className="equipment-state-panel">
                 <span>{language === 'ar' ? 'حالة سجل المعدة' : 'EQUIPMENT REGISTER STATE'}</span>
-                <strong><i/> {statusText(heroShuttle.status).toUpperCase()}</strong>
+                <strong><i/> {activeShuttles.length ? statusText(activeShuttles[0].status).toUpperCase() : (language === 'ar' ? 'لا توجد معدات مكتشفة' : 'NO EQUIPMENT DISCOVERED')}</strong>
                 <small>{language === 'ar' ? 'بيانات محلية · لا توجد قراءة حركة مباشرة' : 'LOCAL RECORD · NO LIVE MOTION SIGNAL'}</small>
               </div>
             </div>
