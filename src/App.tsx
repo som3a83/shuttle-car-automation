@@ -16,6 +16,7 @@ import ShiftOperations from './components/ShiftOperations';
 import SectionsHub from './components/SectionsHub';
 import LiveGatewayPanel from './components/LiveGatewayPanel';
 import BleReadOnlyExplorer from './components/BleReadOnlyExplorer';
+import NetworkDiscovery from './components/NetworkDiscovery';
 import ImmersiveWarehouse from './components/ImmersiveWarehouse';
 import { CONNECTION_OPTIONS, getConnectionOption } from './industrial/connectionCatalog';
 import SecurityCenter from './components/SecurityCenter';
@@ -1748,6 +1749,7 @@ function App({ initialData }: { initialData: AppInitialData }) {
 
       {activeTab === 'connections' && <section className="page-content">
         <PageIntro eyebrow="INDUSTRIAL NETWORK / READ-ONLY GATEWAY" title={language==='ar'?'بوابة الاتصال الصناعي وسجل الواجهات':'Industrial gateway & interface register'} subtitle={language==='ar'?'اختبار بوابة OT واستقبال قراءات موثقة للقراءة فقط، ثم إدارة سجلات واجهات المصنع.':'Connect to an approved OT gateway for verified read-only telemetry, then manage the vendor interface register.'}/>
+        <NetworkDiscovery language={language}/>
         <BleReadOnlyExplorer language={language}/>
         <LiveGatewayPanel language={language}/>
         <div className="protocol-grid">
