@@ -196,7 +196,6 @@ function normalizeLegacyDemoFaults(faults: Fault[], shuttles: Shuttle[], batteri
     battery.id === 'BAT-ACME-01' &&
     battery.soc == null &&
     battery.connectionMode === 'UNKNOWN' &&
-    battery.status === 'Installed' &&
     battery.notes.startsWith('Local application record key only;')
   )).map((battery) => {
     const isLegacyAcmeDemoBattery =
