@@ -22,24 +22,24 @@ if (!fs.existsSync(variablesPath) || !fs.existsSync(appGradlePath)) {
 
 let variables = fs.readFileSync(variablesPath, 'utf8');
 for (const name of ['compileSdkVersion', 'targetSdkVersion']) {
-  const pattern = new RegExp('(\\b' + name + '\\s*=\\s*)\\d+');
+  const pattern = new RegExp('(\b' + name + '\s*=\s*)\d+');
   if (!pattern.test(variables)) throw new Error('Could not locate ' + name + ' in android/variables.gradle.');
   variables = variables.replace(pattern, '$1' + 36);
 }
 fs.writeFileSync(variablesPath, variables);
 
 let gradle = fs.readFileSync(appGradlePath, 'utf8');
-if (!/\\bversionCode\\s+\\d+/.test(gradle) || !/\\bversionName\\s+['"][^'"]+['"]/.test(gradle)) {
+if (!/\bversionCode\s+\d+/.test(gradle) || !/\bversionName\s+['"][^'"]+['"]/.test(gradle)) {
   throw new Error('Could not locate Android version fields in app/build.gradle.');
 }
-gradle = gradle.replace(/(\\bversionCode\\s+)\\d+/, '$1' + versionCode);
-gradle = gradle.replace(/(\\bversionName\\s+)['"][^'"]+['"]/, '$1"' + versionName + '"');
-if (/signingConfig\\s+signingConfigs\\.release/.test(gradle)) {
+gradle = gradle.replace(/(\bversionCode\s+)\d+/, '$1' + versionCode);
+gradle = gradle.replace(/(\bversionName\s+)['"][^'"]+['"]/, '$1"' + versionName + '"');
+if (/signingConfig\s+signingConfigs\.release/.test(gradle)) {
   throw new Error('Unexpected release signing configuration in the unsigned personal build.');
 }
 fs.writeFileSync(appGradlePath, gradle);
 
-if (!/compileSdkVersion\\s*=\\s*36/.test(variables) || !/targetSdkVersion\\s*=\\s*36/.test(variables)) {
+if (!/compileSdkVersion\s*=\s*36/.test(variables) || !/targetSdkVersion\s*=\s*36/.test(variables)) {
   throw new Error('Android API 36 configuration did not verify.');
 }
 if (!gradle.includes('versionCode ' + versionCode) || !gradle.includes('versionName "' + versionName + '"')) {
