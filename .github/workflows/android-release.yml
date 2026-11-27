@@ -1,4 +1,4 @@
-name: Personal Android Unsigned Release APK
+name: Personal Android Test APK (Debug-Signed)
 
 on:
   pull_request:
@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       version_name:
-        description: Personal release version
+        description: Personal test build version
         required: true
         default: 8.0.0
         type: string
@@ -18,17 +18,17 @@ on:
         type: string
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
-  group: android-personal-release-${{ github.ref }}
+  group: android-personal-test-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
-  build-personal-release:
-    name: Validate and build unsigned personal APK
+  build-personal-test:
+    name: Validate and build installable debug-signed APK
     runs-on: ubuntu-24.04
-    timeout-minutes: 40
+    timeout-minutes: 45
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
@@ -36,7 +36,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: "22"
 
       - name: Set up Java
         uses: actions/setup-java@v6
@@ -63,37 +63,37 @@ jobs:
           npx capacitor-assets generate --android --iconBackgroundColor '#111820' --iconBackgroundColorDark '#111820' --splashBackgroundColor '#111820' --splashBackgroundColorDark '#111820'
           npx cap sync android
 
-      - name: Stamp personal release version without signing configuration
+      - name: Stamp personal test version
         env:
           APP_VERSION_INPUT: ${{ inputs.version_name || '8.0.0' }}
           APP_VERSION_CODE_INPUT: ${{ inputs.version_code || '8000000' }}
         run: node scripts/prepare-android-personal-release.mjs
 
-      - name: Build unsigned release APK
+      - name: Build installable debug-signed APK
         working-directory: android
-        run: ./gradlew --no-daemon assembleRelease
+        run: ./gradlew --no-daemon --stacktrace assembleDebug
 
-      - name: Verify package identity and publish unsigned APK
+      - name: Verify APK signature, package identity and checksum
         shell: bash
         env:
           APP_VERSION_INPUT: ${{ inputs.version_name || '8.0.0' }}
         run: |
           set -euo pipefail
-          APK="android/app/build/outputs/apk/release/app-release-unsigned.apk"
+          APK="android/app/build/outputs/apk/debug/app-debug.apk"
           test -s "$APK"
           BADGING="$( "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$APK" )"
           grep -q "package: name='com.shuttlecar.automation'" <<< "$BADGING"
-          mkdir -p artifacts/personal-release
-          cp "$APK" "artifacts/personal-release/shuttle-car-automation-${APP_VERSION_INPUT}-unsigned.apk"
-          printf 'Version: %s\nCommit: %s\nSigning: UNSIGNED\n' "$APP_VERSION_INPUT" "$GITHUB_SHA" > artifacts/personal-release/BUILD-INFO.txt
-          sha256sum artifacts/personal-release/*.apk > artifacts/personal-release/SHA256SUMS.txt
-          ls -lh artifacts/personal-release/
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose "$APK"
+          mkdir -p artifacts/personal-test
+          cp "$APK" "artifacts/personal-test/shuttle-car-automation-${APP_VERSION_INPUT}-debug.apk"
+          printf 'Version: %s\nCommit: %s\nSigning: Android debug key (installable test build)\nHardware commissioning: NOT VERIFIED\n' "$APP_VERSION_INPUT" "$GITHUB_SHA" > artifacts/personal-test/BUILD-INFO.txt
+          sha256sum artifacts/personal-test/*.apk > artifacts/personal-test/SHA256SUMS.txt
+          ls -lh artifacts/personal-test/
 
-      - name: Upload unsigned personal APK
+      - name: Upload installable personal test APK
         uses: actions/upload-artifact@v7
         with:
-          name: shuttle-car-automation-personal-unsigned-apk
-          path: artifacts/personal-release/
+          name: shuttle-car-automation-personal-test-apk
+          path: artifacts/personal-test/
           if-no-files-found: error
           retention-days: 90
-
