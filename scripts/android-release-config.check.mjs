@@ -100,11 +100,11 @@ test('prepares an unsigned personal release without keystore secrets', () => {
     assert.equal(result.status, 0, result.stderr || result.stdout);
     const variables = fs.readFileSync(path.join(root, 'android', 'variables.gradle'), 'utf8');
     const gradle = fs.readFileSync(path.join(root, 'android', 'app', 'build.gradle'), 'utf8');
-    assert.match(variables, /compileSdkVersion\\s*=\\s*36/);
-    assert.match(variables, /targetSdkVersion\\s*=\\s*36/);
-    assert.match(gradle, /versionCode\\s+8000042/);
-    assert.match(gradle, /versionName\\s+"8\\.0\\.0"/);
-    assert.doesNotMatch(gradle, /signingConfig\\s+signingConfigs\\.release/);
+    assert.match(variables, /compileSdkVersion\s*=\s*36/);
+    assert.match(variables, /targetSdkVersion\s*=\s*36/);
+    assert.match(gradle, /versionCode\s+8000042/);
+    assert.match(gradle, /versionName\s+"8\.0\.0"/);
+    assert.doesNotMatch(gradle, /signingConfig\s+signingConfigs\.release/);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
