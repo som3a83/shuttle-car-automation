@@ -1,6 +1,9 @@
 name: Personal Android Unsigned Release APK
 
 on:
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       version_name:
