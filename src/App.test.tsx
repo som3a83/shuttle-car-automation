@@ -215,10 +215,14 @@ beforeEach(async () => {
     expect(screen.queryByRole('button', { name: /Engineering Visualization/i })).not.toBeInTheDocument();
   });
 
-  it('provides direct mobile destinations for the main operating workspaces', () => {
+  it('provides direct mobile destinations without a daily reports workspace', () => {
     renderApp();
     expect(screen.getByRole('navigation', { name: /Quick navigation/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Reports/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Dashboard/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Devices/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Shifts/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Settings/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Reports/i })).not.toBeInTheDocument();
   });
 
   it('opens the shift workspace and persists completed handover records in local storage', async () => {
@@ -262,12 +266,11 @@ beforeEach(async () => {
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Fleet Control Center');
   });
 
-  it('opens the reports page from the fifth mobile navigation item', async () => {
-    const user = userEvent.setup();
+  it('does not expose a daily reports page in mobile navigation', () => {
     renderApp();
-    await user.click(screen.getByRole('button', { name: /Reports/i }));
-    expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent('Operational reports');
-    expect(window.location.hash).toBe('#/reports');
+    expect(screen.getByRole('navigation', { name: /Quick navigation/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Reports/i })).not.toBeInTheDocument();
+    expect(window.location.hash).not.toBe('#/reports');
   });
 
   it('creates a local notification when a fault report is submitted', async () => {
