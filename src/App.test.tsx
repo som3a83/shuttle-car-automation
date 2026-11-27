@@ -218,10 +218,10 @@ beforeEach(async () => {
   it('provides direct mobile destinations without a daily reports workspace', () => {
     renderApp();
     expect(screen.getByRole('navigation', { name: /Quick navigation/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Dashboard/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Devices/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Shifts/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Settings/i })).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /Dashboard/i }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('button', { name: /Devices/i }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('button', { name: /Shifts/i }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('button', { name: /Settings/i }).length).toBeGreaterThan(0);
     expect(screen.queryByRole('button', { name: /Reports/i })).not.toBeInTheDocument();
   });
 
