@@ -21,7 +21,7 @@ import { archiveBatteryAndDetach, assignBatteryToShuttle, restoreBatteryRecord }
 import { validateOperationalBackup } from './data/backupValidation';
 import { archiveCompletedWorkOrder, archiveFaultRecord, restoreFaultRecord, restoreWorkOrder } from './data/recordLifecycle';
 import { appendAuditRecordAsync, readAllAuditRecordsAsync, verifyAuditLedgerAsync } from './security/auditLog';
-import { canAccessRoute, canPerformAction, type Permission } from './security/permissions';
+import { canAccessRoute, canPerformAction, type ApplicationRoute, type Permission } from './security/permissions';
 import { listLocalAccountsAsync, readLocalSessionAsync } from './security/localAuth';
 import { OPERATIONAL_COLLECTIONS, persistOperationalSnapshot, readOperationalStorageIssues } from './security/operationalStorage';
 import { get, set, type StorageKey } from './storage';
@@ -40,7 +40,7 @@ import type {
   ShiftRecord
 } from './types';
 
-type Tab = 'hub' | 'dashboard' | 'fleet' | 'shifts' | 'batteries' | 'faults' | 'maintenance' | 'connections' | 'notifications' | 'users' | 'settings';
+type Tab = ApplicationRoute;
 
 const navItems: { id: Tab; en: string; ar: string; icon: string; group: string }[] = [
   { id: 'dashboard', en: 'Dashboard', ar: 'لوحة القيادة', icon: 'grid', group: 'OPERATIONS' },
