@@ -22,7 +22,7 @@ if (!fs.existsSync(variablesPath) || !fs.existsSync(appGradlePath)) {
 
 let variables = fs.readFileSync(variablesPath, 'utf8');
 for (const name of ['compileSdkVersion', 'targetSdkVersion']) {
-  const pattern = new RegExp('(\b' + name + '\s*=\s*)\d+');
+  const pattern = new RegExp('(' + name + '\s*=\s*)\d+');
   if (!pattern.test(variables)) throw new Error('Could not locate ' + name + ' in android/variables.gradle.');
   variables = variables.replace(pattern, '$1' + 36);
 }
