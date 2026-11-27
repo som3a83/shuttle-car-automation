@@ -18,14 +18,18 @@ export const users: User[] = [
 ];
 
 export const rolePermissions: Record<Role, string[]> = {
-  'Super Admin': ['dashboard', 'warehouse', 'fleet', 'engineering', 'batteries', 'faults', 'maintenance', 'connections', 'notifications', 'users', 'settings'],
-  Admin: ['dashboard', 'warehouse', 'fleet', 'engineering', 'batteries', 'faults', 'maintenance', 'connections', 'notifications', 'users', 'settings'],
-  Supervisor: ['dashboard', 'warehouse', 'fleet', 'engineering', 'batteries', 'faults', 'maintenance', 'notifications'],
-  'Maintenance Engineer': ['dashboard', 'warehouse', 'fleet', 'engineering', 'batteries', 'faults', 'maintenance', 'notifications'],
-  Technician: ['dashboard', 'warehouse', 'fleet', 'faults', 'maintenance', 'notifications'],
-  Operator: ['dashboard', 'warehouse', 'fleet', 'notifications'],
-  Viewer: ['dashboard', 'warehouse', 'fleet']
+  'Super Admin': ['dashboard', 'fleet', 'shifts', 'batteries', 'faults', 'maintenance', 'connections', 'notifications', 'users', 'settings'],
+  Admin: ['dashboard', 'fleet', 'shifts', 'batteries', 'faults', 'maintenance', 'connections', 'notifications', 'users', 'settings'],
+  Supervisor: ['dashboard', 'fleet', 'shifts', 'batteries', 'faults', 'maintenance', 'notifications'],
+  'Maintenance Engineer': ['dashboard', 'fleet', 'shifts', 'batteries', 'faults', 'maintenance', 'notifications'],
+  Technician: ['dashboard', 'fleet', 'shifts', 'faults', 'maintenance', 'notifications'],
+  Operator: ['dashboard', 'fleet', 'shifts', 'notifications'],
+  Viewer: ['dashboard', 'fleet', 'shifts']
 };
+
+// No equipment, battery or endpoint is pre-registered. Records appear only after a verified discovery or deliberate registration.
+export const initialShuttles: Shuttle[] = [];
+export const initialBatteries: Battery[] = [];
 
 // No open fault is seeded. Only an authorized user can create a current fault record.
 export const initialFaults: Fault[] = [];
