@@ -5,6 +5,7 @@ import StorageRecoveryGate from './components/StorageRecoveryGate';
 import './index.css';
 import './premium-industrial.css';
 import './blue-gear-industrial.css';
+import './blue-gear-industrial.css';
 import { bootstrapOperationalStorage, type OperationalBootstrapResult } from './security/operationalStorage';
 import { getStorageModePreference } from './storage';
 
