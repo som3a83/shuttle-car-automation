@@ -1,4 +1,4 @@
-name: Personal Android Test APK (Debug-Signed)
+name: Personal Android APK
 
 on:
   pull_request:
@@ -69,7 +69,7 @@ jobs:
           APP_VERSION_CODE_INPUT: ${{ inputs.version_code || '8000000' }}
         run: node scripts/prepare-android-personal-release.mjs
 
-      - name: Build installable debug-signed APK
+      - name: Build installable personal APK
         working-directory: android
         run: ./gradlew --no-daemon --stacktrace assembleDebug
 
@@ -85,7 +85,7 @@ jobs:
           grep -q "package: name='com.shuttlecar.automation'" <<< "$BADGING"
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose "$APK"
           mkdir -p artifacts/personal-test
-          cp "$APK" "artifacts/personal-test/shuttle-car-automation-${APP_VERSION_INPUT}-debug.apk"
+          cp "$APK" "artifacts/personal-test/Shuttle-Car-Automation-${APP_VERSION_INPUT}.apk"
           printf 'Version: %s\nCommit: %s\nSigning: Android debug key (installable test build)\nHardware commissioning: NOT VERIFIED\n' "$APP_VERSION_INPUT" "$GITHUB_SHA" > artifacts/personal-test/BUILD-INFO.txt
           sha256sum artifacts/personal-test/*.apk > artifacts/personal-test/SHA256SUMS.txt
           ls -lh artifacts/personal-test/
@@ -93,7 +93,7 @@ jobs:
       - name: Upload installable personal test APK
         uses: actions/upload-artifact@v7
         with:
-          name: shuttle-car-automation-personal-test-apk
+          name: Shuttle-Car-Automation-Personal-APK
           path: artifacts/personal-test/
           if-no-files-found: error
           retention-days: 90
