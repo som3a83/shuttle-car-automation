@@ -1,34 +1,34 @@
-name: Android Play Store AAB and Signed APK
+name: Personal Android APK
 
 on:
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       version_name:
-        description: Semantic app version (for example 1.0.0)
+        description: Personal test build version
         required: true
-        default: 1.0.0
+        default: 8.0.0
         type: string
       version_code:
-        description: Android versionCode; must increase on every Play upload
+        description: Positive Android versionCode
         required: true
-        default: "1000000"
+        default: "8000000"
         type: string
-  push:
-    tags:
-      - "v*"
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
-  group: android-play-release-${{ github.ref }}
+  group: android-personal-test-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
-  build-release:
-    name: Android Play AAB and Signed APK Release
+  build-personal-test:
+    name: Validate and build installable debug-signed APK
     runs-on: ubuntu-24.04
-    timeout-minutes: 40
+    timeout-minutes: 45
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
@@ -36,7 +36,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: "22"
 
       - name: Set up Java
         uses: actions/setup-java@v6
@@ -50,91 +50,50 @@ jobs:
       - name: Install and validate web application
         run: |
           npm ci --no-audit --no-fund
-          npx tsc -b
+          npm run check
           npm test
           npm run check:release
           npm run assets:render
           npm run build
 
-      - name: Generate and sync Android project
+      - name: Generate Android project, network inspector and branded assets
         run: |
           npx cap add android
+          node scripts/install-android-network-inspector.mjs
           npx capacitor-assets generate --android --iconBackgroundColor '#111820' --iconBackgroundColorDark '#111820' --splashBackgroundColor '#111820' --splashBackgroundColorDark '#111820'
           npx cap sync android
 
-      - name: Decode upload keystore
+      - name: Stamp personal test version
         env:
-          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-        run: |
-          set -euo pipefail
-          test -n "$ANDROID_KEYSTORE_BASE64" || { echo "::error::Configure ANDROID_KEYSTORE_BASE64 and the other signing secrets before running a Play release."; exit 1; }
-          mkdir -p android/app
-          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/app/upload-key.jks
-          test -s android/app/upload-key.jks
+          APP_VERSION_INPUT: ${{ inputs.version_name || '8.0.0' }}
+          APP_VERSION_CODE_INPUT: ${{ inputs.version_code || '8000000' }}
+        run: node scripts/prepare-android-personal-release.mjs
 
-      - name: Enforce Play release SDK, version and signing configuration
-        env:
-          APP_VERSION_INPUT: ${{ inputs.version_name }}
-          APP_VERSION_CODE_INPUT: ${{ inputs.version_code || '1000000' }}
-          ANDROID_KEYSTORE_FILE: upload-key.jks
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: |
-          set -euo pipefail
-          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
-            export APP_VERSION="${GITHUB_REF_NAME#v}"
-            IFS=. read -r MAJOR MINOR PATCH <<< "$APP_VERSION"
-            export APP_VERSION_CODE=$((MAJOR * 1000000 + MINOR * 1000 + PATCH))
-          else
-            export APP_VERSION="$APP_VERSION_INPUT"
-            export APP_VERSION_CODE="$APP_VERSION_CODE_INPUT"
-          fi
-          node scripts/prepare-android-release.mjs
-
-      - name: Build signed release Android App Bundle and APK
+      - name: Build installable personal APK
         working-directory: android
-        env:
-          ANDROID_KEYSTORE_FILE: upload-key.jks
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: ./gradlew --no-daemon bundleRelease assembleRelease
+        run: ./gradlew --no-daemon --stacktrace assembleDebug
 
-      - name: Verify signature and generate checksum
+      - name: Verify APK signature, package identity and checksum
+        shell: bash
+        env:
+          APP_VERSION_INPUT: ${{ inputs.version_name || '8.0.0' }}
         run: |
           set -euo pipefail
-          AAB="android/app/build/outputs/bundle/release/app-release.aab"
-          APK="android/app/build/outputs/apk/release/app-release.apk"
-          test -s "$AAB"
+          APK="android/app/build/outputs/apk/debug/app-debug.apk"
           test -s "$APK"
-          jarsigner -verify -verbose -certs "$AAB" > /tmp/aab-signature-check.txt
-          grep -qi "jar verified" /tmp/aab-signature-check.txt
-          apksigner verify --verbose "$APK"
-          mkdir -p artifacts/play-release
-          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
-            RELEASE_VERSION="${GITHUB_REF_NAME#v}"
-          else
-            RELEASE_VERSION="$APP_VERSION_INPUT"
-          fi
-          cp "$AAB" "artifacts/play-release/shuttle-car-automation-${RELEASE_VERSION}.aab"
-          cp "$APK" "artifacts/play-release/shuttle-car-automation-${RELEASE_VERSION}-signed.apk"
-          sha256sum artifacts/play-release/*.aab artifacts/play-release/*.apk > artifacts/play-release/SHA256SUMS.txt
-          ls -lh artifacts/play-release
-        env:
-          APP_VERSION_INPUT: ${{ inputs.version_name || '1.0.0' }}
+          BADGING="$( "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$APK" )"
+          grep -q "package: name='com.shuttlecar.automation'" <<< "$BADGING"
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose "$APK"
+          mkdir -p artifacts/personal-test
+          cp "$APK" "artifacts/personal-test/Shuttle-Car-Automation-${APP_VERSION_INPUT}.apk"
+          printf 'Version: %s\nCommit: %s\nSigning: Android debug key (installable test build)\nHardware commissioning: NOT VERIFIED\n' "$APP_VERSION_INPUT" "$GITHUB_SHA" > artifacts/personal-test/BUILD-INFO.txt
+          sha256sum artifacts/personal-test/*.apk > artifacts/personal-test/SHA256SUMS.txt
+          ls -lh artifacts/personal-test/
 
-      - name: Upload signed Play bundle and installable APK
+      - name: Upload installable personal test APK
         uses: actions/upload-artifact@v7
         with:
-          name: shuttle-car-automation-play-aab
-          path: artifacts/play-release/
+          name: Shuttle-Car-Automation-Personal-APK
+          path: artifacts/personal-test/
           if-no-files-found: error
           retention-days: 90
-
-      - name: Publish GitHub release for version tag
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v3
-        with:
-          files: artifacts/play-release/*
-          generate_release_notes: true

@@ -27,7 +27,7 @@ The initial register contains five local fleet records based only on the fleet i
 
 Exact model names, serial numbers, hardware/firmware revisions, operating states and live measurements are not populated unless verified. The local key `BAT-ACME-01` is an application record identifier, not an OEM battery serial number. The reported ACME HMI display of 0% after repair remains a manual historical note; it is not live SOC and SOC remains null.
 
-## Industrial connectivity — commissioning boundary
+## PLC and cold-store controller catalog\n\nSee [docs/PLC_CATALOG.md](docs/PLC_CATALOG.md) for an expandable, manufacturer-documented reference catalog covering Siemens, Schneider Electric, Beckhoff, Omron, Rockwell and Danfoss refrigeration system managers. Catalog inclusion does not mean a driver is implemented or a physical controller is commissioned.\n\n## Industrial connectivity — commissioning boundary
 
 The app includes:
 - Generic Bluetooth LE discovery and GATT service/characteristic read inspection on a native mobile device.
