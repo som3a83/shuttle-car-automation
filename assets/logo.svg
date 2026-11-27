@@ -1,36 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
-  <defs>
-    <linearGradient id="bg" x1="56" y1="40" x2="456" y2="472" gradientUnits="userSpaceOnUse"><stop stop-color="#242B32"/><stop offset="1" stop-color="#090D12"/></linearGradient>
-    <linearGradient id="copper" x1="120" y1="105" x2="395" y2="415" gradientUnits="userSpaceOnUse"><stop stop-color="#FFD19A"/><stop offset=".34" stop-color="#E59A55"/><stop offset=".72" stop-color="#B96732"/><stop offset="1" stop-color="#7D3F22"/></linearGradient>
-    <linearGradient id="edge" x1="150" y1="115" x2="365" y2="390" gradientUnits="userSpaceOnUse"><stop stop-color="#FFE0B7"/><stop offset="1" stop-color="#A9572D"/></linearGradient>
-    <radialGradient id="hub" cx="0" cy="0" r="1" gradientTransform="matrix(0 118 -118 0 256 256)" gradientUnits="userSpaceOnUse"><stop stop-color="#39434C"/><stop offset="1" stop-color="#11171D"/></radialGradient>
-    <filter id="shadow" x="58" y="58" width="396" height="396" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feGaussianBlur stdDeviation="13"/></filter>
-  </defs>
-  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
-  <rect x="18" y="18" width="476" height="476" rx="98" stroke="#59636C" stroke-opacity=".42" stroke-width="3"/>
-  <circle cx="256" cy="272" r="176" fill="#000" opacity=".38" filter="url(#shadow)"/>
-  <g fill="url(#copper)" stroke="url(#edge)" stroke-width="5" stroke-linejoin="round">
-    <rect x="233" y="68" width="46" height="104" rx="10"/>
-    <rect x="233" y="68" width="46" height="104" rx="10" transform="rotate(30 256 256)"/>
-    <rect x="233" y="68" width="46" height="104" rx="10" transform="rotate(60 256 256)"/>
-    <rect x="233" y="68" width="46" height="104" rx="10" transform="rotate(90 256 256)"/>
-    <rect x="233" y="68" width="46" height="104" rx="10" transform="rotate(120 256 256)"/>
-    <rect x="233" y="68" width="46" height="104" rx="10" transform="rotate(150 256 256)"/>
-    <rect x="233" y="68" width="46" height="104" rx="10" transform="rotate(180 256 256)"/>
-    <rect x="233" y="68" width="46" height="104" rx="10" transform="rotate(210 256 256)"/>
-    <rect x="233" y="68" width="46" height="104" rx="10" transform="rotate(240 256 256)"/>
-    <rect x="233" y="68" width="46" height="104" rx="10" transform="rotate(270 256 256)"/>
-    <rect x="233" y="68" width="46" height="104" rx="10" transform="rotate(300 256 256)"/>
-    <rect x="233" y="68" width="46" height="104" rx="10" transform="rotate(330 256 256)"/>
-    <circle cx="256" cy="256" r="145"/>
-  </g>
-  <circle cx="256" cy="256" r="111" fill="#171E25" stroke="#F0B77F" stroke-width="7"/>
-  <circle cx="256" cy="256" r="82" fill="url(#hub)" stroke="#9B633F" stroke-width="5"/>
-  <g fill="#D99558" stroke="#FFD3A3" stroke-width="3">
-    <circle cx="256" cy="151" r="9"/><circle cx="330" cy="182" r="9"/><circle cx="361" cy="256" r="9"/><circle cx="330" cy="330" r="9"/>
-    <circle cx="256" cy="361" r="9"/><circle cx="182" cy="330" r="9"/><circle cx="151" cy="256" r="9"/><circle cx="182" cy="182" r="9"/>
-  </g>
-  <circle cx="256" cy="256" r="42" fill="#C77840" stroke="#FFD6AA" stroke-width="7"/>
-  <circle cx="256" cy="256" r="18" fill="#252D35" stroke="#F2B77F" stroke-width="5"/>
-  <path d="M256 214V232M256 280V298M214 256H232M280 256H298" stroke="#FFE0BB" stroke-width="6" stroke-linecap="round" opacity=".88"/>
+<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#a9e3ff"/><stop offset=".48" stop-color="#39a9ff"/><stop offset="1" stop-color="#086db5"/></linearGradient><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#0c2340"/><stop offset="1" stop-color="#06111f"/></linearGradient></defs>
+<rect width="512" height="512" rx="112" fill="url(#bg)"/><rect x="18" y="18" width="476" height="476" rx="98" fill="none" stroke="#3d9bd7" stroke-opacity=".45" stroke-width="3"/>
+<g fill="url(#g)" stroke="#bce8ff" stroke-width="7" stroke-linejoin="round">
+<path d="M225 38h62l13 47a177 177 0 0 1 34 14l42-24 44 44-24 42a177 177 0 0 1 14 34l47 13v62l-47 13a177 177 0 0 1-14 34l24 42-44 44-42-24a177 177 0 0 1-34 14l-13 47h-62l-13-47a177 177 0 0 1-34-14l-42 24-44-44 24-42a177 177 0 0 1-14-34l-47-13v-62l47-13a177 177 0 0 1 14-34l-24-42 44-44 42 24a177 177 0 0 1 34-14z"/>
+</g><circle cx="256" cy="256" r="91" fill="#081725" stroke="#bce8ff" stroke-width="12"/><circle cx="256" cy="256" r="38" fill="url(#g)"/>
 </svg>
