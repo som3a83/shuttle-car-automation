@@ -1,0 +1,20 @@
+import fs from 'node:fs';
+import path from 'node:path';
+const manifest='android/app/src/main/AndroidManifest.xml';
+let xml=fs.readFileSync(manifest,'utf8');
+const permissions=['android.permission.ACCESS_WIFI_STATE','android.permission.CHANGE_WIFI_STATE','android.permission.ACCESS_FINE_LOCATION','android.permission.NEARBY_WIFI_DEVICES','android.permission.INTERNET','android.permission.ACCESS_NETWORK_STATE'];
+for(const permission of permissions) if(!xml.includes('android:name="'+permission+'"')) xml=xml.replace('<application','    <uses-permission android:name="'+permission+'" />\n    <application');
+fs.writeFileSync(manifest,xml);
+let activity;
+function walk(dir){for(const entry of fs.readdirSync(dir,{withFileTypes:true})){const full=path.join(dir,entry.name);if(entry.isDirectory())walk(full);else if(entry.name==='MainActivity.java')activity=full;}}
+walk('android/app/src/main/java');
+if(!activity)throw new Error('Capacitor MainActivity.java was not found');
+let source=fs.readFileSync(activity,'utf8');
+const packageName=source.match(/^package\s+([\w.]+);/m)?.[1];
+if(!packageName)throw new Error('Could not determine Android package name');
+const pluginSource=fs.readFileSync('native/android/NetworkInspectorPlugin.java','utf8').replace('package com.shuttlecar.automation;','package '+packageName+';');
+fs.writeFileSync(path.join(path.dirname(activity),'NetworkInspectorPlugin.java'),pluginSource);
+if(!source.includes('NetworkInspectorPlugin.class')) source=source.replace(/public class MainActivity extends BridgeActivity\s*\{\s*\}/,'public class MainActivity extends BridgeActivity {\n    @Override\n    public void onCreate(android.os.Bundle savedInstanceState) {\n        registerPlugin(NetworkInspectorPlugin.class);\n        super.onCreate(savedInstanceState);\n    }\n}');
+if(!source.includes('NetworkInspectorPlugin.class'))throw new Error('Could not register native NetworkInspector plugin');
+fs.writeFileSync(activity,source);
+console.log('Installed native NetworkInspector plugin and Android runtime permissions.');
