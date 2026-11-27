@@ -91,3 +91,18 @@
 }
 .battery-visual-placeholder strong { color: #c5eaff; letter-spacing: .12em; font-size: 12px; }
 .battery-visual-placeholder span { color: #8da9bf; font-size: 11px; }
+
+/* Eliminate legacy green battery and toast treatments. */
+.battery-cell {
+  background: linear-gradient(145deg, #72c7ff, #087bc8) !important;
+}
+.battery-leds i {
+  background: #72c7ff !important;
+  box-shadow: 0 0 9px rgba(114, 199, 255, .8) !important;
+}
+.toast {
+  background: #101f30 !important;
+  color: #c5eaff !important;
+  border-color: rgba(114, 199, 255, .28) !important;
+}
+.toast svg { color: #72c7ff !important; }
